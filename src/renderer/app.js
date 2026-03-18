@@ -43,7 +43,7 @@ function parseClassProJson(data) {
     devoirs:     parse('cdc-devoirs')  || [],
     fiches:      (() => { const f = parse('cdc-fiches'); return (f && !Array.isArray(f)) ? f : {}; })(),
     plans:       parse('cdc-plans')    || [],
-    progs:       parse('cdc-progs')    || [],
+    progs:       (() => { const p = parse('cdc-progs'); return (p && typeof p === 'object' && !Array.isArray(p)) ? p : {}; })(),
     programmes:  parse('cdc-programmes') || [],
     edt:         parse('cdc-edt')      || [],
     liens:       parse('cdc-liens')    || [],
@@ -224,7 +224,7 @@ function ModuleAccueil({ onOpen, onNavigate, cpData, filePath }) {
                   ['Devoirs / TNR', cpData.devoirs.length],
                   ['Fiches séance', cpData.fiches.length],
                   ['Plans de classe', cpData.plans.length],
-                  ['Progressions', cpData.progs.length],
+                  ['Progressions', Object.values(cpData.progs || {}).reduce((s, v) => s + ((v?.rows?.length) || 0), 0)],
                   ['Bulletins (conseil)', cpData.bulletins.length],
                   ['Créneaux EDT', cpData.edt.length],
                 ].map(([label, val]) => (
@@ -345,7 +345,7 @@ function ModuleDonnees({ cpData }) {
     { id: 'sessions', label: '📓 Séances', count: cpData.sessions.length },
     { id: 'bulletins', label: '🎓 Bulletins', count: cpData.bulletins.length },
     { id: 'edt', label: '📅 EDT', count: cpData.edt.length },
-    { id: 'progs', label: '📆 Progressions', count: cpData.progs.length },
+    { id: 'progs', label: '📆 Progressions', count: Object.values(cpData.progs || {}).reduce((s, v) => s + ((v?.rows?.length) || 0), 0) },
   ];
 
   const profile = cpData.profile;
@@ -458,14 +458,14 @@ function ModuleDonnees({ cpData }) {
         )}
 
         {activeTab === 'progs' && (
-          cpData.progs.length === 0
+          Object.keys(cpData.progs || {}).length === 0
             ? <EmptyState icon="📆" label="Aucune progression enregistrée" />
             : <div style={{ display: 'flex', flexDirection: 'column', gap: '.38rem' }}>
-                {cpData.progs.map((p, i) => (
-                  <div key={i} className="data-row">
-                    <span className="data-row-label">{p.titre || p.title || 'Séquence'}</span>
-                    <span className="data-row-value" style={{ flex: 1 }}>{p.objectif || p.description || '—'}</span>
-                    {p.classe && <span className="pill">{p.classe}</span>}
+                {Object.entries(cpData.progs).map(([clsId, prog]) => (
+                  <div key={clsId} className="data-row">
+                    <span className="data-row-label">{clsId}</span>
+                    <span className="data-row-value" style={{ flex: 1 }}>{prog?.rows?.length || 0} séquence(s)</span>
+                    <span className="pill">{prog?.cols?.length || 0} col.</span>
                   </div>
                 ))}
               </div>
@@ -829,406 +829,6 @@ function ModuleSuivi({ cpData, onDataChange }) {
   );
 }
 
-// ── MODULE CARNET DE BORD ─────────────────────────────────────────────────────
-const CHAMPS_FICHE = [
-  { key: 'objectif',  label: '🎯 Objectif(s) de la séance',   placeholder: 'Ex : Comprendre le présent de l\'indicatif…', rows: 2 },
-  { key: 'activite',  label: '📋 Activité / déroulé',          placeholder: 'Ex : Correction exercices, lecture texte p.42, jeu de rôle…', rows: 3 },
-  { key: 'devoirs',   label: '📝 Devoirs donnés',              placeholder: 'Ex : Apprendre vocabulaire p.45, exercice 3…', rows: 2 },
-  { key: 'aRevoir',   label: '🔁 Points à revoir',             placeholder: 'Ex : Revoir la conjugaison du verbe ser…', rows: 2 },
-  { key: 'documents', label: '📎 Documents / ressources',      placeholder: 'Ex : Fiche de vocabulaire, vidéo YouTube…', rows: 2 },
-  { key: 'incidents', label: '⚠️ Incidents / observations',    placeholder: 'Ex : Retard de Thomas, bruit excessif…', rows: 2 },
-];
-
-function isoDate(d) {
-  return d.toISOString().slice(0, 10);
-}
-
-function ModuleCarnet({ cpData, onDataChange }) {
-  const [selCls, setSelCls] = useState(null);
-  const [selFicheId, setSelFicheId] = useState(null);
-  const [fiches, setFiches] = useState(() => cpData?.fiches || {});
-  const [draft, setDraft] = useState(null);
-  const [savedOk, setSavedOk] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [newForm, setNewForm] = useState({ date: isoDate(new Date()), titre: '' });
-  const [showDel, setShowDel] = useState(false);
-  const [search, setSearch] = useState('');
-
-  const classes = cpData?.classes || [];
-
-  // Sync fiches → cpData._raw pour le re-export JSON
-  useEffect(() => {
-    if (onDataChange) onDataChange('cdc-fiches', fiches);
-  }, [fiches]);
-
-  // Fiches de la classe sélectionnée, triées par date décroissante
-  const clsFiches = useMemo(() => {
-    const list = fiches[selCls] || [];
-    const filtered = search.trim()
-      ? list.filter(f =>
-          f.titre?.toLowerCase().includes(search.toLowerCase()) ||
-          f.objectif?.toLowerCase().includes(search.toLowerCase())
-        )
-      : list;
-    return [...filtered].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  }, [fiches, selCls, search]);
-
-  const ficheActive = selFicheId ? (fiches[selCls] || []).find(f => f.id === selFicheId) : null;
-
-  // Quand on change de fiche, initialise le brouillon
-  useEffect(() => {
-    setDraft(ficheActive ? { ...ficheActive } : null);
-    setSavedOk(false);
-  }, [selFicheId, selCls]);
-
-  // Auto-select première classe si aucune sélectionnée
-  useEffect(() => {
-    if (!selCls && classes.length > 0) setSelCls(classes[0].id);
-  }, [classes]);
-
-  const updateDraft = (key, val) => setDraft(d => d ? { ...d, [key]: val } : d);
-
-  const saveDraft = () => {
-    if (!draft || !selCls || !selFicheId) return;
-    setFiches(prev => ({
-      ...prev,
-      [selCls]: (prev[selCls] || []).map(f => f.id === selFicheId ? { ...draft } : f),
-    }));
-    setSavedOk(true);
-    setTimeout(() => setSavedOk(false), 2500);
-  };
-
-  const createFiche = () => {
-    if (!selCls || !newForm.titre.trim()) return;
-    const f = {
-      id: 'f' + Date.now(),
-      date: newForm.date,
-      titre: newForm.titre.trim(),
-      objectif: '', activite: '', devoirs: '',
-      documents: '', aRevoir: '', incidents: '',
-      absents: [], aRelancer: [],
-    };
-    setFiches(prev => ({ ...prev, [selCls]: [...(prev[selCls] || []), f] }));
-    setSelFicheId(f.id);
-    setShowNew(false);
-    setNewForm({ date: isoDate(new Date()), titre: '' });
-  };
-
-  const deleteFiche = () => {
-    if (!selFicheId || !selCls) return;
-    setFiches(prev => ({
-      ...prev,
-      [selCls]: (prev[selCls] || []).filter(f => f.id !== selFicheId),
-    }));
-    setSelFicheId(null);
-    setDraft(null);
-    setShowDel(false);
-  };
-
-  const totalFiches = Object.values(fiches).reduce((s, arr) => s + (arr?.length || 0), 0);
-
-  const taStyle = {
-    width: '100%', padding: '.55rem .75rem',
-    border: '1.5px solid var(--border)', borderRadius: 'var(--r-xs)',
-    background: 'var(--surface2)', color: 'var(--text)',
-    fontFamily: 'Roboto, sans-serif', fontSize: '.82rem',
-    lineHeight: 1.6, resize: 'vertical', outline: 'none',
-    transition: 'border-color .15s', boxSizing: 'border-box',
-  };
-
-  if (!cpData) return <ModulePlaceholder icon="📓" title="Carnet de bord" sub="Ouvrez d'abord un fichier ClassPro." />;
-
-  return (
-    <>
-      <div className="page-hd">
-        <div>
-          <div className="phd-badge">📓 Carnet de bord</div>
-          <div className="phd-title">Fiches de cours</div>
-          <div className="phd-sub">
-            {classes.find(c => c.id === selCls)?.name || '—'}
-            {' · '}{clsFiches.length} fiche(s) · {totalFiches} au total
-          </div>
-        </div>
-        <div className="phd-actions">
-          {selCls && (
-            <button className="btn btn-white" onClick={() => { setNewForm({ date: isoDate(new Date()), titre: '' }); setShowNew(true); }}>
-              + Nouvelle fiche
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
-
-        {/* ── Sidebar classes + liste fiches ── */}
-        <div style={{ width: 260, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--surface2)', overflow: 'hidden' }}>
-
-          {/* Onglets classes */}
-          <div style={{ flexShrink: 0, borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
-            {classes.length === 0 ? (
-              <div style={{ padding: '.875rem', fontSize: '.76rem', color: 'var(--text3)', fontStyle: 'italic' }}>Aucune classe dans le fichier</div>
-            ) : (
-              classes.map(cls => (
-                <button key={cls.id}
-                  onClick={() => { setSelCls(cls.id); setSelFicheId(null); setSearch(''); }}
-                  style={{
-                    display: 'block', width: '100%', padding: '.55rem .875rem',
-                    border: 'none', borderLeft: `3px solid ${selCls === cls.id ? 'var(--accent)' : 'transparent'}`,
-                    background: selCls === cls.id ? 'var(--surface)' : 'transparent',
-                    cursor: 'pointer', textAlign: 'left', fontFamily: 'Roboto, sans-serif',
-                    fontSize: '.8rem', fontWeight: selCls === cls.id ? 700 : 500,
-                    color: selCls === cls.id ? 'var(--accent)' : 'var(--text2)',
-                    transition: 'all .15s', borderBottom: '1px solid var(--border)',
-                  }}>
-                  {cls.name || cls.nom}
-                  <span style={{ marginLeft: '.4rem', fontSize: '.68rem', color: 'var(--text3)', fontWeight: 400 }}>
-                    ({(fiches[cls.id] || []).length})
-                  </span>
-                </button>
-              ))
-            )}
-          </div>
-
-          {/* Recherche */}
-          {selCls && (
-            <div style={{ padding: '.5rem .65rem', flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
-              <input
-                type="text" placeholder="🔍 Rechercher…" value={search}
-                onChange={e => setSearch(e.target.value)}
-                style={{ width: '100%', padding: '.38rem .65rem', border: '1.5px solid var(--border)', borderRadius: 'var(--r-s)', background: 'var(--surface)', color: 'var(--text)', fontFamily: 'Roboto, sans-serif', fontSize: '.78rem', outline: 'none' }}
-              />
-            </div>
-          )}
-
-          {/* Liste des fiches */}
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {!selCls ? (
-              <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text3)', fontSize: '.8rem' }}>← Sélectionnez une classe</div>
-            ) : clsFiches.length === 0 ? (
-              <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text3)', fontSize: '.8rem', fontStyle: 'italic' }}>
-                {search ? 'Aucun résultat' : 'Aucune fiche · Cliquez sur "+ Nouvelle fiche"'}
-              </div>
-            ) : (
-              clsFiches.map(f => (
-                <div key={f.id}
-                  onClick={() => setSelFicheId(f.id)}
-                  style={{
-                    padding: '.6rem .875rem', cursor: 'pointer', transition: 'all .15s',
-                    borderLeft: `3px solid ${selFicheId === f.id ? 'var(--accent)' : 'transparent'}`,
-                    background: selFicheId === f.id ? 'var(--surface)' : 'transparent',
-                    borderBottom: '1px solid var(--border)',
-                  }}>
-                  <div style={{ fontWeight: selFicheId === f.id ? 700 : 500, fontSize: '.82rem', color: 'var(--text)', marginBottom: '.1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {f.titre || 'Sans titre'}
-                  </div>
-                  <div style={{ fontSize: '.68rem', color: 'var(--text3)' }}>
-                    {f.date ? new Date(f.date + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                    {f.absents?.length > 0 && <span style={{ marginLeft: '.4rem', color: 'var(--warning)' }}>· {f.absents.length} absent(s)</span>}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* ── Éditeur de fiche ── */}
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          {!draft ? (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '.75rem', color: 'var(--text3)' }}>
-              <div style={{ fontSize: '3rem', opacity: .15 }}>📓</div>
-              <div style={{ fontWeight: 700, color: 'var(--text2)' }}>Sélectionnez une fiche</div>
-              <div style={{ fontSize: '.8rem' }}>ou créez-en une nouvelle</div>
-            </div>
-          ) : (
-            <>
-              {/* Barre d'actions de la fiche */}
-              <div style={{ padding: '.65rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '.65rem', background: 'var(--surface)', flexShrink: 0 }}>
-                <input
-                  value={draft.titre}
-                  onChange={e => updateDraft('titre', e.target.value)}
-                  style={{ flex: 1, fontFamily: 'Roboto Slab, serif', fontWeight: 700, fontSize: '1rem', border: 'none', background: 'transparent', color: 'var(--text)', outline: 'none' }}
-                  placeholder="Titre de la fiche…"
-                />
-                <input
-                  type="date" value={draft.date || ''}
-                  onChange={e => updateDraft('date', e.target.value)}
-                  style={{ padding: '.32rem .65rem', border: '1.5px solid var(--border)', borderRadius: 'var(--r-s)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Roboto, sans-serif', fontSize: '.78rem', outline: 'none' }}
-                />
-                <button
-                  onClick={saveDraft}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '.32rem',
-                    padding: '.38rem .9rem', borderRadius: 'var(--r-s)',
-                    border: '1px solid var(--accent)', background: 'var(--accent)',
-                    color: '#fff', fontFamily: 'Roboto, sans-serif', fontSize: '.78rem', fontWeight: 700, cursor: 'pointer',
-                    transition: 'all .15s',
-                  }}>
-                  {savedOk ? '✅ Sauvegardé !' : '💾 Sauvegarder'}
-                </button>
-                <button
-                  onClick={() => setShowDel(true)}
-                  style={{ padding: '.38rem .65rem', borderRadius: 'var(--r-s)', border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--danger)', fontFamily: 'Roboto, sans-serif', fontSize: '.78rem', cursor: 'pointer' }}
-                  title="Supprimer cette fiche">
-                  🗑️
-                </button>
-              </div>
-
-              {/* Corps de la fiche */}
-              <div style={{ flex: 1, overflowY: 'auto', padding: '1rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '.875rem' }}>
-
-                {/* Champs texte */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.875rem' }}>
-                  {CHAMPS_FICHE.map(champ => (
-                    <div key={champ.key} style={{ display: 'flex', flexDirection: 'column', gap: '.28rem', gridColumn: champ.key === 'activite' || champ.key === 'incidents' ? '1 / -1' : 'auto' }}>
-                      <label style={{ fontSize: '.65rem', fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em' }}>
-                        {champ.label}
-                      </label>
-                      <textarea
-                        rows={champ.rows}
-                        value={draft[champ.key] || ''}
-                        onChange={e => updateDraft(champ.key, e.target.value)}
-                        placeholder={champ.placeholder}
-                        style={taStyle}
-                        onFocus={e => e.target.style.borderColor = 'var(--accent)'}
-                        onBlur={e => e.target.style.borderColor = 'var(--border)'}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                {/* Absents */}
-                {(() => {
-                  const cls = classes.find(c => c.id === selCls);
-                  const eleves = cls?.eleves || [];
-                  if (eleves.length === 0) return null;
-                  return (
-                    <div>
-                      <div style={{ fontSize: '.65rem', fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '.38rem' }}>
-                        😴 Absents ({(draft.absents || []).length}/{eleves.length})
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.32rem' }}>
-                        {eleves.map(el => {
-                          const isAbsent = (draft.absents || []).includes(el.id);
-                          return (
-                            <button key={el.id}
-                              onClick={() => {
-                                const curr = draft.absents || [];
-                                updateDraft('absents', isAbsent ? curr.filter(x => x !== el.id) : [...curr, el.id]);
-                              }}
-                              style={{
-                                padding: '.2rem .55rem', borderRadius: 99, cursor: 'pointer',
-                                border: `1px solid ${isAbsent ? 'rgba(220,38,38,.4)' : 'var(--border)'}`,
-                                background: isAbsent ? 'rgba(220,38,38,.1)' : 'var(--surface2)',
-                                color: isAbsent ? 'var(--danger)' : 'var(--text2)',
-                                fontFamily: 'Roboto, sans-serif', fontSize: '.72rem', fontWeight: isAbsent ? 700 : 500,
-                                transition: 'all .15s',
-                              }}>
-                              {isAbsent ? '✕ ' : ''}{el.nom}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* À relancer */}
-                {(() => {
-                  const cls = classes.find(c => c.id === selCls);
-                  const eleves = cls?.eleves || [];
-                  if (eleves.length === 0) return null;
-                  return (
-                    <div>
-                      <div style={{ fontSize: '.65rem', fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '.38rem' }}>
-                        🔔 À relancer ({(draft.aRelancer || []).length})
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.32rem' }}>
-                        {eleves.map(el => {
-                          const isRelancer = (draft.aRelancer || []).includes(el.id);
-                          return (
-                            <button key={el.id}
-                              onClick={() => {
-                                const curr = draft.aRelancer || [];
-                                updateDraft('aRelancer', isRelancer ? curr.filter(x => x !== el.id) : [...curr, el.id]);
-                              }}
-                              style={{
-                                padding: '.2rem .55rem', borderRadius: 99, cursor: 'pointer',
-                                border: `1px solid ${isRelancer ? 'rgba(217,119,6,.4)' : 'var(--border)'}`,
-                                background: isRelancer ? 'rgba(217,119,6,.1)' : 'var(--surface2)',
-                                color: isRelancer ? 'var(--warning)' : 'var(--text2)',
-                                fontFamily: 'Roboto, sans-serif', fontSize: '.72rem', fontWeight: isRelancer ? 700 : 500,
-                                transition: 'all .15s',
-                              }}>
-                              {isRelancer ? '🔔 ' : ''}{el.nom}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* ── Modale nouvelle fiche ── */}
-      {showNew && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={e => e.target === e.currentTarget && setShowNew(false)}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--r)', width: 420, boxShadow: 'var(--shadow-l)', overflow: 'hidden' }}>
-            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface2)' }}>
-              <div style={{ fontWeight: 700, fontSize: '.95rem' }}>📓 Nouvelle fiche</div>
-              <button onClick={() => setShowNew(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: 'var(--text3)' }}>×</button>
-            </div>
-            <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
-                <label style={{ fontSize: '.72rem', fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Titre *</label>
-                <input type="text" autoFocus placeholder="Ex : Séance 1 — Présentation, Vocabulaire des couleurs…"
-                  value={newForm.titre} onChange={e => setNewForm(f => ({ ...f, titre: e.target.value }))}
-                  onKeyDown={e => e.key === 'Enter' && newForm.titre.trim() && createFiche()}
-                  style={{ padding: '.6rem .875rem', border: '1.5px solid var(--border)', borderRadius: 'var(--r-s)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Roboto, sans-serif', fontSize: '.88rem', outline: 'none' }} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
-                <label style={{ fontSize: '.72rem', fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Date</label>
-                <input type="date" value={newForm.date} onChange={e => setNewForm(f => ({ ...f, date: e.target.value }))}
-                  style={{ padding: '.6rem .875rem', border: '1.5px solid var(--border)', borderRadius: 'var(--r-s)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Roboto, sans-serif', fontSize: '.88rem', outline: 'none' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end', marginTop: '.25rem' }}>
-                <button onClick={() => setShowNew(false)} className="btn">Annuler</button>
-                <button onClick={createFiche} className="btn btn-primary" disabled={!newForm.titre.trim()}>Créer la fiche</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Modale confirmation suppression ── */}
-      {showDel && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={e => e.target === e.currentTarget && setShowDel(false)}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--r)', width: 380, boxShadow: 'var(--shadow-l)', overflow: 'hidden' }}>
-            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
-              <div style={{ fontWeight: 700 }}>🗑️ Supprimer cette fiche ?</div>
-            </div>
-            <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ fontSize: '.85rem', color: 'var(--text2)', lineHeight: 1.6 }}>
-                La fiche <strong>"{ficheActive?.titre}"</strong> sera définitivement supprimée.<br />
-                <span style={{ fontSize: '.78rem', color: 'var(--text3)' }}>Cette action ne peut pas être annulée.</span>
-              </div>
-              <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
-                <button onClick={() => setShowDel(false)} className="btn">Annuler</button>
-                <button onClick={deleteFiche} className="btn btn-danger">Supprimer</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
 
 // ── HELPERS PARTAGÉS ÉDITEURS ────────────────────────────────────────────────
 function isoDate(d) { return d.toISOString().slice(0, 10); }
@@ -1730,6 +1330,463 @@ function ModuleDevoirs({ cpData, onDataChange }) {
   );
 }
 
+// ── MODULE PROGRESSION ANNUELLE ───────────────────────────────────────────────
+const COLS_DEFAULT = [
+  { id: 'seq',       label: 'N°',           width: 50,  type: 'text' },
+  { id: 'titre',     label: 'Titre',        width: 200, type: 'text' },
+  { id: 'objectifs', label: 'Objectifs',    width: 220, type: 'text' },
+  { id: 'support',   label: 'Support',      width: 160, type: 'text' },
+  { id: 'debut',     label: 'Début',        width: 110, type: 'date' },
+  { id: 'fin',       label: 'Fin',          width: 110, type: 'date' },
+  { id: 'duree',     label: 'Durée (h)',    width: 90,  type: 'text' },
+  { id: 'eval',      label: 'Évaluation',   width: 140, type: 'text' },
+  { id: 'remarques', label: 'Remarques',    width: 200, type: 'text' },
+];
+
+function makeRow(cols) {
+  const r = { id: 'r' + Date.now() + Math.random().toString(36).slice(2) };
+  cols.forEach(c => { r[c.id] = ''; });
+  return r;
+}
+
+function ModuleProgression({ cpData, onDataChange }) {
+  const classes = cpData?.classes || [];
+  const [progs, setProgs] = useState(() => {
+    const raw = cpData?.progs;
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw;
+    return {};
+  });
+  const [selCls, setSelCls] = useState(() => classes[0]?.id || null);
+  const [showAddCol, setShowAddCol] = useState(false);
+  const [newColLabel, setNewColLabel] = useState('');
+  const [showDelCol, setShowDelCol] = useState(null);
+  const [editColId, setEditColId] = useState(null);
+  const [editColLabel, setEditColLabel] = useState('');
+  const [hasEdited, setHasEdited] = useState(false);
+  const setProgsAndEdit = (fn) => { setProgs(fn); setHasEdited(true); };
+
+  useEffect(() => {
+    if (hasEdited && onDataChange) onDataChange('cdc-progs', progs);
+  }, [progs, hasEdited]);
+
+  const rawCur = (selCls && progs[selCls]) ? progs[selCls] : null;
+  const cols = Array.isArray(rawCur?.cols) ? rawCur.cols : [];
+  const rows = Array.isArray(rawCur?.rows) ? rawCur.rows : [];
+  const progExiste = !!(rawCur && Array.isArray(rawCur.cols) && Array.isArray(rawCur.rows));
+
+  const updateCell = (rowId, colId, val) => {
+    setProgsAndEdit(p => ({ ...p, [selCls]: { ...p[selCls], rows: p[selCls].rows.map(r => r.id === rowId ? { ...r, [colId]: val } : r) } }));
+  };
+  const addRow = () => {
+    setProgsAndEdit(p => ({ ...p, [selCls]: { ...p[selCls], rows: [...p[selCls].rows, makeRow(cols)] } }));
+  };
+  const delRow = (rowId) => {
+    setProgsAndEdit(p => ({ ...p, [selCls]: { ...p[selCls], rows: p[selCls].rows.filter(r => r.id !== rowId) } }));
+  };
+  const addCol = () => {
+    const label = newColLabel.trim(); if (!label) return;
+    const newCol = { id: 'c' + Date.now(), label, width: 160, type: 'text' };
+    setProgsAndEdit(p => ({ ...p, [selCls]: { cols: [...p[selCls].cols, newCol], rows: p[selCls].rows.map(r => ({ ...r, [newCol.id]: '' })) } }));
+    setNewColLabel(''); setShowAddCol(false);
+  };
+  const delCol = (colId) => {
+    setProgsAndEdit(p => ({ ...p, [selCls]: { cols: p[selCls].cols.filter(c => c.id !== colId), rows: p[selCls].rows.map(r => { const n = { ...r }; delete n[colId]; return n; }) } }));
+    setShowDelCol(null);
+  };
+  const renameCol = () => {
+    if (!editColLabel.trim() || !editColId) return;
+    setProgsAndEdit(p => ({ ...p, [selCls]: { ...p[selCls], cols: p[selCls].cols.map(c => c.id === editColId ? { ...c, label: editColLabel.trim() } : c) } }));
+    setEditColId(null); setEditColLabel('');
+  };
+  const resetCols = () => {
+    const newCols = COLS_DEFAULT.map(c => ({ ...c }));
+    setProgsAndEdit(p => ({ ...p, [selCls]: { cols: newCols, rows: [makeRow(newCols)] } }));
+  };
+  const creerProgression = () => {
+    const newCols = COLS_DEFAULT.map(c => ({ ...c }));
+    setProgsAndEdit(p => ({ ...p, [selCls]: { cols: newCols, rows: [makeRow(newCols)] } }));
+    setHasEdited(true);
+  };
+
+  if (!cpData) return <ModulePlaceholder icon="📆" title="Progression annuelle" sub="Ouvrez d'abord un fichier ClassPro." />;
+
+  const cellStyle = (col) => ({
+    padding: '.35rem .55rem', border: 'none', borderRight: '1px solid var(--border)',
+    background: 'transparent', color: 'var(--text)', fontFamily: 'Roboto, sans-serif',
+    fontSize: '.78rem', width: '100%', outline: 'none', minWidth: col.width || 120, boxSizing: 'border-box',
+  });
+
+  return (
+    <>
+      <div className="page-hd">
+        <div>
+          <div className="phd-badge">📆 Progression</div>
+          <div className="phd-title">Progression annuelle</div>
+          <div className="phd-sub">
+            {selCls && classes.find(c => c.id === selCls)?.name
+              ? `${classes.find(c => c.id === selCls).name} · ${rows.length} séquence(s)`
+              : 'Sélectionnez une classe'}
+          </div>
+        </div>
+        <div className="phd-actions">
+          {selCls && progExiste && (
+            <>
+              <button className="btn btn-ghost" onClick={() => setShowAddCol(true)}>+ Colonne</button>
+              <button className="btn btn-primary" onClick={addRow}>+ Séquence</button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+        <div style={{ width: 160, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface2)', overflowY: 'auto' }}>
+          <div style={{ padding: '.38rem .6rem', fontSize: '.6rem', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', borderBottom: '1px solid var(--border)' }}>Classes</div>
+          {classes.length === 0 && <div style={{ padding: '.875rem', fontSize: '.76rem', color: 'var(--text3)', fontStyle: 'italic' }}>Aucune classe</div>}
+          {classes.map(cls => (
+            <button key={cls.id} onClick={() => setSelCls(cls.id)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '.55rem .875rem', border: 'none', borderLeft: `3px solid ${selCls === cls.id ? 'var(--accent)' : 'transparent'}`, background: selCls === cls.id ? 'var(--surface)' : 'transparent', cursor: 'pointer', fontFamily: 'Roboto, sans-serif', fontSize: '.8rem', fontWeight: selCls === cls.id ? 700 : 500, color: selCls === cls.id ? 'var(--accent)' : 'var(--text2)', borderBottom: '1px solid var(--border)', transition: 'all .15s' }}>
+              <span>{cls.name}</span>
+              <span style={{ fontSize: '.62rem', color: 'var(--text3)', fontWeight: 400 }}>{(progs[cls.id]?.rows || []).length}</span>
+            </button>
+          ))}
+        </div>
+
+        {!selCls ? (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', flexDirection: 'column', gap: '.5rem' }}>
+            <div style={{ fontSize: '2.5rem', opacity: .15 }}>📆</div>
+            <div style={{ fontWeight: 700, color: 'var(--text2)' }}>{classes.length === 0 ? 'Aucune classe dans ce fichier' : 'Sélectionnez une classe'}</div>
+          </div>
+        ) : !progExiste ? (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ fontSize: '3rem', opacity: .15 }}>📆</div>
+            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text2)' }}>Aucune progression renseignée</div>
+            <div style={{ fontSize: '.83rem', color: 'var(--text3)' }}>Créez la progression annuelle pour la classe <strong>{classes.find(c => c.id === selCls)?.name}</strong></div>
+            <button className="btn btn-primary" onClick={creerProgression}>+ Créer la progression</button>
+          </div>
+        ) : (
+          <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              <table style={{ borderCollapse: 'collapse', minWidth: '100%', fontSize: '.78rem' }}>
+                <thead>
+                  <tr style={{ background: 'var(--surface2)', position: 'sticky', top: 0, zIndex: 10 }}>
+                    <th style={{ width: 36, padding: '.5rem .4rem', borderBottom: '2px solid var(--border)', borderRight: '1px solid var(--border)', color: 'var(--text3)', fontWeight: 500, fontSize: '.65rem' }}>#</th>
+                    {cols.map(col => (
+                      <th key={col.id} style={{ padding: '.4rem .55rem', borderBottom: '2px solid var(--border)', borderRight: '1px solid var(--border)', textAlign: 'left', fontWeight: 700, color: 'var(--text2)', whiteSpace: 'nowrap', minWidth: col.width || 120 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '.3rem' }}>
+                          <span style={{ flex: 1 }}>{col.label}</span>
+                          <button onClick={() => { setEditColId(col.id); setEditColLabel(col.label); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: '.62rem', opacity: .5, padding: '.1rem' }} title="Renommer">✏️</button>
+                          <button onClick={() => setShowDelCol(col.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: '.62rem', opacity: .5, padding: '.1rem' }} title="Supprimer">×</button>
+                        </div>
+                      </th>
+                    ))}
+                    <th style={{ width: 36, borderBottom: '2px solid var(--border)' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => (
+                    <tr key={row.id} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)' }}>
+                      <td style={{ textAlign: 'center', fontSize: '.68rem', color: 'var(--text3)', borderBottom: '1px solid var(--border)', borderRight: '1px solid var(--border)', padding: '.35rem .4rem', fontWeight: 600 }}>{i + 1}</td>
+                      {cols.map(col => (
+                        <td key={col.id} style={{ borderBottom: '1px solid var(--border)', padding: 0 }}>
+                          <input type={col.type === 'date' ? 'date' : 'text'} value={row[col.id] || ''} onChange={e => updateCell(row.id, col.id, e.target.value)} style={cellStyle(col)} onFocus={e => e.target.style.background = 'rgba(59,91,219,.07)'} onBlur={e => e.target.style.background = 'transparent'} />
+                        </td>
+                      ))}
+                      <td style={{ borderBottom: '1px solid var(--border)', textAlign: 'center', padding: '.2rem' }}>
+                        <button onClick={() => delRow(row.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: '.75rem', padding: '.2rem .3rem', opacity: .4, borderRadius: 4 }} onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = .4} title="Supprimer">🗑️</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ padding: '.65rem 1rem', borderTop: '1px solid var(--border)', background: 'var(--surface2)', display: 'flex', gap: '.5rem', alignItems: 'center', flexShrink: 0 }}>
+              <button className="btn btn-primary" onClick={addRow} style={{ fontSize: '.75rem' }}>+ Séquence</button>
+              <button className="btn btn-ghost" onClick={() => setShowAddCol(true)} style={{ fontSize: '.75rem' }}>+ Colonne</button>
+              <div style={{ flex: 1 }} />
+              <button className="btn" onClick={resetCols} style={{ fontSize: '.72rem', opacity: .65 }}>🔄 Réinitialiser</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {showAddCol && (
+        <Modal title="+ Nouvelle colonne" onClose={() => setShowAddCol(false)} width={360}>
+          <Field label="Nom de la colonne *">
+            <input autoFocus value={newColLabel} onChange={e => setNewColLabel(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCol()} placeholder="Ex : Compétences, Niveau, Période…" style={inputStyle} />
+          </Field>
+          <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
+            <button onClick={() => setShowAddCol(false)} className="btn">Annuler</button>
+            <button onClick={addCol} className="btn btn-primary" disabled={!newColLabel.trim()}>Ajouter</button>
+          </div>
+        </Modal>
+      )}
+      {editColId && (
+        <Modal title="✏️ Renommer la colonne" onClose={() => setEditColId(null)} width={360}>
+          <Field label="Nouveau nom *">
+            <input autoFocus value={editColLabel} onChange={e => setEditColLabel(e.target.value)} onKeyDown={e => e.key === 'Enter' && renameCol()} style={inputStyle} />
+          </Field>
+          <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
+            <button onClick={() => setEditColId(null)} className="btn">Annuler</button>
+            <button onClick={renameCol} className="btn btn-primary" disabled={!editColLabel.trim()}>Renommer</button>
+          </div>
+        </Modal>
+      )}
+      {showDelCol && (
+        <Modal title="🗑️ Supprimer cette colonne ?" onClose={() => setShowDelCol(null)} width={360}>
+          <div style={{ fontSize: '.88rem', color: 'var(--text2)', lineHeight: 1.6 }}>La colonne <strong>"{cols.find(c => c.id === showDelCol)?.label}"</strong> et toutes ses données seront supprimées.</div>
+          <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
+            <button onClick={() => setShowDelCol(null)} className="btn">Annuler</button>
+            <button onClick={() => delCol(showDelCol)} className="btn btn-danger">Supprimer</button>
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+// ── MODULE CONSEIL DE CLASSE ──────────────────────────────────────────────────
+function ModuleConseil({ cpData }) {
+  const bulletins = cpData?.bulletins || [];
+  const [vue, setVue] = useState('recap');
+  const [selEleve, setSelEleve] = useState(null);
+  const [search, setSearch] = useState('');
+  const [filtPole, setFiltPole] = useState('');
+
+  if (!cpData || bulletins.length === 0) {
+    return <ModulePlaceholder icon="🎓" title="Conseil de classe" sub="Aucun bulletin importé dans ce fichier ClassPro." soon={false} />;
+  }
+
+  const poles = useMemo(() => {
+    const s = new Set();
+    bulletins.forEach(b => (b.subjects || []).forEach(sub => { if (sub.pole) s.add(sub.pole); }));
+    return [...s].sort();
+  }, [bulletins]);
+
+  const elevesFiltered = useMemo(() => bulletins.filter(b => !search || b.name?.toLowerCase().includes(search.toLowerCase())), [bulletins, search]);
+
+  const allMatieres = useMemo(() => {
+    const s = new Set();
+    bulletins.forEach(b => (b.subjects || []).forEach(sub => { if (!filtPole || sub.pole === filtPole) s.add(sub.name); }));
+    return [...s].sort();
+  }, [bulletins, filtPole]);
+
+  const colorMoy = (v) => {
+    if (v === null || v === undefined || isNaN(v)) return 'var(--text3)';
+    if (v >= 16) return 'var(--success)';
+    if (v >= 12) return 'var(--accent)';
+    if (v >= 10) return 'var(--warning)';
+    return 'var(--danger)';
+  };
+
+  const diffBadge = (t2, t1) => {
+    if (t1 == null || t2 == null || isNaN(t1) || isNaN(t2)) return null;
+    const d = parseFloat((t2 - t1).toFixed(2));
+    if (Math.abs(d) < 0.05) return <span style={{ fontSize: '.62rem', color: 'var(--text3)' }}>≈</span>;
+    return <span style={{ fontSize: '.62rem', fontWeight: 700, color: d > 0 ? 'var(--success)' : 'var(--danger)' }}>{d > 0 ? '▲' : '▼'}{Math.abs(d).toFixed(1)}</span>;
+  };
+
+  const eleveActif = selEleve ? bulletins.find(b => b.id === selEleve) : null;
+  const tabBtn = (id) => ({ padding: '.38rem .875rem', borderRadius: 'var(--r-s)', border: vue === id ? '1px solid var(--accent)' : '1px solid var(--border)', background: vue === id ? 'var(--accent)' : 'var(--surface)', color: vue === id ? '#fff' : 'var(--text2)', fontFamily: 'Roboto, sans-serif', fontSize: '.77rem', fontWeight: 600, cursor: 'pointer' });
+
+  return (
+    <>
+      <div className="page-hd">
+        <div>
+          <div className="phd-badge">🎓 Conseil de classe</div>
+          <div className="phd-title">{cpData.profile ? `${cpData.profile.classe || ''} · ${cpData.profile.annee || ''}` : 'Conseil de classe'}</div>
+          <div className="phd-sub">{bulletins.length} élève(s) · Trimestre {bulletins[0]?.trimester || '?'} · Moy. classe {bulletins[0]?.generalAverageClass ?? '—'}/20</div>
+        </div>
+        <div className="phd-stats">
+          {[
+            { label: 'Moy. ≥ 16', value: bulletins.filter(b => b.generalAverage >= 16).length },
+            { label: 'Moy. 12–16', value: bulletins.filter(b => b.generalAverage >= 12 && b.generalAverage < 16).length },
+            { label: 'Moy. 10–12', value: bulletins.filter(b => b.generalAverage >= 10 && b.generalAverage < 12).length },
+            { label: 'Moy. < 10', value: bulletins.filter(b => b.generalAverage < 10).length },
+          ].map(s => (
+            <div key={s.label} className="phstat">
+              <div className="phstat-label">{s.label}</div>
+              <div className="phstat-value">{s.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="page-content" style={{ paddingTop: '.75rem' }}>
+        <div style={{ display: 'flex', gap: '.5rem', marginBottom: '.875rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {[{ id: 'recap', label: '📊 Tableau récap' }, { id: 'eleve', label: '👤 Fiche élève' }, { id: 'matiere', label: '📚 Par matière' }].map(v => (
+            <button key={v.id} style={tabBtn(v.id)} onClick={() => setVue(v.id)}>{v.label}</button>
+          ))}
+          <div style={{ flex: 1 }} />
+          <input placeholder="🔍 Rechercher un élève…" value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputStyle, width: 200, fontSize: '.78rem', padding: '.38rem .65rem' }} />
+          {vue !== 'recap' && (
+            <select value={filtPole} onChange={e => setFiltPole(e.target.value)} style={{ ...inputStyle, width: 160, fontSize: '.78rem', padding: '.38rem .65rem' }}>
+              <option value="">Tous les pôles</option>
+              {poles.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+            </select>
+          )}
+        </div>
+
+        {vue === 'recap' && (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '.78rem' }}>
+              <thead>
+                <tr style={{ background: 'var(--surface2)', position: 'sticky', top: 0 }}>
+                  <th style={{ padding: '.5rem .875rem', textAlign: 'left', fontWeight: 700, color: 'var(--text2)', borderBottom: '2px solid var(--border)', minWidth: 180 }}>Élève</th>
+                  <th style={{ padding: '.5rem .65rem', textAlign: 'center', fontWeight: 700, color: 'var(--text2)', borderBottom: '2px solid var(--border)', minWidth: 80 }}>Moy. T2</th>
+                  <th style={{ padding: '.5rem .65rem', textAlign: 'center', fontWeight: 700, color: 'var(--text2)', borderBottom: '2px solid var(--border)', minWidth: 80 }}>Moy. T1</th>
+                  <th style={{ padding: '.5rem .65rem', textAlign: 'center', fontWeight: 700, color: 'var(--text2)', borderBottom: '2px solid var(--border)', minWidth: 70 }}>Évol.</th>
+                  <th style={{ padding: '.5rem .65rem', textAlign: 'center', fontWeight: 700, color: 'var(--text2)', borderBottom: '2px solid var(--border)', minWidth: 70 }}>Abs.</th>
+                  <th style={{ padding: '.5rem .65rem', textAlign: 'center', fontWeight: 700, color: 'var(--text2)', borderBottom: '2px solid var(--border)', minWidth: 80 }}>Orientation</th>
+                  <th style={{ padding: '.5rem .65rem', textAlign: 'left', fontWeight: 700, color: 'var(--text2)', borderBottom: '2px solid var(--border)' }}>Appréciation générale</th>
+                </tr>
+              </thead>
+              <tbody>
+                {elevesFiltered.map((b, i) => (
+                  <tr key={b.id} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)', cursor: 'pointer' }} onClick={() => { setSelEleve(b.id); setVue('eleve'); }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,91,219,.07)'} onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)'}>
+                    <td style={{ padding: '.42rem .875rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
+                      {b.recompense === 'tf' && <span title="Tableau d'honneur" style={{ marginRight: '.3rem' }}>🏅</span>}
+                      {b.recompense === 'mgtc' && <span title="Mention" style={{ marginRight: '.3rem' }}>⭐</span>}
+                      {b.name}
+                    </td>
+                    <td style={{ padding: '.42rem .65rem', borderBottom: '1px solid var(--border)', textAlign: 'center', fontWeight: 800, color: colorMoy(b.generalAverage) }}>{b.generalAverage?.toFixed(2) ?? '—'}</td>
+                    <td style={{ padding: '.42rem .65rem', borderBottom: '1px solid var(--border)', textAlign: 'center', color: 'var(--text2)' }}>{b.generalAverageT1?.toFixed(2) ?? '—'}</td>
+                    <td style={{ padding: '.42rem .65rem', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>{diffBadge(b.generalAverage, b.generalAverageT1)}</td>
+                    <td style={{ padding: '.42rem .65rem', borderBottom: '1px solid var(--border)', textAlign: 'center', color: (b.absences?.demiJournees || 0) > 5 ? 'var(--danger)' : 'var(--text2)' }}>{b.absences?.demiJournees ?? 0} DJ</td>
+                    <td style={{ padding: '.42rem .65rem', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>
+                      {b.orientation?.avis ? <span style={{ fontSize: '.68rem', fontWeight: 700, padding: '.1rem .42rem', borderRadius: 99, background: b.orientation.avis === 'Favorable' ? 'rgba(15,155,110,.12)' : 'rgba(217,119,6,.12)', color: b.orientation.avis === 'Favorable' ? 'var(--success)' : 'var(--warning)' }}>{b.orientation.filiere || b.orientation.avis}</span> : <span style={{ color: 'var(--text3)', fontSize: '.7rem' }}>—</span>}
+                    </td>
+                    <td style={{ padding: '.42rem .875rem', borderBottom: '1px solid var(--border)', color: 'var(--text2)', fontSize: '.73rem', maxWidth: 320 }}>
+                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.appreciationGenerale || '—'}</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {elevesFiltered.length === 0 && <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text3)' }}>Aucun élève trouvé.</div>}
+          </div>
+        )}
+
+        {vue === 'eleve' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '1rem', minHeight: 400 }}>
+            <div style={{ background: 'var(--surface2)', borderRadius: 'var(--r)', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '.42rem .65rem', fontSize: '.6rem', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.07em', borderBottom: '1px solid var(--border)' }}>Élèves</div>
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {elevesFiltered.map(b => (
+                  <button key={b.id} onClick={() => setSelEleve(b.id)} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', width: '100%', padding: '.48rem .75rem', border: 'none', borderLeft: `3px solid ${selEleve === b.id ? 'var(--accent)' : 'transparent'}`, background: selEleve === b.id ? 'var(--surface)' : 'transparent', cursor: 'pointer', fontFamily: 'Roboto, sans-serif', fontSize: '.78rem', fontWeight: selEleve === b.id ? 700 : 400, color: selEleve === b.id ? 'var(--accent)' : 'var(--text2)', borderBottom: '1px solid var(--border)', transition: 'all .12s', textAlign: 'left' }}>
+                    <span style={{ flex: 1 }}>{b.name}</span>
+                    <span style={{ fontSize: '.7rem', fontWeight: 800, color: colorMoy(b.generalAverage) }}>{b.generalAverage?.toFixed(1)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {!eleveActif ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', flexDirection: 'column', gap: '.5rem' }}>
+                <div style={{ fontSize: '2rem', opacity: .2 }}>👤</div>
+                <div>Sélectionnez un élève</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.875rem' }}>
+                <div className="card" style={{ padding: '1rem 1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '.9rem', flexShrink: 0 }}>
+                      {eleveActif.name.split(' ').map(w => w[0]).slice(0, 2).join('')}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, fontSize: '1.05rem', marginBottom: '.2rem' }}>{eleveActif.name}</div>
+                      <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap', fontSize: '.75rem', color: 'var(--text2)' }}>
+                        <span>Moy. T2 : <strong style={{ color: colorMoy(eleveActif.generalAverage) }}>{eleveActif.generalAverage?.toFixed(2)}/20</strong></span>
+                        <span>Moy. T1 : <strong>{eleveActif.generalAverageT1?.toFixed(2)}/20</strong></span>
+                        <span>Moy. classe : <strong>{eleveActif.generalAverageClass}/20</strong></span>
+                        <span>Absences : <strong style={{ color: (eleveActif.absences?.demiJournees || 0) > 5 ? 'var(--danger)' : 'inherit' }}>{eleveActif.absences?.demiJournees ?? 0} demi-journées</strong></span>
+                        {eleveActif.retards > 0 && <span>Retards : <strong>{eleveActif.retards}</strong></span>}
+                        {eleveActif.orientation?.avis && <span>Orientation : <strong>{eleveActif.orientation.filiere || eleveActif.orientation.avis}</strong></span>}
+                      </div>
+                    </div>
+                    {eleveActif.recompense && <div style={{ fontSize: '1.5rem' }}>{eleveActif.recompense === 'tf' ? '🏅' : '⭐'}</div>}
+                  </div>
+                </div>
+                <div className="card" style={{ overflow: 'hidden' }}>
+                  <div className="card-hd"><div className="card-title">📊 Notes par matière</div></div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '.77rem' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--surface2)' }}>
+                          <th style={{ padding: '.42rem .75rem', textAlign: 'left', fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>Matière</th>
+                          <th style={{ padding: '.42rem .65rem', textAlign: 'center', fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>T2</th>
+                          <th style={{ padding: '.42rem .65rem', textAlign: 'center', fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>T1</th>
+                          <th style={{ padding: '.42rem .65rem', textAlign: 'center', fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>Évol.</th>
+                          <th style={{ padding: '.42rem .65rem', textAlign: 'center', fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>Classe</th>
+                          <th style={{ padding: '.42rem .75rem', textAlign: 'left', fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>Appréciation</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(eleveActif.subjects || []).filter(sub => !filtPole || sub.pole === filtPole).map((sub, i) => (
+                          <tr key={i} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)' }}>
+                            <td style={{ padding: '.38rem .75rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
+                              <div>{sub.name}</div>
+                              {sub.teacher && <div style={{ fontSize: '.65rem', color: 'var(--text3)', fontWeight: 400 }}>{sub.teacher}</div>}
+                            </td>
+                            <td style={{ padding: '.38rem .65rem', borderBottom: '1px solid var(--border)', textAlign: 'center', fontWeight: 800, color: colorMoy(sub.gradeStudent) }}>{sub.gradeStudent?.toFixed(2) ?? '—'}</td>
+                            <td style={{ padding: '.38rem .65rem', borderBottom: '1px solid var(--border)', textAlign: 'center', color: 'var(--text2)' }}>{sub.gradeT1?.toFixed(2) ?? '—'}</td>
+                            <td style={{ padding: '.38rem .65rem', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>{diffBadge(sub.gradeStudent, sub.gradeT1)}</td>
+                            <td style={{ padding: '.38rem .65rem', borderBottom: '1px solid var(--border)', textAlign: 'center', color: 'var(--text3)' }}>{sub.gradeClass?.toFixed(1) ?? '—'}</td>
+                            <td style={{ padding: '.38rem .75rem', borderBottom: '1px solid var(--border)', color: 'var(--text2)', fontSize: '.72rem', maxWidth: 300 }}>
+                              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={sub.appreciation}>{sub.appreciation || '—'}</div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                {eleveActif.appreciationGenerale && (
+                  <div className="card" style={{ padding: '1rem 1.25rem' }}>
+                    <div style={{ fontSize: '.65rem', fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '.5rem' }}>💬 Appréciation générale</div>
+                    <div style={{ fontSize: '.83rem', color: 'var(--text)', lineHeight: 1.65, fontStyle: 'italic' }}>"{eleveActif.appreciationGenerale}"</div>
+                  </div>
+                )}
+                {eleveActif.vieScolaire && (
+                  <div className="card" style={{ padding: '.875rem 1.25rem' }}>
+                    <div style={{ fontSize: '.65rem', fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '.38rem' }}>🏫 Vie scolaire</div>
+                    <div style={{ fontSize: '.83rem', color: 'var(--text2)' }}>{eleveActif.vieScolaire}</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {vue === 'matiere' && (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '.77rem' }}>
+              <thead>
+                <tr style={{ background: 'var(--surface2)', position: 'sticky', top: 0 }}>
+                  <th style={{ padding: '.48rem .875rem', textAlign: 'left', fontWeight: 700, color: 'var(--text2)', borderBottom: '2px solid var(--border)', minWidth: 180 }}>Élève</th>
+                  {allMatieres.map(m => (
+                    <th key={m} style={{ padding: '.4rem .5rem', textAlign: 'center', fontWeight: 700, color: 'var(--text2)', borderBottom: '2px solid var(--border)', borderLeft: '1px solid var(--border)', minWidth: 80, fontSize: '.65rem', whiteSpace: 'nowrap' }} title={m}>{m.length > 14 ? m.slice(0, 13) + '…' : m}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {elevesFiltered.map((b, i) => (
+                  <tr key={b.id} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)', cursor: 'pointer' }} onClick={() => { setSelEleve(b.id); setVue('eleve'); }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,91,219,.07)'} onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)'}>
+                    <td style={{ padding: '.38rem .875rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>{b.name}</td>
+                    {allMatieres.map(m => {
+                      const sub = (b.subjects || []).find(s => s.name === m);
+                      return <td key={m} style={{ padding: '.38rem .5rem', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border)', textAlign: 'center', fontWeight: 700, color: sub ? colorMoy(sub.gradeStudent) : 'var(--text3)' }}>{sub ? sub.gradeStudent?.toFixed(1) ?? '—' : <span style={{ opacity: .3 }}>—</span>}</td>;
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {elevesFiltered.length === 0 && <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text3)' }}>Aucun élève trouvé.</div>}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
 // ── SHELL PRINCIPAL ───────────────────────────────────────────────────────────
 function Shell() {
   const [module, setModule] = useState('accueil');
@@ -1811,8 +1868,12 @@ function Shell() {
   const handleDataChange = (key, value) => {
     setCpData(prev => {
       if (!prev) return prev;
-      const newRaw = { ...prev._raw, entries: { ...prev._raw.entries, [key]: JSON.stringify(value) } };
-      return { ...prev, [KEY_MAP[key] || key]: value, _raw: newRaw };
+      // Garantir que progs reste toujours un objet
+      const safeValue = key === 'cdc-progs'
+        ? (value && typeof value === 'object' && !Array.isArray(value) ? value : {})
+        : value;
+      const newRaw = { ...prev._raw, entries: { ...prev._raw.entries, [key]: JSON.stringify(safeValue) } };
+      return { ...prev, [KEY_MAP[key] || key]: safeValue, _raw: newRaw };
     });
   };
 
@@ -1830,9 +1891,9 @@ function Shell() {
       case 'devoirs':
         return <ModuleDevoirs cpData={cpData} onDataChange={handleDataChange} />;
       case 'progression':
-        return <ModulePlaceholder icon="📆" title="Progression annuelle" sub="Visualisation et édition de la progression." />;
+        return <ModuleProgression cpData={cpData} onDataChange={handleDataChange} />;
       case 'conseil':
-        return <ModulePlaceholder icon="🎓" title="Conseil de classe" sub="Données bulletins et conseil." />;
+        return <ModuleConseil cpData={cpData} />;
       case 'pdf-progression':
         return <ModulePlaceholder icon="📄" title="PDF Progression" sub="Génération du récapitulatif de progression annuelle." />;
       case 'pdf-carnet':
