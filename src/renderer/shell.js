@@ -129,7 +129,17 @@ function Shell() {
   };
 
   // Mise à jour d'une clé dans le JSON brut (depuis les modules éditeurs)
-  const KEY_MAP = { 'cdc-fiches': 'fiches', 'cdc-devoirs': 'devoirs', 'cdc-progs': 'progs', 'sc-classes': 'classes', 'sc-sessions': 'sessions', 'cdc-edt': 'edt', 'cdc-edt-refA': 'edtRefA', 'cdc-cours': 'cours' };
+  const KEY_MAP = {
+    'cdc-fiches':   'fiches',
+    'cdc-devoirs':  'devoirs',
+    'cdc-progs':    'progs',
+    'sc-classes':   'classes',
+    'sc-sessions':  'sessions',
+    'cdc-edt':      'edt',
+    'cdc-edt-refA': 'edtRefA',
+    'cdc-cours':    'cours',
+    'cdc-plans':    'plans',   // ← Plan de classe
+  };
   const handleDataChange = (key, value) => {
     setCpData(prev => {
       if (!prev) return prev;
@@ -140,6 +150,11 @@ function Shell() {
       const newRaw = { ...prev._raw, entries: { ...prev._raw.entries, [key]: JSON.stringify(safeValue) } };
       return { ...prev, [KEY_MAP[key] || key]: safeValue, _raw: newRaw };
     });
+  };
+
+  // Callback spécifique pour ModulePlanClasse (passe { plans } directement)
+  const handlePlanChange = ({ plans }) => {
+    handleDataChange('cdc-plans', plans);
   };
 
   // Rendu du module actif
@@ -172,7 +187,7 @@ function Shell() {
       case 'cours':
         return <ModuleCours cpData={cpData} onDataChange={handleDataChange} />;
       case 'plan-classe':
-        return <ModulePlaceholder icon="🏫" title="Plan de classe" sub="Module en cours de développement — disponible prochainement." soon={true} />;
+        return <ModulePlanClasse cpData={cpData} onDataChange={handlePlanChange} />;
       case 'academie':
         return <ModuleAcademie />;
       default:
@@ -289,6 +304,7 @@ function Shell() {
                   '🏠 Accueil', '👥 Suivi de classe', '📓 Carnet de bord',
                   '📋 Travaux non rendus', '📆 Progression annuelle', '🎓 Conseil de classe',
                   '📄 PDF Carnet', '📄 PDF Progression', '📄 PDF Bulletins',
+                  '🪑 Plan de classe',
                 ].map(m => (
                   <span key={m} style={{ fontSize: '.72rem', padding: '.25rem .65rem', borderRadius: 99, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', fontWeight: 500 }}>{m}</span>
                 ))}
