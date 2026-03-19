@@ -4,7 +4,11 @@ Logiciel parent de ClassPro — application Electron pour Windows & macOS.
 
 ## Présentation
 
-ClassPro Desktop est l'application de bureau complémentaire à [ClassPro](https://github.com/...) (l'interface web utilisée en classe sur clé USB). Elle permet de :
+ClassPro Desktop est l'application de bureau complémentaire à [ClassPro](https://github.com/...) (l'interface web utilisée en classe sur clé USB). 
+
+ClassPro est un outil de gestion de classe et de vie de l'enseignant, utilisable sans connexion, localement (sur la machine souhaitée) et avec **aucune collecte de données personnelles.** Cette suite logicielle a été réalisée en VibeCoding. Je n'ai géré que l'expérience User, le design et l'ergonomie. 
+
+**ClassPro Desktop** permet de :
 
 - **Importer** le fichier JSON exporté depuis ClassPro
 - **Visualiser** l'ensemble des données (classes, séances, bulletins, EDT…)
