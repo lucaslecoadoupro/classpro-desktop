@@ -41,7 +41,7 @@ ClassPro (clé USB)  ←  📂 Importer JSON  ←  ClassPro Desktop (maison)
 |---|---|---|
 | ✏️ Créer un cours | ✅ | Éditeur de fiches (Markdown, drag & drop sections, pièces jointes, aperçu) |
 | 📆 Progression annuelle | ✅ | Tableau libre avec colonnes personnalisables par classe |
-| 🏫 Plan de classe | 🔄 | À venir |
+| 🪑 Plan de classe | ✅ | Canvas drag & drop, placement élèves, tirage aléatoire, marquage binômes |
 
 ### Suivi pédagogique
 | Module | Statut | Description |
@@ -153,7 +153,24 @@ classpro-desktop/
 │   └── renderer/
 │       ├── index.html     ← Point d'entrée UI
 │       ├── style.css      ← Design system ClassPro
-│       ├── app.js         ← Application React (5500+ lignes)
+│       ├── config.js      ← NAV, helpers globaux, Toast
+│       ├── shell.js       ← Sidebar + Shell principal
+│       ├── modules/       ← Un fichier par module
+│       │   ├── accueil.js
+│       │   ├── donnees.js
+│       │   ├── suivi.js
+│       │   ├── carnet.js
+│       │   ├── devoirs.js
+│       │   ├── progression.js
+│       │   ├── conseil.js
+│       │   ├── classes.js
+│       │   ├── cours.js
+│       │   ├── edt.js
+│       │   ├── plan-classe.js
+│       │   ├── pdf-carnet.js
+│       │   ├── pdf-bulletins.js
+│       │   ├── pdf-progression.js
+│       │   └── academie.js
 │       └── vendor/        ← Bibliothèques front-end (React, Babel, jsPDF, pdf.js)
 ├── assets/
 │   ├── icons/
@@ -235,17 +252,19 @@ Le fichier JSON échangé entre ClassPro et ClassPro Desktop a la structure suiv
 - Centre d'aide intégré avec 10 guides interactifs
 - Moteur de recherche temps réel dans tous les guides
 
-### 📋 Étape 6 — BetaTest et correctifs
+### ✅ Étape 6 — Plan de classe & Refacto
+- Canvas drag & drop pour placer les tables et les élèves
+- Placement élèves avec tirage aléatoire
+- Marquage binômes (à éviter / à rapprocher)
+- Refactorisation : découpe de `app.js` en modules séparés
+
+### 📋 Étape 7 — BetaTest et correctifs
 - Test de la simplicité de l'utilisation
 - Retour utilisateur et correctifs sous la dénomination **1.0.X**
 
 ---
 
 ## Pour la version 1.1
-
-### 📋 Étape 7 — Plan de classe
-- Canvas drag & drop pour placer les tables et les élèves
-- Export PDF du plan de classe
 
 ### 📋 Étape 8 — Profil du professeur
 - Activer des modules en fonction de la discipline enseignée
