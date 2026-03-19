@@ -13,9 +13,9 @@
     "start": "electron .",
     "dev": "electron . --dev",
     "obfuscate": "node scripts/obfuscate.js",
-    "build:mac": "npm run obfuscate && electron-builder --mac",
-    "build:win": "npm run obfuscate && electron-builder --win",
-    "build:all": "npm run obfuscate && electron-builder --win --mac"
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:all": "electron-builder --win --mac"
   },
   "dependencies": {
     "jspdf": "^2.5.1",

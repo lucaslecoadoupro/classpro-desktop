@@ -20,13 +20,13 @@ const OPTIONS = {
   compact: true,
   controlFlowFlattening: false,   // désactivé car trop lent sur gros fichiers
   deadCodeInjection: false,
-  debugProtection: true,          // bloque l'ouverture des DevTools
-  debugProtectionInterval: 2000,
-  disableConsoleOutput: true,     // supprime les console.log en prod
+  debugProtection: false,         // désactivé pour compatibilité build
+  debugProtectionInterval: 0,
+  disableConsoleOutput: false,
   identifierNamesGenerator: 'hexadecimal',
   renameGlobals: false,           // garder false pour ne pas casser React/Electron
   rotateStringArray: true,
-  selfDefending: true,            // l'obfuscation se protège elle-même
+  selfDefending: false,           // désactivé pour compatibilité build
   shuffleStringArray: true,
   splitStrings: true,
   splitStringsChunkLength: 10,
