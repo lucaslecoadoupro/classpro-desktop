@@ -5,3 +5,9 @@ dist/
 src/main/main.js.bak
 src/main/preload.js.bak
 *.bak
+
+# Vendor (télécharger via README)
+src/renderer/vendor/
+
+# Backup
+*.bak

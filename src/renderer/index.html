@@ -13,7 +13,36 @@
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel" src="app.js"></script>
+
+<!-- Config globale : NAV, helpers, Toast -->
+<script type="text/babel" src="config.js"></script>
+
+<!-- Modules pédagogiques -->
+<script type="text/babel" src="modules/accueil.js"></script>
+<script type="text/babel" src="modules/donnees.js"></script>
+<script type="text/babel" src="modules/suivi.js"></script>
+<script type="text/babel" src="modules/carnet.js"></script>
+<script type="text/babel" src="modules/devoirs.js"></script>
+<script type="text/babel" src="modules/progression.js"></script>
+<script type="text/babel" src="modules/conseil.js"></script>
+
+<!-- Génération PDF -->
+<script type="text/babel" src="modules/pdf-carnet.js"></script>
+<script type="text/babel" src="modules/pdf-bulletins.js"></script>
+<script type="text/babel" src="modules/pdf-progression.js"></script>
+
+<!-- Gestion administrative -->
+<script type="text/babel" src="modules/classes.js"></script>
+<script type="text/babel" src="modules/cours.js"></script>
+<script type="text/babel" src="modules/edt.js"></script>
+
+<!-- Divers -->
+<script type="text/babel" src="modules/academie.js"></script>
+
+<!-- Shell principal (Sidebar + App) — doit être chargé en dernier -->
+<script type="text/babel" src="shell.js"></script>
+
+<!-- pdf.js pour import EDT Pronote — après Babel -->
 <script src="vendor/pdf.min.js"></script>
 <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';</script>
 </body>
