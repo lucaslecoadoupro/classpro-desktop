@@ -1,7 +1,7 @@
 {
   "name": "classpro-desktop",
   "version": "1.0.0",
-  "description": "ClassPro Desktop — Logiciel de gestion de classe",
+  "description": "ClassPro Desktop — Logiciel parent de ClassPro",
   "main": "src/main/main.js",
   "author": {
     "name": "Lucas Le Coadou",
@@ -12,9 +12,10 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "build:win": "electron-builder --win",
-    "build:mac": "electron-builder --mac",
-    "build:all": "electron-builder --win --mac"
+    "obfuscate": "node scripts/obfuscate.js",
+    "build:mac": "npm run obfuscate && electron-builder --mac",
+    "build:win": "npm run obfuscate && electron-builder --win",
+    "build:all": "npm run obfuscate && electron-builder --win --mac"
   },
   "dependencies": {
     "jspdf": "^2.5.1",
@@ -23,12 +24,13 @@
   "devDependencies": {
     "electron": "^41.0.3",
     "electron-builder": "^24.9.1",
-    "electron-icon-builder": "^2.0.1"
+    "electron-icon-builder": "^2.0.1",
+    "javascript-obfuscator": "^4.1.1"
   },
   "build": {
     "appId": "fr.lucaslecoadou.classpro-desktop",
     "productName": "ClassPro Desktop",
-    "copyright": "© 2025 Lucas Le Coadou",
+    "copyright": "© 2026 Lucas Le Coadou",
     "directories": {
       "output": "dist"
     },
@@ -36,13 +38,16 @@
       "src/**/*",
       "assets/**/*",
       "!assets/icon-src/**",
+      "!src/**/*.bak",
       "package.json"
     ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icons/win/icon.ico",
@@ -52,7 +57,10 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "icon": "assets/icons/mac/icon.icns",
@@ -62,7 +70,9 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": false,
-      "installerLanguages": ["French"],
+      "installerLanguages": [
+        "French"
+      ],
       "language": "1036",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
@@ -73,10 +83,21 @@
     "dmg": {
       "title": "ClassPro Desktop ${version}",
       "contents": [
-        { "x": 130, "y": 220 },
-        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
       ],
-      "window": { "width": 540, "height": 380 }
+      "window": {
+        "width": 540,
+        "height": 380
+      }
     }
   }
 }
