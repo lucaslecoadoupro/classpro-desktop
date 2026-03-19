@@ -179,7 +179,7 @@ function ModuleAccueil({ onOpen, onNavigate, cpData, filePath }) {
     if (!prenom.trim() || !nom.trim()) return;
 
     // Générer un JSON ClassPro vide avec le profil renseigné
-    const profile = { prenom: prenom.trim(), nom: nom.trim(), etablissement: etablissement.trim(), annee, classe: classe.trim(), matiere: matiere.trim() };
+    const profile = { prenom: prenom.trim(), nom: nom.trim().toUpperCase(), etablissement: etablissement.trim(), annee, classe: classe.trim(), matiere: matiere.trim() };
     const data = {
       version: '6.5',
       date: new Date().toISOString(),
@@ -373,7 +373,7 @@ function ModuleAccueil({ onOpen, onNavigate, cpData, filePath }) {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
                   <label style={{ fontSize: '.7rem', fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Nom *</label>
-                  <input value={newProfil.nom} onChange={e => setNewProfil(p => ({ ...p, nom: e.target.value }))}
+                  <input value={newProfil.nom} onChange={e => setNewProfil(p => ({ ...p, nom: e.target.value.toUpperCase() }))}
                     placeholder="Nom" style={{ padding: '.6rem .875rem', border: '1.5px solid var(--border)', borderRadius: 'var(--r-s)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Roboto, sans-serif', fontSize: '.86rem', outline: 'none' }}
                     onFocus={e => e.target.style.borderColor = 'var(--accent)'} onBlur={e => e.target.style.borderColor = 'var(--border)'} />
                 </div>
@@ -3657,6 +3657,163 @@ function edtIso(d) {
   return d.toISOString().slice(0,10);
 }
 
+
+// ── PARSER PDF EDT PRONOTE ────────────────────────────────────────────────────
+async function parseEdtPDF(file) {
+  if (!window.pdfjsLib) {
+    alert('pdf.js non chargé. Vérifiez que vendor/pdf.min.js est présent dans src/renderer/vendor/.');
+    return null;
+  }
+  const buf = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+
+  let items = [];
+  for (let pi = 1; pi <= pdf.numPages; pi++) {
+    const page = await pdf.getPage(pi);
+    const vp   = page.getViewport({ scale: 1 });
+    const tc   = await page.getTextContent();
+    tc.items.forEach(it => {
+      const s = it.str.trim();
+      if (!s) return;
+      const tx = it.transform;
+      items.push({ s, x: tx[4], y: vp.height - tx[5], fs: Math.abs(tx[3]) });
+    });
+  }
+
+  const timeRe    = /^(\d{1,2})h(\d{2})$/;
+  const isWeekMark = s => /^[AB]$/i.test(s);
+  const isNoise    = s => /^S\.\d/.test(s) || s.length === 0;
+  const isFooter   = s => /©|Index Education|COLLEGE|COLLÈGE/i.test(s);
+  const DAY_FR     = ['lundi','mardi','mercredi','jeudi','vendredi'];
+
+  const dayXMap = {};
+  items.forEach(it => {
+    const idx = DAY_FR.findIndex(d => it.s.toLowerCase() === d);
+    if (idx >= 0) dayXMap[idx] = it.x;
+  });
+  const foundDays = Object.keys(dayXMap).map(Number);
+  if (foundDays.length < 2) return { blocks:[], error:"Jours non detectes dans le PDF. Verifiez que c'est bien un EDT Pronote." };
+
+  const sortedDays = foundDays.sort((a,b) => dayXMap[a] - dayXMap[b]);
+  const colBounds  = sortedDays.map((di,i) => {
+    const x     = dayXMap[di];
+    const xPrev = i > 0 ? dayXMap[sortedDays[i-1]] : 0;
+    const xNext = i < sortedDays.length-1 ? dayXMap[sortedDays[i+1]] : 99999;
+    return { dayIdx:di, xMin:(x+xPrev)/2, xMax:(x+xNext)/2 };
+  });
+
+  const timeSlots = [];
+  items.forEach(it => {
+    if (it.x > 70) return;
+    const m = it.s.match(timeRe);
+    if (!m) return;
+    const h = parseInt(m[1]), min = parseInt(m[2]);
+    if (!timeSlots.find(t => t.h===h && t.m===min)) timeSlots.push({ h, m:min, y:it.y });
+  });
+  timeSlots.sort((a,b) => a.y - b.y);
+  if (timeSlots.length < 2) return { blocks:[], error:'Horaires non détectés. Vérifiez le format du PDF.' };
+
+  const headerY = items.find(it => it.s.toLowerCase() === 'lundi')?.y ?? 56;
+
+  const assignCol = (x, isMarker=false) => {
+    if (isMarker) {
+      return colBounds.reduce((best,c) => {
+        const d = Math.abs(x - c.xMax);
+        return (!best || d < Math.abs(x - best.xMax)) ? c : best;
+      }, null);
+    }
+    let col = colBounds.find(c => x >= c.xMin && x < c.xMax);
+    if (col) return col;
+    return colBounds.reduce((best,c) => {
+      const d = Math.abs(x - (c.xMin+c.xMax)/2);
+      return (!best || d < Math.abs(x - (best.xMin+best.xMax)/2)) ? c : best;
+    }, null);
+  };
+
+  const colItems = items.filter(it => {
+    if (it.x <= 60) return false;
+    if (it.y <= headerY + 2) return false;
+    if (isFooter(it.s)) return false;
+    return true;
+  }).map(it => {
+    const col = assignCol(it.x, isWeekMark(it.s));
+    return col ? { ...it, dayIdx:col.dayIdx } : null;
+  }).filter(Boolean);
+
+  const byDay = {};
+  colItems.forEach(it => { if (!byDay[it.dayIdx]) byDay[it.dayIdx]=[]; byDay[it.dayIdx].push(it); });
+
+  const snapSlot = (yS, yE) => {
+    let si = 0;
+    for (let i=0; i<timeSlots.length; i++) { if (timeSlots[i].y <= yS+10) si=i; else break; }
+    let ei = Math.min(si+1, timeSlots.length-1);
+    for (let i=si+1; i<timeSlots.length; i++) { if (timeSlots[i].y > yE-10) { ei=i; break; } ei=Math.min(i+1,timeSlots.length-1); }
+    return { start:timeSlots[si], end:timeSlots[ei] };
+  };
+
+  const blocks = [];
+  const pushBlock = (dayIdx, title, weeks, yS, yE) => {
+    title = title.trim().replace(/\s+/g,' ');
+    if (title.length < 2) return;
+    const { start, end } = snapSlot(yS, yE);
+    if (end.h*60+end.m <= start.h*60+start.m) return;
+    const colorIdx = Math.abs(title.split('').reduce((a,c) => a+c.charCodeAt(0), 0)) % EDT_COLORS.length;
+    blocks.push({
+      id: 'edt-import-'+Date.now()+Math.random().toString(36).slice(2),
+      day:dayIdx, startH:start.h, startM:start.m, endH:end.h, endM:end.m,
+      title:title.slice(0,80), teacher:'', room:'', colorIdx, weeks, classId:''
+    });
+  };
+
+  Object.entries(byDay).forEach(([dayIdxStr, dayItems]) => {
+    const dayIdx = parseInt(dayIdxStr);
+    for (let si=0; si<timeSlots.length-1; si++) {
+      const yS = timeSlots[si].y, yE = timeSlots[si+1].y;
+      const slotItems = dayItems.filter(it => it.y>=yS-2 && it.y<yE+5);
+      if (!slotItems.length) continue;
+      const content = slotItems.filter(it => !isWeekMark(it.s) && !isNoise(it.s));
+      const markers = slotItems.filter(it => isWeekMark(it.s));
+      if (!content.length) continue;
+
+      const byTextY = {};
+      content.forEach(it => {
+        const k = `${Math.round(it.y)}_${it.s}`;
+        if (!byTextY[k]) byTextY[k]=[];
+        byTextY[k].push(it.x);
+      });
+      const dupePairs = Object.values(byTextY).filter(xs=>xs.length>=2).map(xs=>xs.slice().sort((a,b)=>a-b));
+
+      if (dupePairs.length > 0 && markers.length >= 2) {
+        const xLavg = dupePairs.reduce((s,p)=>s+p[0],0)/dupePairs.length;
+        const xRavg = dupePairs.reduce((s,p)=>s+p[p.length-1],0)/dupePairs.length;
+        const splitXc = (xLavg+xRavg)/2;
+        const mxs = markers.map(m=>m.x).sort((a,b)=>a-b);
+        const splitXm = (mxs[0]+mxs[mxs.length-1])/2;
+        const weekL = markers.find(m=>m.x<splitXm)?.s.toUpperCase()||'AB';
+        const weekR = markers.find(m=>m.x>=splitXm)?.s.toUpperCase()||'AB';
+        const left  = content.filter(it=>it.x<splitXc).sort((a,b)=>a.y-b.y);
+        const right = content.filter(it=>it.x>=splitXc).sort((a,b)=>a.y-b.y);
+        const titleL = [...new Set(left.map(it=>it.s))].join(' ');
+        const titleR = [...new Set(right.map(it=>it.s))].join(' ');
+        if (titleL) pushBlock(dayIdx, titleL, weekL, yS, yE);
+        if (titleR) pushBlock(dayIdx, titleR, weekR, yS, yE);
+      } else {
+        const week  = markers.length===1 ? markers[0].s.toUpperCase() : 'AB';
+        const title = [...new Set(content.sort((a,b)=>a.y-b.y).map(it=>it.s))].join(' ');
+        pushBlock(dayIdx, title, week, yS, yE);
+      }
+    }
+  });
+
+  const seen = new Set();
+  const deduped = blocks.filter(b => {
+    const k = `${b.day}_${b.startH}_${b.startM}_${b.title}`;
+    if (seen.has(k)) return false; seen.add(k); return true;
+  }).sort((a,b) => a.day-b.day || (a.startH*60+a.startM)-(b.startH*60+b.startM));
+
+  return { blocks:deduped, error:null };
+}
+
 // ── MODULE EMPLOI DU TEMPS ────────────────────────────────────────────────────
 function ModuleEDT({ cpData, onDataChange }) {
   const classes  = cpData?.classes  || [];
@@ -3679,6 +3836,9 @@ function ModuleEDT({ cpData, onDataChange }) {
   const [autoClassId,setAutoClassId]= useState('');
   const [autoNbWeeks,setAutoNbWeeks]= useState(8);
   const [autoResult, setAutoResult] = useState(null);
+  const [showImport,    setShowImport]    = useState(false);
+  const [importStatus,  setImportStatus]  = useState(null); // null | 'loading' | {blocks, error}
+  const [importPreview, setImportPreview] = useState(false);
 
   const weekType = edtGetWeekType(viewMonday, refWeekA);
   const todayStr = edtIso(new Date());
@@ -3695,6 +3855,35 @@ function ModuleEDT({ cpData, onDataChange }) {
   });
 
   const saveBlocks = (blocks) => onDataChange('cdc-edt', blocks);
+
+  const handlePdfImport = async (file) => {
+    if (!file) return;
+    setImportStatus('loading');
+    setShowImport(false);
+    try {
+      const result = await parseEdtPDF(file);
+      if (result) {
+        setImportStatus(result);
+        setImportPreview(true);
+      } else {
+        setImportStatus(null);
+      }
+    } catch(e) {
+      setImportStatus({ blocks:[], error:'Erreur : ' + e.message });
+      setImportPreview(true);
+    }
+  };
+
+  const confirmImport = () => {
+    if (!importStatus || importStatus === 'loading' || !importStatus.blocks) return;
+    const existing = edtData;
+    const toAdd = importStatus.blocks.filter(nb => {
+      return !existing.find(b => b.day===nb.day && b.startH===nb.startH && b.startM===nb.startM && b.title===nb.title);
+    });
+    saveBlocks([...existing, ...toAdd]);
+    setImportPreview(false);
+    setImportStatus(null);
+  };
   const saveRefA   = (d) => onDataChange('cdc-edt-refA', d.toISOString());
 
   const prevWeek = () => setViewMonday(m => { const d=new Date(m); d.setDate(d.getDate()-7); return d; });
@@ -3810,6 +3999,11 @@ function ModuleEDT({ cpData, onDataChange }) {
             onClick={() => { setAutoClassId(''); setAutoResult(null); setAutoPopup({ block: null, fromHeader: true }); }}>
             🔁 Créer fiches et suivi
           </button>
+          <button className="btn btn-ghost"
+            style={{ fontSize:'.75rem', background:'rgba(255,255,255,.15)', border:'1px solid rgba(255,255,255,.3)', color:'#fff' }}
+            onClick={() => setShowImport(true)}>
+            📄 Importer PDF Pronote
+          </button>
           <button className="btn btn-primary" onClick={() => { setEditId(null); setForm(EMPTY_FORM); setShowAdd(true); }}>
             + Ajouter un cours
           </button>
@@ -3883,6 +4077,95 @@ function ModuleEDT({ cpData, onDataChange }) {
           )}
         </div>
       </div>
+
+      {/* ── Modale sélection PDF ── */}
+      {showImport && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999 }}
+          onClick={e => e.target===e.currentTarget && setShowImport(false)}>
+          <div style={{ background:'var(--surface)', borderRadius:'var(--r)', padding:'1.5rem', width:400, boxShadow:'var(--shadow-l)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem' }}>
+              <div>
+                <div style={{ fontFamily:'Roboto Slab,serif', fontWeight:800, fontSize:'1rem' }}>📄 Importer un EDT Pronote</div>
+                <div style={{ fontSize:'.78rem', color:'var(--text3)', marginTop:'.2rem' }}>Sélectionnez le PDF exporté depuis Pronote</div>
+              </div>
+              <button onClick={() => setShowImport(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'1.3rem', color:'var(--text3)' }}>×</button>
+            </div>
+            <div style={{ padding:'1rem', background:'rgba(59,91,219,.06)', border:'2px dashed rgba(59,91,219,.3)', borderRadius:'var(--r-s)', textAlign:'center', marginBottom:'1rem' }}>
+              <div style={{ fontSize:'2rem', marginBottom:'.5rem' }}>📄</div>
+              <div style={{ fontSize:'.83rem', color:'var(--text2)', marginBottom:'.75rem' }}>
+                Fichier PDF de l&apos;emploi du temps Pronote
+              </div>
+              <label style={{ display:'inline-block', padding:'.55rem 1.25rem', background:'var(--accent)', color:'#fff', borderRadius:'var(--r-s)', cursor:'pointer', fontWeight:700, fontSize:'.85rem', fontFamily:'Roboto,sans-serif' }}>
+                Choisir le PDF
+                <input type="file" accept=".pdf,application/pdf" style={{ display:'none' }}
+                  onChange={e => { if(e.target.files[0]) handlePdfImport(e.target.files[0]); }} />
+              </label>
+            </div>
+            <div style={{ fontSize:'.73rem', color:'var(--text3)', lineHeight:1.6 }}>
+              <strong>Comment exporter depuis Pronote ?</strong><br/>
+              Emploi du temps → Imprimer → Format PDF → Toutes semaines
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Status import loading ── */}
+      {importStatus === 'loading' && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999 }}>
+          <div style={{ background:'var(--surface)', borderRadius:'var(--r)', padding:'2rem', textAlign:'center', boxShadow:'var(--shadow-l)' }}>
+            <div style={{ fontSize:'2rem', marginBottom:'1rem' }}>⏳</div>
+            <div style={{ fontWeight:700 }}>Lecture du PDF en cours…</div>
+            <div style={{ fontSize:'.8rem', color:'var(--text3)', marginTop:'.4rem' }}>Cela peut prendre quelques secondes</div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modale prévisualisation import ── */}
+      {importPreview && importStatus && importStatus !== 'loading' && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:'1rem' }}
+          onClick={e => e.target===e.currentTarget && setImportPreview(false)}>
+          <div style={{ background:'var(--surface)', borderRadius:'var(--r)', width:500, maxHeight:'80vh', overflowY:'auto', boxShadow:'var(--shadow-l)', overflow:'hidden' }}>
+            {importStatus.error ? (
+              <div style={{ padding:'1.75rem' }}>
+                <div style={{ fontSize:'2rem', marginBottom:'.75rem' }}>❌</div>
+                <div style={{ fontWeight:800, fontSize:'1rem', marginBottom:'.5rem' }}>Erreur de lecture</div>
+                <div style={{ fontSize:'.83rem', color:'var(--text3)', marginBottom:'1rem' }}>{importStatus.error}</div>
+                <button className="btn" onClick={() => setImportPreview(false)}>Fermer</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ background:'linear-gradient(135deg,#0f9b6e,#059669)', padding:'1.25rem 1.75rem', display:'flex', alignItems:'center', gap:'.75rem' }}>
+                  <span style={{ fontSize:'1.6rem' }}>✅</span>
+                  <div>
+                    <div style={{ fontFamily:'Roboto Slab,serif', fontWeight:800, fontSize:'1.05rem', color:'#fff' }}>{importStatus.blocks.length} cours détectés</div>
+                    <div style={{ fontSize:'.75rem', color:'rgba(255,255,255,.75)', marginTop:'.12rem' }}>Prévisualisation avant import</div>
+                  </div>
+                </div>
+                <div style={{ maxHeight:300, overflowY:'auto', padding:'1rem 1.75rem' }}>
+                  {importStatus.blocks.map((b, i) => {
+                    const col = EDT_COLORS[b.colorIdx || 0];
+                    return (
+                      <div key={i} style={{ display:'flex', alignItems:'center', gap:'.75rem', padding:'.38rem .5rem', borderBottom:'1px solid var(--border)', fontSize:'.8rem' }}>
+                        <div style={{ width:10, height:10, borderRadius:'50%', background:col.border, flexShrink:0 }} />
+                        <span style={{ minWidth:70, color:'var(--text3)', fontSize:'.73rem' }}>{EDT_DAYS[b.day]}</span>
+                        <span style={{ flex:1, fontWeight:600 }}>{b.title}</span>
+                        <span style={{ color:'var(--text3)', fontSize:'.73rem' }}>{b.startH}h{String(b.startM).padStart(2,'0')}–{b.endH}h{String(b.endM).padStart(2,'0')}</span>
+                        {b.weeks !== 'AB' && <span style={{ background:col.bg, color:col.text, fontSize:'.65rem', padding:'.1rem .35rem', borderRadius:4, fontWeight:700 }}>Sem.{b.weeks}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ padding:'1rem 1.75rem', borderTop:'1px solid var(--border)', display:'flex', gap:'.5rem', justifyContent:'flex-end' }}>
+                  <button className="btn" onClick={() => { setImportPreview(false); setImportStatus(null); }}>Annuler</button>
+                  <button className="btn btn-primary" onClick={confirmImport}>
+                    Importer {importStatus.blocks.length} cours
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Modale ajout/édition ── */}
       {showAdd && (
