@@ -9,6 +9,8 @@ ClassPro Desktop est l'application de bureau complémentaire à [ClassPro](https
 - **Importer** le fichier JSON exporté depuis ClassPro
 - **Visualiser** l'ensemble des données (classes, séances, bulletins, EDT…)
 - **Éditer** les données hors-ligne : suivi de classe, carnet de bord, travaux non rendus, progression annuelle
+- **Préparer** ses cours en avance avec un éditeur de fiches riche
+- **Planifier** son emploi du temps avec import PDF Pronote et liaison EDT ↔ cours
 - **Générer des PDF** : progression annuelle, carnet de bord, bulletins conseil de classe
 - **Re-exporter** le JSON mis à jour pour ClassPro
 
@@ -16,24 +18,50 @@ ClassPro Desktop est l'application de bureau complémentaire à [ClassPro](https
 
 ```
 ClassPro (clé USB)  →  💾 Exporter JSON  →  ClassPro Desktop (maison)
-                                                    ↓ édite, génère PDF
+                                                    ↓ édite, prépare, génère PDF
 ClassPro (clé USB)  ←  📂 Importer JSON  ←  ClassPro Desktop (maison)
 ```
 
 ## Modules disponibles
 
+### Vue générale
 | Module | Statut | Description |
 |---|---|---|
-| 🏠 Accueil | ✅ | Dashboard, import/export JSON, fichiers récents |
+| 🏠 Accueil | ✅ | Dashboard, import/export JSON, création nouveau profil, fichiers récents |
 | 📊 Données importées | ✅ | Visualisation complète du JSON (classes, séances, bulletins, EDT) |
-| 👥 Suivi de classe | ✅ | Observations par séance, gestion des élèves, bilan individuel |
+
+### Gestion administrative
+| Module | Statut | Description |
+|---|---|---|
+| 👥 Classes & élèves | ✅ | Création de classes, import liste depuis PRONOTE, gestion des élèves |
+| 📅 Emploi du temps | ✅ | Grille hebdomadaire, import PDF Pronote, semaines A/B, automatisation fiches+suivi |
+
+### Préparer
+| Module | Statut | Description |
+|---|---|---|
+| ✏️ Créer un cours | ✅ | Éditeur de fiches (Markdown, drag & drop sections, pièces jointes, aperçu) |
+| 📆 Progression annuelle | ✅ | Tableau libre avec colonnes personnalisables par classe |
+| 🏫 Plan de classe | 🔄 | À venir |
+
+### Suivi pédagogique
+| Module | Statut | Description |
+|---|---|---|
+| 👁️ Suivi de classe | ✅ | Observations par séance, gestion des élèves, bilan individuel |
 | 📓 Carnet de bord | ✅ | Fiches de cours par classe (objectifs, activités, absents, devoirs…) |
 | 📋 Travaux non rendus | ✅ | Suivi du rendu des devoirs par élève |
-| 📆 Progression annuelle | ✅ | Tableau libre avec colonnes personnalisables par classe |
 | 🎓 Conseil de classe | ✅ | Tableau récap moyennes, fiche élève, vue par matière |
+
+### Génération PDF
+| Module | Statut | Description |
+|---|---|---|
 | 📄 PDF Carnet de bord | ✅ | Export PDF (1 fiche/page ou 4 fiches/page) |
 | 📄 PDF Progression | ✅ | Export PDF paysage A4 par classe |
 | 📄 PDF Bulletins | ✅ | Export PDF avec sélection élèves et options de contenu |
+
+### ClassPro Académie
+| Module | Statut | Description |
+|---|---|---|
+| 🎓 Centre d'aide | ✅ | 10 guides interactifs avec moteur de recherche |
 
 ## Installation
 
@@ -64,6 +92,10 @@ Les fichiers suivants doivent être placés dans `src/renderer/vendor/` :
 | `react-dom.production.min.js` | https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js |
 | `babel.min.js` | https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js |
 | `jspdf.umd.min.js` | https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js |
+| `pdf.min.js` | https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js |
+| `pdf.worker.min.js` | https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js |
+
+> `pdf.min.js` et `pdf.worker.min.js` sont nécessaires pour l'import PDF Pronote dans l'Emploi du temps.
 
 ### 4. Générer les icônes
 
@@ -121,8 +153,8 @@ classpro-desktop/
 │   └── renderer/
 │       ├── index.html     ← Point d'entrée UI
 │       ├── style.css      ← Design system ClassPro
-│       ├── app.js         ← Application React (3000+ lignes)
-│       └── vendor/        ← Bibliothèques front-end (React, Babel, jsPDF)
+│       ├── app.js         ← Application React (5500+ lignes)
+│       └── vendor/        ← Bibliothèques front-end (React, Babel, jsPDF, pdf.js)
 ├── assets/
 │   ├── icons/
 │   │   ├── mac/icon.icns  ← Icône macOS
@@ -130,7 +162,8 @@ classpro-desktop/
 │   │   └── png/           ← Icônes PNG toutes tailles
 │   └── icon.png           ← Icône source 512×512
 ├── scripts/
-│   └── make-icon.js       ← Générateur d'icône SVG
+│   ├── make-icon.js       ← Générateur d'icône SVG
+│   └── obfuscate.js       ← Obfuscation optionnelle (npm run obfuscate)
 ├── package.json
 └── README.md
 ```
@@ -147,8 +180,8 @@ Le fichier JSON échangé entre ClassPro et ClassPro Desktop a la structure suiv
     "cdc-profile":    "{...}",   // profil enseignant
     "cdc-theme":      "light",   // thème
     "cdc-data":       "{...}",   // bulletins conseil de classe
-    "sc-classes":     "{...}",   // classes suivi
-    "sc-sessions":    "{...}",   // séances suivi
+    "sc-classes":     "{...}",   // classes et élèves
+    "sc-sessions":    "{...}",   // séances suivi de classe
     "cdc-devoirs":    "{...}",   // travaux non rendus
     "cdc-fiches":     "{...}",   // carnet de bord
     "cdc-plans":      "{...}",   // plan de classe
@@ -156,6 +189,7 @@ Le fichier JSON échangé entre ClassPro et ClassPro Desktop a la structure suiv
     "cdc-programmes": "{...}",   // thèmes programme
     "cdc-edt":        "{...}",   // emploi du temps
     "cdc-edt-refA":   "...",     // référence semaine A/B
+    "cdc-cours":      "{...}",   // cours préparés
     "cdc-liens":      "{...}",   // liens & raccourcis
     "dash-notes":     "{...}",   // notes tableau de bord
     "dash-taches":    "{...}"    // tâches tableau de bord
@@ -168,6 +202,7 @@ Le fichier JSON échangé entre ClassPro et ClassPro Desktop a la structure suiv
 ### ✅ Étape 1 — Scaffold de base
 - Shell Electron (main + preload + renderer)
 - Import / re-export JSON ClassPro
+- Création d'un profil sans clé USB
 - Vue des données importées (lecture)
 - Design system fidèle à ClassPro
 
@@ -183,25 +218,34 @@ Le fichier JSON échangé entre ClassPro et ClassPro Desktop a la structure suiv
 - PDF Progression annuelle (paysage A4)
 - PDF Bulletins conseil de classe (sélection élèves + options contenu)
 
-### 🔄 Étape 4 — À venir
-- Précompilation JSX (Babel CLI) pour supprimer la dépendance vendor
-- Modules PDF supplémentaires
-- Synchronisation avancée avec ClassPro
+### ✅ Étape 4 — Gestion administrative & Emploi du temps
+- Module Classes & élèves (import liste PRONOTE)
+- Emploi du temps hebdomadaire avec grille horaire
+- Import PDF Pronote (parser automatique semaines A/B)
+- Automatisation création fiches + séances depuis l'EDT
 
-### 📋 Étape 5 — Modules PDF complémentaires
-- Modules PDF supplémentaires à définir
+### ✅ Étape 5 — Créer un cours
+- Éditeur de fiches de préparation (sections drag & drop)
+- Mise en forme Markdown (gras, italique, listes, titres)
+- Pièces jointes (images, PDF, liens)
+- Mode aperçu style document
+- Liaison EDT ↔ cours (clic droit sur un créneau)
 
-### 📋 Étape 6 — Créer un cours
-- Possibilité d'ajouter des documents et de préparer le support de cours en avance
-- Exporter le support en PDF
+### ✅ ClassPro Académie
+- Centre d'aide intégré avec 10 guides interactifs
+- Moteur de recherche temps réel dans tous les guides
 
-### 📋 Étape 7 — Gestion des paquets et BetaTest
+### 📋 Étape 6 — BetaTest et correctifs
 - Test de la simplicité de l'utilisation
 - Retour utilisateur et correctifs sous la dénomination **1.0.X**
 
 ---
 
 ## Pour la version 1.1
+
+### 📋 Étape 7 — Plan de classe
+- Canvas drag & drop pour placer les tables et les élèves
+- Export PDF du plan de classe
 
 ### 📋 Étape 8 — Profil du professeur
 - Activer des modules en fonction de la discipline enseignée
