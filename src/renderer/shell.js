@@ -301,10 +301,11 @@ function Shell() {
               <div style={{ fontSize: '.65rem', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '.6rem' }}>Modules disponibles</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.38rem' }}>
                 {[
-                  '🏠 Accueil', '👥 Suivi de classe', '📓 Carnet de bord',
-                  '📋 Travaux non rendus', '📆 Progression annuelle', '🎓 Conseil de classe',
-                  '📄 PDF Carnet', '📄 PDF Progression', '📄 PDF Bulletins',
-                  '🪑 Plan de classe',
+                  '🏠 Accueil', '👥 Classes & élèves', '📅 Emploi du temps',
+                  '✏️ Créer un cours', '📆 Progression annuelle', '🪑 Plan de classe',
+                  '👁️ Suivi de classe', '📓 Carnet de bord', '📋 Travaux non rendus',
+                  '🎓 Conseil de classe', '📄 PDF Carnet', '📄 PDF Progression',
+                  '📄 PDF Bulletins', '📖 Centre d\'aide',
                 ].map(m => (
                   <span key={m} style={{ fontSize: '.72rem', padding: '.25rem .65rem', borderRadius: 99, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', fontWeight: 500 }}>{m}</span>
                 ))}
