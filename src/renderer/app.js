@@ -13,11 +13,19 @@ const NAV = [
     { id: 'accueil',      icon: '🏠', label: 'Accueil' },
     { id: 'donnees',      icon: '📊', label: 'Données importées' },
   ]},
-  { section: 'Modules pédagogiques', items: [
-    { id: 'suivi',        icon: '👥', label: 'Suivi de classe' },
+  { section: 'Gestion administrative', items: [
+    { id: 'classes',      icon: '👥', label: 'Classes & élèves' },
+    { id: 'edt',          icon: '📅', label: 'Emploi du temps' },
+  ]},
+  { section: 'Préparer', items: [
+    { id: 'cours',        icon: '✏️', label: 'Créer un cours' },
+    { id: 'progression',  icon: '📆', label: 'Progression annuelle' },
+    { id: 'plan-classe',  icon: '🏫', label: 'Plan de classe' },
+  ]},
+  { section: 'Suivi pédagogique', items: [
+    { id: 'suivi',        icon: '👁️', label: 'Suivi de classe' },
     { id: 'carnet',       icon: '📓', label: 'Carnet de bord' },
     { id: 'devoirs',      icon: '📋', label: 'Travaux non rendus' },
-    { id: 'progression',  icon: '📆', label: 'Progression annuelle' },
     { id: 'conseil',      icon: '🎓', label: 'Conseil de classe' },
   ]},
   { section: 'Génération PDF', items: [
@@ -26,7 +34,7 @@ const NAV = [
     { id: 'pdf-bulletins',   icon: '📄', label: 'PDF Bulletins' },
   ]},
   { section: 'ClassPro Académie', items: [
-    { id: "academie", icon: "📖", label: "Centre d'aide" },
+    { id: 'academie', icon: '📖', label: "Centre d'aide" },
   ]},
 ];
 
@@ -49,6 +57,7 @@ function parseClassProJson(data) {
     progs:       (() => { const p = parse('cdc-progs'); return (p && typeof p === 'object' && !Array.isArray(p)) ? p : {}; })(),
     programmes:  parse('cdc-programmes') || [],
     edt:         parse('cdc-edt')      || [],
+    edtRefA:     entries['cdc-edt-refA'] || null,
     liens:       parse('cdc-liens')    || [],
     bulletins:   parse('cdc-data')     || [],
     dashNotes:   parse('dash-notes')   || [],
@@ -155,9 +164,46 @@ function ModuleAccueil({ onOpen, onNavigate, cpData, filePath }) {
     try { return JSON.parse(localStorage.getItem('cpd-recent') || '[]'); } catch { return []; }
   });
 
+  const [showNewProfil, setShowNewProfil] = useState(false);
+  const [newProfil, setNewProfil] = useState({
+    prenom: '', nom: '', etablissement: '', annee: '2025/2026', classe: '', matiere: ''
+  });
+
   const openJson = async () => {
     const result = await window.cpd.openJson();
     if (result?.ok) onOpen(result);
+  };
+
+  const creerNouveauFichier = () => {
+    const { prenom, nom, etablissement, annee, classe, matiere } = newProfil;
+    if (!prenom.trim() || !nom.trim()) return;
+
+    // Générer un JSON ClassPro vide avec le profil renseigné
+    const profile = { prenom: prenom.trim(), nom: nom.trim(), etablissement: etablissement.trim(), annee, classe: classe.trim(), matiere: matiere.trim() };
+    const data = {
+      version: '6.5',
+      date: new Date().toISOString(),
+      entries: {
+        'cdc-profile': JSON.stringify(profile),
+        'cdc-theme': 'light',
+        'cdc-data': '[]',
+        'sc-classes': '[]',
+        'sc-sessions': '{}',
+        'cdc-devoirs': '[]',
+        'cdc-fiches': '{}',
+        'cdc-plans': '{}',
+        'cdc-progs': '{}',
+        'cdc-programmes': '[]',
+        'cdc-edt': '[]',
+        'cdc-liens': '[]',
+        'dash-notes': '[]',
+        'dash-taches': '[]',
+      }
+    };
+    const defaultName = `ClassPro_${nom.trim().toUpperCase()}_${prenom.trim()}_nouveau.json`;
+    onOpen({ data, filePath: defaultName });
+    setShowNewProfil(false);
+    setNewProfil({ prenom: '', nom: '', etablissement: '', annee: '2025/2026', classe: '', matiere: '' });
   };
 
   if (cpData) {
@@ -276,11 +322,11 @@ function ModuleAccueil({ onOpen, onNavigate, cpData, filePath }) {
                 <div className="welcome-btn-hint">Importez le JSON exporté depuis ClassPro sur votre clé</div>
               </div>
             </button>
-            <button className="welcome-btn" style={{ opacity: .5, cursor: 'default' }}>
+            <button className="welcome-btn" onClick={() => setShowNewProfil(true)}>
               <div className="welcome-btn-icon">✨</div>
               <div>
-                <div className="welcome-btn-label" style={{ color: 'var(--text)' }}>Nouveau fichier</div>
-                <div className="welcome-btn-hint">Créer un profil ClassPro sans clé USB — <em>bientôt disponible</em></div>
+                <div className="welcome-btn-label">Nouveau fichier</div>
+                <div className="welcome-btn-hint">Créer un profil ClassPro Desktop sans clé USB</div>
               </div>
             </button>
           </div>
@@ -290,7 +336,6 @@ function ModuleAccueil({ onOpen, onNavigate, cpData, filePath }) {
               <div className="welcome-recent-title">🕐 Fichiers récents</div>
               {recent.slice(0, 4).map(r => (
                 <div key={r.path} className="recent-item" onClick={async () => {
-                  // On tente de rouvrir depuis l'IPC (le chemin est gardé en mémoire)
                   const result = await window.cpd.openJson();
                   if (result?.ok) onOpen(result);
                 }}>
@@ -306,6 +351,74 @@ function ModuleAccueil({ onOpen, onNavigate, cpData, filePath }) {
           )}
         </div>
       </div>
+
+      {/* Modale création nouveau profil */}
+      {showNewProfil && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          onClick={e => e.target === e.currentTarget && setShowNewProfil(false)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 16, width: 480, boxShadow: '0 24px 64px rgba(0,0,0,.3)', overflow: 'hidden' }}>
+            {/* Header */}
+            <div style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #3b5bdb 60%, #7c3aed 100%)', padding: '1.5rem 1.75rem' }}>
+              <div style={{ fontWeight: 800, fontSize: '1.15rem', color: '#fff', fontFamily: 'Roboto Slab, serif', marginBottom: '.25rem' }}>✨ Nouveau fichier ClassPro</div>
+              <div style={{ fontSize: '.82rem', color: 'rgba(255,255,255,.75)' }}>Créez votre profil pour commencer à utiliser ClassPro Desktop</div>
+            </div>
+            {/* Formulaire */}
+            <div style={{ padding: '1.5rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '.875rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
+                  <label style={{ fontSize: '.7rem', fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Prénom *</label>
+                  <input autoFocus value={newProfil.prenom} onChange={e => setNewProfil(p => ({ ...p, prenom: e.target.value }))}
+                    placeholder="Prénom" style={{ padding: '.6rem .875rem', border: '1.5px solid var(--border)', borderRadius: 'var(--r-s)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Roboto, sans-serif', fontSize: '.86rem', outline: 'none' }}
+                    onFocus={e => e.target.style.borderColor = 'var(--accent)'} onBlur={e => e.target.style.borderColor = 'var(--border)'} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
+                  <label style={{ fontSize: '.7rem', fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Nom *</label>
+                  <input value={newProfil.nom} onChange={e => setNewProfil(p => ({ ...p, nom: e.target.value }))}
+                    placeholder="Nom" style={{ padding: '.6rem .875rem', border: '1.5px solid var(--border)', borderRadius: 'var(--r-s)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Roboto, sans-serif', fontSize: '.86rem', outline: 'none' }}
+                    onFocus={e => e.target.style.borderColor = 'var(--accent)'} onBlur={e => e.target.style.borderColor = 'var(--border)'} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
+                <label style={{ fontSize: '.7rem', fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Établissement</label>
+                <input value={newProfil.etablissement} onChange={e => setNewProfil(p => ({ ...p, etablissement: e.target.value }))}
+                  placeholder="Nom de votre établissement" style={{ padding: '.6rem .875rem', border: '1.5px solid var(--border)', borderRadius: 'var(--r-s)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Roboto, sans-serif', fontSize: '.86rem', outline: 'none' }}
+                  onFocus={e => e.target.style.borderColor = 'var(--accent)'} onBlur={e => e.target.style.borderColor = 'var(--border)'} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
+                  <label style={{ fontSize: '.7rem', fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Matière enseignée</label>
+                  <input value={newProfil.matiere} onChange={e => setNewProfil(p => ({ ...p, matiere: e.target.value }))}
+                    placeholder="Ex : Mathématiques" style={{ padding: '.6rem .875rem', border: '1.5px solid var(--border)', borderRadius: 'var(--r-s)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Roboto, sans-serif', fontSize: '.86rem', outline: 'none' }}
+                    onFocus={e => e.target.style.borderColor = 'var(--accent)'} onBlur={e => e.target.style.borderColor = 'var(--border)'} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
+                  <label style={{ fontSize: '.7rem', fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Année scolaire</label>
+                  <input value={newProfil.annee} onChange={e => setNewProfil(p => ({ ...p, annee: e.target.value }))}
+                    placeholder="2025/2026" style={{ padding: '.6rem .875rem', border: '1.5px solid var(--border)', borderRadius: 'var(--r-s)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Roboto, sans-serif', fontSize: '.86rem', outline: 'none' }}
+                    onFocus={e => e.target.style.borderColor = 'var(--accent)'} onBlur={e => e.target.style.borderColor = 'var(--border)'} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
+                <label style={{ fontSize: '.7rem', fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Classe principale</label>
+                <input value={newProfil.classe} onChange={e => setNewProfil(p => ({ ...p, classe: e.target.value }))}
+                  placeholder="Ex : 3A, 5B…" style={{ padding: '.6rem .875rem', border: '1.5px solid var(--border)', borderRadius: 'var(--r-s)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Roboto, sans-serif', fontSize: '.86rem', outline: 'none' }}
+                  onFocus={e => e.target.style.borderColor = 'var(--accent)'} onBlur={e => e.target.style.borderColor = 'var(--border)'} />
+              </div>
+              <div style={{ fontSize: '.75rem', color: 'var(--text3)', padding: '.5rem .75rem', background: 'var(--surface2)', borderRadius: 'var(--r-s)', lineHeight: 1.5 }}>
+                💡 Un fichier JSON vide sera créé avec votre profil. Pensez à le sauvegarder depuis le bouton <strong>Sauvegarder JSON</strong> après vos premières saisies.
+              </div>
+            </div>
+            {/* Footer */}
+            <div style={{ padding: '.875rem 1.75rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '.5rem', justifyContent: 'flex-end', background: 'var(--surface2)' }}>
+              <button onClick={() => setShowNewProfil(false)} className="btn">Annuler</button>
+              <button onClick={creerNouveauFichier} className="btn btn-primary"
+                disabled={!newProfil.prenom.trim() || !newProfil.nom.trim()}>
+                ✨ Créer mon fichier
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -451,22 +564,27 @@ function ModuleDonnees({ cpData }) {
 }
 
 // ── MODULE PLACEHOLDER (à venir) ─────────────────────────────────────────────
-function ModulePlaceholder({ icon, title, sub, soon = true }) {
+function ModulePlaceholder({ icon, title, sub, soon = false }) {
   return (
     <>
       <div className="page-hd">
         <div>
           <div className="phd-badge">{icon} Module</div>
           <div className="phd-title">{title}</div>
-          <div className="phd-sub">{sub || 'En cours de développement'}</div>
+          <div className="phd-sub">{sub || 'Importez un fichier JSON pour accéder à ce module.'}</div>
         </div>
       </div>
       <div className="page-content">
         <div className="module-placeholder">
           <div className="module-placeholder-icon">{icon}</div>
           <div className="module-placeholder-title">{title}</div>
-          <div className="module-placeholder-sub">{sub || 'Ce module arrive dans une prochaine mise à jour de ClassPro Desktop.'}</div>
+          <div className="module-placeholder-sub">{sub || "Importez un fichier JSON ClassPro depuis l'accueil pour accéder à ce module."}</div>
           {soon && <div className="badge-soon">🔧 Bientôt disponible</div>}
+          {!soon && (
+            <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '.5rem', padding: '.6rem 1rem', borderRadius: 'var(--r-s)', background: 'rgba(59,91,219,.08)', border: '1px solid rgba(59,91,219,.2)', color: 'var(--accent)', fontSize: '.82rem', fontWeight: 500 }}>
+              📂 Accueil → Ouvrir un fichier ClassPro
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -3323,6 +3441,678 @@ function ModuleAcademie() {
   );
 }
 
+// ── MODULE CLASSES & ÉLÈVES ───────────────────────────────────────────────────
+function ModuleClasses({ cpData, onDataChange }) {
+  const classes = cpData?.classes || [];
+  const [selCls, setSelCls] = useState(classes[0]?.id || null);
+  const [newClsName, setNewClsName] = useState('');
+  const [newEleve, setNewEleve] = useState('');
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [editingCls, setEditingCls] = useState(null);
+
+  const cls = classes.find(c => c.id === selCls);
+
+  const save = (newClasses) => onDataChange('sc-classes', newClasses);
+
+  const addClasse = () => {
+    if (!newClsName.trim()) return;
+    const nc = { id: 'cls-' + Date.now(), name: newClsName.trim(), eleves: [] };
+    const updated = [...classes, nc];
+    save(updated);
+    setSelCls(nc.id);
+    setNewClsName('');
+  };
+
+  const deleteClasse = (id) => {
+    save(classes.filter(c => c.id !== id));
+    if (selCls === id) setSelCls(classes.find(c => c.id !== id)?.id || null);
+  };
+
+  const renameClasse = (id, name) => {
+    save(classes.map(c => c.id === id ? { ...c, name } : c));
+    setEditingCls(null);
+  };
+
+  const addEleve = () => {
+    if (!newEleve.trim() || !cls) return;
+    const ne = { id: 'el-' + Date.now(), nom: newEleve.trim() };
+    save(classes.map(c => c.id === selCls ? { ...c, eleves: [...(c.eleves || []), ne] } : c));
+    setNewEleve('');
+  };
+
+  const deleteEleve = (eleveId) => {
+    save(classes.map(c => c.id === selCls ? { ...c, eleves: c.eleves.filter(e => e.id !== eleveId) } : c));
+  };
+
+  const importEleves = () => {
+    if (!importText.trim() || !cls) return;
+    const noms = importText.split('\n').map(l => l.trim()).filter(Boolean);
+    const newEleves = noms.map(nom => ({ id: 'el-' + Date.now() + Math.random().toString(36).slice(2), nom }));
+    save(classes.map(c => c.id === selCls ? { ...c, eleves: [...(c.eleves || []), ...newEleves] } : c));
+    setImportText('');
+    setShowImport(false);
+  };
+
+  if (!cpData) return <ModulePlaceholder icon="👥" title="Classes & élèves" sub="Ouvrez d'abord un fichier ClassPro." />;
+
+  return (
+    <>
+      <div className="page-hd">
+        <div>
+          <div className="phd-badge">👥 Gestion</div>
+          <div className="phd-title">Classes & élèves</div>
+          <div className="phd-sub">{classes.length} classe(s) · {classes.reduce((s, c) => s + (c.eleves?.length || 0), 0)} élève(s) au total</div>
+        </div>
+      </div>
+
+      <div className="page-content" style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '1rem', alignItems: 'start' }}>
+
+        {/* Colonne classes */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+          <div className="card">
+            <div className="card-hd"><div className="card-title">Mes classes</div></div>
+            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '.38rem' }}>
+              {classes.length === 0 && (
+                <div style={{ color: 'var(--text3)', fontSize: '.8rem', fontStyle: 'italic' }}>Aucune classe</div>
+              )}
+              {classes.map(c => (
+                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+                  {editingCls === c.id ? (
+                    <input autoFocus defaultValue={c.name}
+                      onBlur={e => renameClasse(c.id, e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') renameClasse(c.id, e.target.value); if (e.key === 'Escape') setEditingCls(null); }}
+                      style={{ flex: 1, padding: '.35rem .5rem', border: '1.5px solid var(--accent)', borderRadius: 'var(--r-xs)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Roboto, sans-serif', fontSize: '.83rem', outline: 'none' }} />
+                  ) : (
+                    <button onClick={() => setSelCls(c.id)}
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '.42rem .65rem', border: `1.5px solid ${selCls === c.id ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 'var(--r-xs)', background: selCls === c.id ? 'rgba(59,91,219,.08)' : 'var(--surface2)', cursor: 'pointer', fontFamily: 'Roboto, sans-serif', fontSize: '.83rem', fontWeight: selCls === c.id ? 700 : 500, color: selCls === c.id ? 'var(--accent)' : 'var(--text)', transition: 'all .13s' }}>
+                      <span>{c.name}</span>
+                      <span style={{ fontSize: '.7rem', color: 'var(--text3)', fontWeight: 400 }}>{c.eleves?.length || 0}</span>
+                    </button>
+                  )}
+                  <button onClick={() => setEditingCls(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: '.75rem', padding: '.2rem' }} title="Renommer">✏️</button>
+                  <button onClick={() => deleteClasse(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: '.75rem', padding: '.2rem' }} title="Supprimer"
+                    onMouseEnter={e => e.target.style.color = 'var(--danger)'} onMouseLeave={e => e.target.style.color = 'var(--text3)'}>🗑️</button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Ajouter une classe */}
+          <div className="card">
+            <div className="card-hd"><div className="card-title">+ Nouvelle classe</div></div>
+            <div className="card-body" style={{ display: 'flex', gap: '.4rem' }}>
+              <input value={newClsName} onChange={e => setNewClsName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addClasse()}
+                placeholder="Ex : 3A, 5B…"
+                style={{ flex: 1, padding: '.45rem .65rem', border: '1.5px solid var(--border)', borderRadius: 'var(--r-xs)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Roboto, sans-serif', fontSize: '.82rem', outline: 'none' }}
+                onFocus={e => e.target.style.borderColor = 'var(--accent)'} onBlur={e => e.target.style.borderColor = 'var(--border)'} />
+              <button onClick={addClasse} disabled={!newClsName.trim()} className="btn btn-primary" style={{ fontSize: '.78rem', padding: '.45rem .75rem' }}>+</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Colonne élèves */}
+        {cls ? (
+          <div className="card">
+            <div className="card-hd">
+              <div className="card-title">Élèves — {cls.name} ({cls.eleves?.length || 0})</div>
+              <div style={{ display: 'flex', gap: '.5rem' }}>
+                <button onClick={() => setShowImport(v => !v)} className="btn" style={{ fontSize: '.75rem' }}>📋 Import liste</button>
+              </div>
+            </div>
+
+            {/* Import en masse */}
+            {showImport && (
+              <div style={{ padding: '0 1rem 1rem', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '.75rem', color: 'var(--text2)', marginBottom: '.4rem' }}>Un élève par ligne (NOM Prénom)</div>
+                <textarea value={importText} onChange={e => setImportText(e.target.value)}
+                  placeholder={'DUPONT Marie\nMARTIN Paul\n...'}
+                  rows={5} style={{ width: '100%', padding: '.5rem', border: '1.5px solid var(--border)', borderRadius: 'var(--r-xs)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Roboto, sans-serif', fontSize: '.82rem', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
+                <div style={{ display: 'flex', gap: '.4rem', marginTop: '.4rem', justifyContent: 'flex-end' }}>
+                  <button onClick={() => { setShowImport(false); setImportText(''); }} className="btn" style={{ fontSize: '.75rem' }}>Annuler</button>
+                  <button onClick={importEleves} disabled={!importText.trim()} className="btn btn-primary" style={{ fontSize: '.75rem' }}>Importer</button>
+                </div>
+              </div>
+            )}
+
+            <div className="card-body">
+              {/* Ajout manuel */}
+              <div style={{ display: 'flex', gap: '.4rem', marginBottom: '.75rem' }}>
+                <input value={newEleve} onChange={e => setNewEleve(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addEleve()}
+                  placeholder="NOM Prénom — Entrée pour ajouter"
+                  style={{ flex: 1, padding: '.5rem .75rem', border: '1.5px solid var(--border)', borderRadius: 'var(--r-xs)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Roboto, sans-serif', fontSize: '.85rem', outline: 'none' }}
+                  onFocus={e => e.target.style.borderColor = 'var(--accent)'} onBlur={e => e.target.style.borderColor = 'var(--border)'} />
+                <button onClick={addEleve} disabled={!newEleve.trim()} className="btn btn-primary">+ Ajouter</button>
+              </div>
+
+              {/* Liste élèves */}
+              {(cls.eleves || []).length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text3)', padding: '2rem', fontSize: '.82rem', fontStyle: 'italic' }}>
+                  Aucun élève — ajoutez-en un ou importez une liste
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '.38rem' }}>
+                  {(cls.eleves || []).map((el, i) => (
+                    <div key={el.id} style={{ display: 'flex', alignItems: 'center', gap: '.65rem', padding: '.45rem .75rem', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 'var(--r-s)' }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '.62rem', fontWeight: 700, flexShrink: 0 }}>
+                        {el.nom.slice(0, 2).toUpperCase()}
+                      </div>
+                      <span style={{ flex: 1, fontWeight: 600, fontSize: '.83rem' }}>{el.nom}</span>
+                      <span style={{ fontSize: '.7rem', color: 'var(--text3)' }}>#{i + 1}</span>
+                      <button onClick={() => deleteEleve(el.id)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: '.75rem', padding: '.1rem .3rem', borderRadius: 4 }}
+                        onMouseEnter={e => e.target.style.color = 'var(--danger)'} onMouseLeave={e => e.target.style.color = 'var(--text3)'}>🗑️</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, color: 'var(--text3)', fontSize: '.85rem' }}>
+            ← Sélectionnez ou créez une classe
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ── CONSTANTES EDT ───────────────────────────────────────────────────────────
+const EDT_DAYS  = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi'];
+const EDT_HOURS = Array.from({length:11},(_,i)=>i+8); // 8h → 18h
+const EDT_COLORS = [
+  {bg:'#dbeafe',border:'#3b82f6',text:'#1e40af'},
+  {bg:'#dcfce7',border:'#22c55e',text:'#15803d'},
+  {bg:'#fef9c3',border:'#eab308',text:'#854d0e'},
+  {bg:'#fee2e2',border:'#ef4444',text:'#991b1b'},
+  {bg:'#f3e8ff',border:'#a855f7',text:'#7e22ce'},
+  {bg:'#ffedd5',border:'#f97316',text:'#9a3412'},
+];
+
+function edtGetMonday(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0,0,0,0);
+  return d;
+}
+function edtGetWeekType(monday, refMonday) {
+  const msPerWeek = 7*24*60*60*1000;
+  const diff = Math.round((monday - refMonday) / msPerWeek);
+  return diff % 2 === 0 ? 'A' : 'B';
+}
+function edtDateForDay(monday, dayIdx) {
+  const d = new Date(monday);
+  d.setDate(d.getDate() + dayIdx);
+  return d;
+}
+function edtFmtShort(d) {
+  return d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+}
+function edtIso(d) {
+  return d.toISOString().slice(0,10);
+}
+
+// ── MODULE EMPLOI DU TEMPS ────────────────────────────────────────────────────
+function ModuleEDT({ cpData, onDataChange }) {
+  const classes  = cpData?.classes  || [];
+  const edtData  = cpData?.edt      || [];
+  const edtRefA  = cpData?.edtRefA  || null;
+  const sessions = cpData?.sessions || {};
+  const fiches   = cpData?.fiches   || {};
+
+  const EMPTY_FORM = {day:0,startH:8,startM:0,endH:9,endM:0,title:'',room:'',colorIdx:0,weeks:'AB',classId:''};
+
+  const [viewMonday, setViewMonday] = useState(() => edtGetMonday(new Date()));
+  const [refWeekA,   setRefWeekA]   = useState(() => edtRefA ? new Date(edtRefA) : edtGetMonday(new Date()));
+  const [showAdd,    setShowAdd]    = useState(false);
+  const [form,       setForm]       = useState(EMPTY_FORM);
+  const [editId,     setEditId]     = useState(null);
+  const [showRefPicker, setShowRefPicker] = useState(false);
+  const [refPickerVal,  setRefPickerVal]  = useState('');
+  const [ctxMenu,    setCtxMenu]    = useState(null);
+  const [autoPopup,  setAutoPopup]  = useState(null);
+  const [autoClassId,setAutoClassId]= useState('');
+  const [autoNbWeeks,setAutoNbWeeks]= useState(8);
+  const [autoResult, setAutoResult] = useState(null);
+
+  const weekType = edtGetWeekType(viewMonday, refWeekA);
+  const todayStr = edtIso(new Date());
+  const isCurrentWeek = edtIso(viewMonday) === edtIso(edtGetMonday(new Date()));
+
+  const dayHeaders = EDT_DAYS.map((label, i) => {
+    const date = edtDateForDay(viewMonday, i);
+    return { label, date, isToday: edtIso(date) === todayStr };
+  });
+
+  const visibleBlocks = edtData.filter(b => {
+    const w = b.weeks || 'AB';
+    return w === 'AB' || w === weekType;
+  });
+
+  const saveBlocks = (blocks) => onDataChange('cdc-edt', blocks);
+  const saveRefA   = (d) => onDataChange('cdc-edt-refA', d.toISOString());
+
+  const prevWeek = () => setViewMonday(m => { const d=new Date(m); d.setDate(d.getDate()-7); return d; });
+  const nextWeek = () => setViewMonday(m => { const d=new Date(m); d.setDate(d.getDate()+7); return d; });
+  const goToday  = () => setViewMonday(edtGetMonday(new Date()));
+
+  const saveBlock = () => {
+    if (!form.title.trim()) return;
+    if (editId) {
+      saveBlocks(edtData.map(b => b.id === editId ? { ...b, ...form } : b));
+      setEditId(null);
+    } else {
+      saveBlocks([...edtData, { ...form, id: 'edt-' + Date.now() }]);
+    }
+    setShowAdd(false);
+    setForm(EMPTY_FORM);
+  };
+
+  const delBlock = (id) => {
+    if (!window.confirm('Supprimer ce cours ?')) return;
+    saveBlocks(edtData.filter(b => b.id !== id));
+  };
+
+  const editBlock = (b) => {
+    setForm({ day:b.day, startH:b.startH, startM:b.startM, endH:b.endH, endM:b.endM,
+      title:b.title, room:b.room||'', colorIdx:b.colorIdx||0, weeks:b.weeks||'AB', classId:b.classId||'' });
+    setEditId(b.id);
+    setShowAdd(true);
+  };
+
+  const saveRefWeekA = () => {
+    if (!refPickerVal) return;
+    const d = edtGetMonday(new Date(refPickerVal + 'T12:00'));
+    setRefWeekA(d);
+    saveRefA(d);
+    setShowRefPicker(false);
+  };
+
+  // Automatisation : créer séances + fiches depuis un bloc EDT
+  const runAutomation = () => {
+    if (!autoClassId || !autoPopup?.block) return;
+    const block = autoPopup.block;
+    const today = edtGetMonday(new Date());
+    const targetWeeks = [];
+    let cursor = new Date(today);
+    for (let i = 0; i < autoNbWeeks * 3 + 10; i++) {
+      const wt = edtGetWeekType(cursor, refWeekA);
+      const w  = block.weeks || 'AB';
+      if (w === 'AB' || w === wt) targetWeeks.push(new Date(cursor));
+      cursor.setDate(cursor.getDate() + 7);
+      if (targetWeeks.length >= autoNbWeeks) break;
+    }
+
+    const existSessions = { ...sessions };
+    const existFiches   = { ...fiches };
+    const classSess  = existSessions[autoClassId] || [];
+    const classFich  = existFiches[autoClassId]   || [];
+    const newSess = [], newFich = [], skipped = [];
+
+    targetWeeks.forEach(monday => {
+      const courseDate = edtDateForDay(monday, block.day);
+      const dateStr    = edtIso(courseDate);
+      const label      = block.title + (block.room ? ' · ' + block.room : '');
+      if (!classSess.some(s => s.date === dateStr && s.label === label)) {
+        newSess.push({ id:'s'+Date.now()+Math.random().toString(36).slice(2), date:dateStr, label, obs:{} });
+      } else { skipped.push(dateStr); }
+      if (!classFich.some(f => f.date === dateStr && f.titre === block.title)) {
+        newFich.push({ id:'f'+Date.now()+Math.random().toString(36).slice(2), date:dateStr,
+          titre:block.title, objectif:'', activite:'', devoirs:'', documents:'', aRevoir:'', absents:[] });
+      }
+    });
+
+    existSessions[autoClassId] = [...classSess, ...newSess].sort((a,b) => a.date.localeCompare(b.date));
+    existFiches[autoClassId]   = [...classFich, ...newFich].sort((a,b) => b.date.localeCompare(a.date));
+    onDataChange('sc-sessions', existSessions);
+    onDataChange('cdc-fiches',  existFiches);
+
+    const className = classes.find(c => c.id === autoClassId)?.name || autoClassId;
+    setAutoResult({ sessionsCreated: newSess.length, fichesCreated: newFich.length, skipped: skipped.length, className, dates: newSess.map(s => s.date) });
+  };
+
+  if (!cpData) return <ModulePlaceholder icon="📅" title="Emploi du temps" sub="Ouvrez d'abord un fichier ClassPro." />;
+
+  const ROWS = EDT_HOURS.length;
+
+  return (
+    <>
+      <div className="page-hd">
+        <div>
+          <div style={{ display:'flex', alignItems:'center', gap:'.5rem' }}>
+            <div className="phd-badge">📅 Emploi du temps</div>
+            <button onClick={() => { setRefPickerVal(edtIso(refWeekA)); setShowRefPicker(true); }}
+              style={{ display:'flex', alignItems:'center', gap:'.28rem', background:'rgba(255,255,255,.12)', border:'1px solid rgba(255,255,255,.2)', color:'rgba(255,255,255,.85)', fontSize:'.65rem', fontWeight:600, padding:'.18rem .55rem', borderRadius:99, cursor:'pointer' }}>
+              ⚙️ Réf. A/B
+            </button>
+          </div>
+          <div className="phd-title">Planning hebdomadaire</div>
+          <div className="phd-sub">
+            Semaine <strong style={{ color:'#fff' }}>{weekType}</strong> · {edtFmtShort(viewMonday)} → {edtFmtShort(edtDateForDay(viewMonday,4))}
+            {isCurrentWeek && <span style={{ marginLeft:'.5rem', background:'rgba(255,255,255,.18)', padding:'.1rem .42rem', borderRadius:99, fontSize:'.65rem', fontWeight:700 }}>Cette semaine</span>}
+          </div>
+        </div>
+        <div className="phd-actions">
+          {/* Navigation */}
+          <div style={{ display:'flex', alignItems:'center', gap:'.3rem', background:'rgba(255,255,255,.12)', border:'1px solid rgba(255,255,255,.2)', borderRadius:'var(--r-s)', padding:'.28rem .5rem' }}>
+            <button onClick={prevWeek} style={{ background:'none', border:'none', color:'#fff', cursor:'pointer', fontSize:'.9rem', padding:'.1rem .35rem', borderRadius:4, opacity:.8 }}>◀</button>
+            <span style={{ fontSize:'.75rem', color:'#fff', fontWeight:700, minWidth:80, textAlign:'center' }}>Sem. {weekType}</span>
+            <button onClick={nextWeek} style={{ background:'none', border:'none', color:'#fff', cursor:'pointer', fontSize:'.9rem', padding:'.1rem .35rem', borderRadius:4, opacity:.8 }}>▶</button>
+          </div>
+          {!isCurrentWeek && <button className="btn btn-ghost" onClick={goToday} style={{ fontSize:'.75rem' }}>Aujourd&apos;hui</button>}
+          <button className="btn btn-ghost"
+            style={{ fontSize:'.72rem', background:'rgba(255,255,255,.15)', border:'1px solid rgba(255,255,255,.3)', color:'#fff' }}
+            onClick={() => { setAutoClassId(''); setAutoResult(null); setAutoPopup({ block: null, fromHeader: true }); }}>
+            🔁 Créer fiches et suivi
+          </button>
+          <button className="btn btn-primary" onClick={() => { setEditId(null); setForm(EMPTY_FORM); setShowAdd(true); }}>
+            + Ajouter un cours
+          </button>
+          {edtData.length > 0 && (
+            <button className="btn" style={{ background:'rgba(220,38,38,.15)', border:'1px solid rgba(220,38,38,.3)', color:'#fca5a5', fontSize:'.72rem' }}
+              onClick={() => { if (window.confirm('Supprimer tous les cours ?')) saveBlocks([]); }}>
+              🗑️ Purger
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Grille EDT */}
+      <div className="page-content" style={{ paddingTop:0, overflow:'hidden', flex:1, display:'flex', flexDirection:'column' }}>
+        <div style={{ flex:1, overflow:'auto' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'54px repeat(5,1fr)', minWidth:680 }} onClick={() => ctxMenu && setCtxMenu(null)}>
+            {/* Header vide */}
+            <div style={{ background:'var(--surface2)', position:'sticky', top:0, zIndex:20, borderRight:'1px solid var(--border)', borderBottom:'2px solid var(--border)' }} />
+            {/* Headers jours */}
+            {dayHeaders.map((dh, i) => (
+              <div key={i} style={{ padding:'.45rem .4rem', textAlign:'center', fontSize:'.74rem', fontWeight:700, borderRight:'1px solid var(--border)', borderBottom: dh.isToday ? '2px solid var(--accent)' : '2px solid var(--border)', background: dh.isToday ? 'rgba(59,91,219,.06)' : 'var(--surface2)', position:'sticky', top:0, zIndex:20, color: dh.isToday ? 'var(--accent)' : 'var(--text2)' }}>
+                <div style={{ fontWeight: dh.isToday ? 800 : 700 }}>{dh.label}</div>
+                <div style={{ fontSize:'.62rem', fontWeight:400, color:'var(--text3)', marginTop:'.06rem' }}>{edtFmtShort(dh.date)}</div>
+              </div>
+            ))}
+            {/* Colonne heures */}
+            <div style={{ borderRight:'1px solid var(--border)', background:'var(--surface)' }}>
+              {EDT_HOURS.map(h => (
+                <div key={h} style={{ height:60, display:'flex', alignItems:'flex-start', justifyContent:'flex-end', padding:'.15rem .4rem 0', fontSize:'.65rem', color:'var(--text3)', borderBottom:'1px solid rgba(0,0,0,.04)' }}>{h}h</div>
+              ))}
+            </div>
+            {/* Colonnes jours avec blocs */}
+            {EDT_DAYS.map((_, di) => {
+              const isToday = edtIso(edtDateForDay(viewMonday, di)) === todayStr;
+              const colH = ROWS * 60;
+              const dayBlocks = visibleBlocks.filter(b => b.day === di);
+              return (
+                <div key={di} style={{ position:'relative', height:colH, borderRight:'1px solid var(--border)', background: isToday ? 'rgba(59,91,219,.02)' : 'var(--surface)' }}>
+                  {EDT_HOURS.map((h, hi) => (
+                    <div key={h} style={{ position:'absolute', top:hi*60, left:0, right:0, height:60, borderBottom:'1px solid rgba(0,0,0,.04)', pointerEvents:'none' }} />
+                  ))}
+                  {dayBlocks.map(b => {
+                    const col = EDT_COLORS[b.colorIdx || 0];
+                    const topPx = (b.startH - 8)*60 + b.startM;
+                    const hPx  = Math.max(22, (b.endH - b.startH)*60 + (b.endM - b.startM));
+                    const w    = b.weeks || 'AB';
+                    return (
+                      <div key={b.id}
+                        style={{ position:'absolute', left:2, right:2, top:topPx, height:hPx, borderRadius:6, padding:'.22rem .4rem', fontSize:'.67rem', fontWeight:700, overflow:'hidden', cursor:'pointer', borderLeft:`3px solid ${col.border}`, background:col.bg, color:col.text, boxShadow:'0 1px 4px rgba(0,0,0,.1)', zIndex:2 }}
+                        onClick={() => editBlock(b)}
+                        onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ block:b, x:e.clientX, y:e.clientY }); }}>
+                        <div style={{ fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{b.title}</div>
+                        {b.room && <div style={{ opacity:.7, fontSize:'.62rem' }}>📍{b.room}</div>}
+                        <div style={{ opacity:.7, fontSize:'.62rem' }}>{b.startH}:{String(b.startM).padStart(2,'0')}–{b.endH}:{String(b.endM).padStart(2,'0')}</div>
+                        {w !== 'AB' && <div style={{ position:'absolute', top:3, right:4, background:col.border, color:'#fff', fontSize:'.52rem', fontWeight:800, padding:'.05rem .25rem', borderRadius:3 }}>Sem.{w}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* État vide */}
+          {edtData.length === 0 && (
+            <div style={{ textAlign:'center', padding:'3rem', color:'var(--text3)' }}>
+              <div style={{ fontSize:'3rem', opacity:.15, marginBottom:'.75rem' }}>📅</div>
+              <div style={{ fontWeight:700, color:'var(--text2)', marginBottom:'.4rem' }}>Aucun cours dans l&apos;EDT</div>
+              <div style={{ fontSize:'.82rem' }}>Cliquez sur &ldquo;+ Ajouter un cours&rdquo; pour commencer</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Modale ajout/édition ── */}
+      {showAdd && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:'1.25rem' }}
+          onClick={e => e.target === e.currentTarget && setShowAdd(false)}>
+          <div style={{ background:'var(--surface)', borderRadius:'var(--r)', padding:'1.4rem', width:'100%', maxWidth:390, boxShadow:'var(--shadow-l)', maxHeight:'90vh', overflowY:'auto' }}>
+            <div style={{ fontFamily:'Roboto Slab,serif', fontSize:'.95rem', fontWeight:800, marginBottom:'.95rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <span>{editId ? 'Modifier le cours' : 'Ajouter un cours'}</span>
+              <button onClick={() => setShowAdd(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'1.3rem', color:'var(--text3)' }}>×</button>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:'.7rem' }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:'.25rem' }}>
+                <label style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Matière / Titre *</label>
+                <input type="text" placeholder="Espagnol, Mathématiques…" value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))} autoFocus
+                  style={{ padding:'.55rem .75rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.85rem', outline:'none' }} />
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'.6rem' }}>
+                <div style={{ display:'flex', flexDirection:'column', gap:'.25rem' }}>
+                  <label style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Salle</label>
+                  <input type="text" placeholder="Salle 12" value={form.room} onChange={e => setForm(f => ({...f, room: e.target.value}))}
+                    style={{ padding:'.55rem .75rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.85rem', outline:'none' }} />
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:'.25rem' }}>
+                  <label style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Semaine</label>
+                  <select value={form.weeks} onChange={e => setForm(f => ({...f, weeks: e.target.value}))}
+                    style={{ padding:'.55rem .75rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.85rem', outline:'none' }}>
+                    <option value="AB">A et B</option>
+                    <option value="A">Semaine A</option>
+                    <option value="B">Semaine B</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:'.25rem' }}>
+                <label style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Jour</label>
+                <select value={form.day} onChange={e => setForm(f => ({...f, day: +e.target.value}))}
+                  style={{ padding:'.55rem .75rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.85rem', outline:'none' }}>
+                  {EDT_DAYS.map((d,i) => <option key={d} value={i}>{d}</option>)}
+                </select>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'.6rem' }}>
+                <div style={{ display:'flex', flexDirection:'column', gap:'.25rem' }}>
+                  <label style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Début</label>
+                  <div style={{ display:'flex', gap:'.3rem' }}>
+                    <select value={form.startH} onChange={e => setForm(f => ({...f, startH: +e.target.value}))}
+                      style={{ flex:1, padding:'.5rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.82rem', outline:'none' }}>
+                      {EDT_HOURS.map(h => <option key={h} value={h}>{h}h</option>)}
+                    </select>
+                    <select value={form.startM} onChange={e => setForm(f => ({...f, startM: +e.target.value}))}
+                      style={{ flex:1, padding:'.5rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.82rem', outline:'none' }}>
+                      {[0,5,10,15,20,25,30,35,40,45,50,55].map(m => <option key={m} value={m}>{String(m).padStart(2,'0')}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:'.25rem' }}>
+                  <label style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Fin</label>
+                  <div style={{ display:'flex', gap:'.3rem' }}>
+                    <select value={form.endH} onChange={e => setForm(f => ({...f, endH: +e.target.value}))}
+                      style={{ flex:1, padding:'.5rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.82rem', outline:'none' }}>
+                      {EDT_HOURS.map(h => <option key={h} value={h}>{h}h</option>)}
+                    </select>
+                    <select value={form.endM} onChange={e => setForm(f => ({...f, endM: +e.target.value}))}
+                      style={{ flex:1, padding:'.5rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.82rem', outline:'none' }}>
+                      {[0,5,10,15,20,25,30,35,40,45,50,55].map(m => <option key={m} value={m}>{String(m).padStart(2,'0')}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              {classes.length > 0 && (
+                <div style={{ display:'flex', flexDirection:'column', gap:'.25rem' }}>
+                  <label style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Lier à une classe</label>
+                  <select value={form.classId} onChange={e => setForm(f => ({...f, classId: e.target.value}))}
+                    style={{ padding:'.55rem .75rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.85rem', outline:'none' }}>
+                    <option value="">— Aucune classe —</option>
+                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              )}
+              <div style={{ display:'flex', flexDirection:'column', gap:'.25rem' }}>
+                <label style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Couleur</label>
+                <div style={{ display:'flex', gap:'.4rem', flexWrap:'wrap' }}>
+                  {EDT_COLORS.map((c,i) => (
+                    <div key={i} onClick={() => setForm(f => ({...f, colorIdx: i}))}
+                      style={{ width:28, height:28, borderRadius:8, background: c.bg, border:`2.5px solid ${form.colorIdx===i ? c.border : 'transparent'}`, cursor:'pointer', boxShadow: form.colorIdx===i ? `0 0 0 2px ${c.border}` : 'none', transition:'all .15s' }} />
+                  ))}
+                </div>
+              </div>
+              <button onClick={saveBlock} disabled={!form.title.trim()}
+                style={{ marginTop:'.4rem', padding:'.65rem', borderRadius:'var(--r-s)', border:'none', background:'var(--accent)', color:'#fff', fontFamily:'Roboto,sans-serif', fontWeight:700, fontSize:'.88rem', cursor:'pointer', opacity: form.title.trim() ? 1 : .5 }}>
+                {editId ? 'Enregistrer' : 'Ajouter le cours'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modale Réf A/B ── */}
+      {showRefPicker && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999 }}
+          onClick={e => e.target === e.currentTarget && setShowRefPicker(false)}>
+          <div style={{ background:'var(--surface)', borderRadius:'var(--r)', padding:'1.5rem', width:400, boxShadow:'var(--shadow-l)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem' }}>
+              <div>
+                <div style={{ fontFamily:'Roboto Slab,serif', fontWeight:800, fontSize:'1rem' }}>⚙️ Référence semaine A</div>
+                <div style={{ fontSize:'.78rem', color:'var(--text3)', marginTop:'.2rem' }}>Choisissez une date appartenant à une semaine A</div>
+              </div>
+              <button onClick={() => setShowRefPicker(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'1.3rem', color:'var(--text3)' }}>×</button>
+            </div>
+            <div style={{ padding:'.75rem', background:'rgba(59,91,219,.07)', border:'1px solid rgba(59,91,219,.2)', borderRadius:'var(--r-s)', fontSize:'.8rem', lineHeight:1.65, marginBottom:'1rem' }}>
+              ClassPro calcule si une semaine est A ou B en comptant depuis cette référence.
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:'.25rem', marginBottom:'1rem' }}>
+              <label style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Date de référence</label>
+              <input type="date" value={refPickerVal} onChange={e => setRefPickerVal(e.target.value)}
+                style={{ padding:'.55rem .75rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.85rem', outline:'none' }} />
+            </div>
+            <div style={{ fontSize:'.75rem', color:'var(--text2)', marginBottom:'1rem' }}>
+              Référence actuelle : lundi du <strong>{refWeekA.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</strong>
+            </div>
+            <div style={{ display:'flex', gap:'.5rem', justifyContent:'flex-end' }}>
+              <button className="btn" onClick={() => setShowRefPicker(false)}>Annuler</button>
+              <button className="btn btn-primary" onClick={saveRefWeekA} disabled={!refPickerVal}>Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Menu contextuel clic droit ── */}
+      {ctxMenu && (
+        <>
+          <div style={{ position:'fixed', inset:0, zIndex:3000 }} onClick={() => setCtxMenu(null)} onContextMenu={e => { e.preventDefault(); setCtxMenu(null); }} />
+          <div style={{ position:'fixed', left: ctxMenu.x, top: ctxMenu.y, zIndex:3001, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r-s)', boxShadow:'var(--shadow-l)', minWidth:200, overflow:'hidden', padding:'.3rem 0' }}>
+            <div style={{ padding:'.3rem .85rem .35rem', fontSize:'.65rem', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.07em', borderBottom:'1px solid var(--border)' }}>
+              {ctxMenu.block.title} <span style={{ fontWeight:400, opacity:.7 }}>· Sem.{ctxMenu.block.weeks || 'AB'}</span>
+            </div>
+            {[
+              { icon:'🔁', label:'Créer fiches et suivi', action: () => { setAutoClassId(ctxMenu.block.classId||''); setAutoResult(null); setAutoPopup({ block: ctxMenu.block }); setCtxMenu(null); }},
+              { icon:'✏️', label:'Modifier', action: () => { editBlock(ctxMenu.block); setCtxMenu(null); }},
+              { icon:'🗑️', label:'Supprimer', danger: true, action: () => { delBlock(ctxMenu.block.id); setCtxMenu(null); }},
+            ].map((item, i) => (
+              <button key={i} onClick={item.action}
+                style={{ display:'flex', alignItems:'center', gap:'.55rem', width:'100%', padding:'.42rem .85rem', background:'none', border:'none', cursor:'pointer', fontSize:'.82rem', color: item.danger ? 'var(--danger)' : 'var(--text)', textAlign:'left', borderTop: item.danger ? '1px solid var(--border)' : 'none' }}
+                onMouseEnter={e => e.currentTarget.style.background = item.danger ? 'rgba(220,38,38,.07)' : 'var(--surface2)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                <span>{item.icon}</span> {item.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* ── Modale automatisation ── */}
+      {autoPopup && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999 }}
+          onClick={e => e.target === e.currentTarget && !autoResult && setAutoPopup(null)}>
+          <div style={{ background:'var(--surface)', borderRadius:'var(--r)', width:460, maxHeight:'90vh', overflowY:'auto', boxShadow:'var(--shadow-l)', overflow:'hidden' }}>
+            {autoResult ? (
+              <>
+                <div style={{ background:'linear-gradient(135deg,#0f9b6e,#059669)', padding:'1.25rem 1.75rem', display:'flex', alignItems:'center', gap:'.75rem' }}>
+                  <span style={{ fontSize:'1.6rem' }}>✅</span>
+                  <div>
+                    <div style={{ fontFamily:'Roboto Slab,serif', fontWeight:800, fontSize:'1.05rem', color:'#fff' }}>Automatisation effectuée !</div>
+                    <div style={{ fontSize:'.75rem', color:'rgba(255,255,255,.75)', marginTop:'.12rem' }}>Classe : {autoResult.className}</div>
+                  </div>
+                </div>
+                <div style={{ padding:'1rem 1.75rem', display:'flex', gap:'.75rem' }}>
+                  <div style={{ flex:1, padding:'.75rem', background:'rgba(15,155,110,.07)', border:'1px solid rgba(15,155,110,.2)', borderRadius:'var(--r-s)', textAlign:'center' }}>
+                    <div style={{ fontSize:'1.6rem', fontWeight:800, color:'var(--success)' }}>{autoResult.sessionsCreated}</div>
+                    <div style={{ fontSize:'.7rem', color:'var(--text2)' }}>séance{autoResult.sessionsCreated>1?'s':''}</div>
+                  </div>
+                  <div style={{ flex:1, padding:'.75rem', background:'rgba(59,91,219,.07)', border:'1px solid rgba(59,91,219,.2)', borderRadius:'var(--r-s)', textAlign:'center' }}>
+                    <div style={{ fontSize:'1.6rem', fontWeight:800, color:'var(--accent)' }}>{autoResult.fichesCreated}</div>
+                    <div style={{ fontSize:'.7rem', color:'var(--text2)' }}>fiche{autoResult.fichesCreated>1?'s':''}</div>
+                  </div>
+                  {autoResult.skipped > 0 && (
+                    <div style={{ flex:1, padding:'.75rem', background:'rgba(217,119,6,.07)', border:'1px solid rgba(217,119,6,.2)', borderRadius:'var(--r-s)', textAlign:'center' }}>
+                      <div style={{ fontSize:'1.6rem', fontWeight:800, color:'var(--warning)' }}>{autoResult.skipped}</div>
+                      <div style={{ fontSize:'.7rem', color:'var(--text2)' }}>ignoré{autoResult.skipped>1?'s':''}</div>
+                    </div>
+                  )}
+                </div>
+                <div style={{ padding:'0 1.75rem 1.25rem' }}>
+                  <button className="btn btn-primary" style={{ width:'100%', justifyContent:'center' }} onClick={() => setAutoPopup(null)}>Fermer</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ padding:'1.25rem 1.75rem', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div>
+                    <div style={{ fontFamily:'Roboto Slab,serif', fontWeight:800, fontSize:'1rem' }}>🔁 Créer les fiches et le suivi</div>
+                    <div style={{ fontSize:'.78rem', color:'var(--text3)', marginTop:'.2rem' }}>
+                      {autoPopup.block ? `${autoPopup.block.title} · ${EDT_DAYS[autoPopup.block.day]}` : 'Automatisation globale'}
+                    </div>
+                  </div>
+                  <button onClick={() => setAutoPopup(null)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'1.3rem', color:'var(--text3)' }}>×</button>
+                </div>
+                <div style={{ padding:'1.25rem 1.75rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
+                  {/* Sélection classe */}
+                  <div style={{ display:'flex', flexDirection:'column', gap:'.25rem' }}>
+                    <label style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Classe cible *</label>
+                    <select value={autoClassId} onChange={e => setAutoClassId(e.target.value)}
+                      style={{ padding:'.55rem .75rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.85rem', outline:'none' }}>
+                      <option value="">— Sélectionnez une classe —</option>
+                      {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  {/* Nombre de semaines */}
+                  <div style={{ display:'flex', flexDirection:'column', gap:'.25rem' }}>
+                    <label style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Nombre de semaines à créer</label>
+                    <input type="number" min={1} max={40} value={autoNbWeeks} onChange={e => setAutoNbWeeks(+e.target.value)}
+                      style={{ padding:'.55rem .75rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.85rem', outline:'none', width:100 }} />
+                  </div>
+                  <div style={{ padding:'.75rem', background:'rgba(59,91,219,.07)', border:'1px solid rgba(59,91,219,.2)', borderRadius:'var(--r-s)', fontSize:'.8rem', lineHeight:1.65 }}>
+                    Cela créera automatiquement les séances dans <strong>Suivi de classe</strong> et les fiches dans <strong>Carnet de bord</strong> pour les {autoNbWeeks} prochaines semaines, en tenant compte des semaines A/B.
+                  </div>
+                  <div style={{ display:'flex', gap:'.5rem', justifyContent:'flex-end' }}>
+                    <button className="btn" onClick={() => setAutoPopup(null)}>Annuler</button>
+                    <button className="btn btn-primary" disabled={!autoClassId || !autoPopup.block} onClick={runAutomation}>
+                      🔁 Lancer l&apos;automatisation
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── SHELL PRINCIPAL ───────────────────────────────────────────────────────────
 function Shell() {
   const [module, setModule] = useState('accueil');
@@ -3401,7 +4191,7 @@ function Shell() {
   };
 
   // Mise à jour d'une clé dans le JSON brut (depuis les modules éditeurs)
-  const KEY_MAP = { 'cdc-fiches': 'fiches', 'cdc-devoirs': 'devoirs', 'cdc-progs': 'progs', 'sc-classes': 'classes', 'sc-sessions': 'sessions' };
+  const KEY_MAP = { 'cdc-fiches': 'fiches', 'cdc-devoirs': 'devoirs', 'cdc-progs': 'progs', 'sc-classes': 'classes', 'sc-sessions': 'sessions', 'cdc-edt': 'edt', 'cdc-edt-refA': 'edtRefA' };
   const handleDataChange = (key, value) => {
     setCpData(prev => {
       if (!prev) return prev;
@@ -3437,6 +4227,14 @@ function Shell() {
         return <ModulePdfCarnet cpData={cpData} />;
       case 'pdf-bulletins':
         return <ModulePdfBulletins cpData={cpData} />;
+      case 'classes':
+        return <ModuleClasses cpData={cpData} onDataChange={handleDataChange} />;
+      case 'edt':
+        return <ModuleEDT cpData={cpData} onDataChange={handleDataChange} />;
+      case 'cours':
+        return <ModulePlaceholder icon="✏️" title="Créer un cours" sub="Module en cours de développement — disponible prochainement." soon={true} />;
+      case 'plan-classe':
+        return <ModulePlaceholder icon="🏫" title="Plan de classe" sub="Module en cours de développement — disponible prochainement." soon={true} />;
       case 'academie':
         return <ModuleAcademie />;
       default:
