@@ -128,18 +128,35 @@ Le fichier JSON échangé entre ClassPro et ClassPro Desktop a la structure suiv
 - Édition des séquences de progression
 - Édition des fiches carnet de bord
 
-### Étape 3 — Génération PDF Progression
+### Étape 3 — Génération PDF Progression *(en cours)*
 - Récapitulatif de progression annuelle par classe
 - Export PDF mise en page propre
 
-### Étape 4 — Génération PDF Carnet de bord
+### Étape 4 — Génération PDF Carnet de bord *(en cours)*
 - PDF des fiches séance
 - Personnalisation de la mise en page
 
-### Étape 5 — PDF Bulletins & Plan de classe
+### Étape 5 — PDF Bulletins & Plan de classe *(en cours)*
 - Export bulletins conseil de classe
 - Plan de classe imprimable
 
+### Étape 6 — Créer un cours 
+- Possibilité d'ajouter des documents et de préparer le support de cours en avance 
+- Exporter le support en PDF 
+
+### Étape 7 — Gestion des paquets et BetaTest 
+- Test de la simplicité de l'utilisation 
+- Retour user et correctifs sous la dénomination 1.0.X 
+
+## Pour la 1.1 
+
+### Étape 8 — Profil du professeur 
+- Activer des modules en fonction de la discipline enseignée 
+- Module ClassMath pour pouvoir faire des équations ou de la géométrie, Module ClassScience pour faire des schémas techniques, Modules ClassLangue pour faire des outils de langue, ... 
+
+### Étape 9 — R&D pour la sortie d'un module élève ? 
+- Cette étape reste conditionnelle ; je ne sais pas si je vais la mener à terme 
+
 ---
 
-© 2025 Lucas Le Coadou · Collège Alfred Crouzet, Servian
+© 2026 Lucas Le Coadou 
