@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -10,26 +10,47 @@ const APP_VERSION = '1.0.0';
 let mainWindow;
 
 function createWindow() {
+  // Chemins icônes selon la plateforme
+  const iconMac  = path.join(__dirname, '../../assets/icons/mac/icon.icns');
+  const iconWin  = path.join(__dirname, '../../assets/icons/win/icon.ico');
+  const iconPng  = path.join(__dirname, '../../assets/icons/png/512x512.png');
+  const iconPath = process.platform === 'darwin' ? iconMac
+                 : process.platform === 'win32'  ? iconWin
+                 : iconPng;
+  const iconExists = fs.existsSync(iconPath);
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
-    minWidth: 900,
-    minHeight: 600,
+    minWidth: 860,
+    minHeight: 560,
     title: 'ClassPro Desktop',
     backgroundColor: '#0f1b4d',
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    titleBarStyle: process.platform === 'darwin' ? 'hidden' : 'default',
+    // Sur Mac : zone draggable étendue pour déplacer la fenêtre
+    ...(process.platform === 'darwin' ? { trafficLightPosition: { x: 14, y: 14 } } : {}),
+    // Icône dock/taskbar
+    ...(iconExists ? { icon: iconPath } : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
-    show: false, // On attend le 'ready-to-show'
+    show: false,
   });
 
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+    // Icône dans le dock macOS (runtime)
+    if (process.platform === 'darwin' && iconExists) {
+      try {
+        const dockIcon = path.join(__dirname, '../../assets/icons/png/512x512.png');
+        const img = nativeImage.createFromPath(fs.existsSync(dockIcon) ? dockIcon : iconPath);
+        app.dock.setIcon(img);
+      } catch (e) { /* ignore */ }
+    }
     if (isDev) mainWindow.webContents.openDevTools();
   });
 
@@ -96,7 +117,6 @@ function buildMenu() {
 
 // ── IPC Handlers ─────────────────────────────────────────────────────────────
 
-// Ouvrir un fichier JSON ClassPro
 ipcMain.handle('dialog:open-json', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
     title: 'Ouvrir un fichier ClassPro',
@@ -113,7 +133,6 @@ ipcMain.handle('dialog:open-json', async () => {
   }
 });
 
-// Sauvegarder un fichier JSON
 ipcMain.handle('dialog:save-json', async (event, { data, defaultName }) => {
   const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
     title: 'Sauvegarder le fichier ClassPro',
@@ -129,7 +148,6 @@ ipcMain.handle('dialog:save-json', async (event, { data, defaultName }) => {
   }
 });
 
-// Sauvegarder un PDF (données binaires base64 depuis renderer)
 ipcMain.handle('dialog:save-pdf', async (event, { base64, defaultName }) => {
   const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
     title: 'Exporter le PDF',
@@ -146,12 +164,10 @@ ipcMain.handle('dialog:save-pdf', async (event, { base64, defaultName }) => {
   }
 });
 
-// Ouvrir un fichier dans le gestionnaire de fichiers natif
 ipcMain.handle('shell:show-file', async (event, filePath) => {
   shell.showItemInFolder(filePath);
 });
 
-// Infos app
 ipcMain.handle('app:info', () => ({
   version: APP_VERSION,
   platform: process.platform,
@@ -159,6 +175,9 @@ ipcMain.handle('app:info', () => ({
 }));
 
 // ── App lifecycle ────────────────────────────────────────────────────────────
+// Nom affiché dans la barre de menu macOS et au survol taskbar
+app.setName('ClassPro Desktop');
+
 app.whenReady().then(() => {
   buildMenu();
   createWindow();

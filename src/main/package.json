@@ -1,7 +1,7 @@
 {
   "name": "classpro-desktop",
   "version": "1.0.0",
-  "description": "ClassPro Desktop — Logiciel de gestion de classe",
+  "description": "ClassPro Desktop — Logiciel parent de ClassPro",
   "main": "src/main/main.js",
   "author": {
     "name": "Lucas Le Coadou",

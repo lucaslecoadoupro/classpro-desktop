@@ -1,23 +1,29 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// ── API exposée au renderer via window.cpd ───────────────────────────────────
 contextBridge.exposeInMainWorld('cpd', {
-
-  // ── Fichiers ────────────────────────────────────────────────────────────────
+  // Ouvrir un fichier JSON ClassPro
   openJson: () => ipcRenderer.invoke('dialog:open-json'),
-  saveJson: (data, defaultName) => ipcRenderer.invoke('dialog:save-json', { data, defaultName }),
-  savePdf: (base64, defaultName) => ipcRenderer.invoke('dialog:save-pdf', { base64, defaultName }),
+
+  // Sauvegarder un fichier JSON
+  saveJson: (data, defaultName) =>
+    ipcRenderer.invoke('dialog:save-json', { data, defaultName }),
+
+  // Sauvegarder un PDF (base64)
+  savePdf: (base64, defaultName) =>
+    ipcRenderer.invoke('dialog:save-pdf', { base64, defaultName }),
+
+  // Ouvrir dans le Finder/Explorateur
   showFile: (filePath) => ipcRenderer.invoke('shell:show-file', filePath),
 
-  // ── App ─────────────────────────────────────────────────────────────────────
+  // Infos app
   getInfo: () => ipcRenderer.invoke('app:info'),
 
-  // ── Écoute des événements menu ───────────────────────────────────────────────
-  onMenuOpenJson:  (cb) => ipcRenderer.on('menu:open-json',  () => cb()),
-  onMenuSaveJson:  (cb) => ipcRenderer.on('menu:save-json',  () => cb()),
-  onMenuExportPdf: (cb) => ipcRenderer.on('menu:export-pdf', () => cb()),
-  onMenuAbout:     (cb) => ipcRenderer.on('menu:about',      () => cb()),
+  // Événements menu natif
+  onMenuOpenJson: (cb) => ipcRenderer.on('menu:open-json', cb),
+  onMenuSaveJson: (cb) => ipcRenderer.on('menu:save-json', cb),
+  onMenuAbout:    (cb) => ipcRenderer.on('menu:about', cb),
+  onMenuExportPdf:(cb) => ipcRenderer.on('menu:export-pdf', cb),
 
-  // Nettoyage propre
+  // Nettoyage
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
 });

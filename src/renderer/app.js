@@ -98,9 +98,11 @@ function Sidebar({ activeModule, onNavigate, cpData, filePath, appVersion }) {
 
   return (
     <div className="sidebar">
-      <div className="sb-logo">
-        <div className="sb-logo-icon" dangerouslySetInnerHTML={{ __html: LOGO_SVG }} />
-        <div className="sb-logo-text">
+      {/* Zone invisible draggable en haut de la sidebar pour déplacer la fenêtre */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 52, WebkitAppRegion: 'drag', zIndex: 0 }} />
+      <div className="sb-logo" style={{ WebkitAppRegion: 'drag', cursor: 'default', userSelect: 'none', position: 'relative', zIndex: 1 }}>
+        <div className="sb-logo-icon" style={{ WebkitAppRegion: 'no-drag' }} dangerouslySetInnerHTML={{ __html: LOGO_SVG }} />
+        <div className="sb-logo-text" style={{ WebkitAppRegion: 'no-drag' }}>
           ClassPro Desktop
           <span>Logiciel parent</span>
         </div>
@@ -239,37 +241,7 @@ function ModuleAccueil({ onOpen, onNavigate, cpData, filePath }) {
             </div>
           </div>
 
-          {/* Raccourcis modules */}
-          <div className="card">
-            <div className="card-hd">
-              <div className="card-title">⚡ Accès rapide</div>
-            </div>
-            <div className="card-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '.6rem' }}>
-              {[
-                { id: 'donnees', icon: '📊', label: 'Voir les données' },
-                { id: 'suivi', icon: '👥', label: 'Suivi de classe' },
-                { id: 'carnet', icon: '📓', label: 'Carnet de bord' },
-                { id: 'pdf-progression', icon: '📄', label: 'PDF Progression' },
-                { id: 'pdf-carnet', icon: '📄', label: 'PDF Carnet' },
-              ].map(item => (
-                <button key={item.id}
-                  onClick={() => onNavigate(item.id)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '.5rem',
-                    padding: '.6rem .875rem', borderRadius: 'var(--r-s)',
-                    border: '1px solid var(--border)', background: 'var(--surface2)',
-                    cursor: 'pointer', transition: 'all .15s', textAlign: 'left',
-                    fontSize: '.8rem', fontWeight: 600, color: 'var(--text)',
-                    fontFamily: 'Roboto, sans-serif',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text)'; }}
-                >
-                  <span>{item.icon}</span> {item.label}
-                </button>
-              ))}
-            </div>
-          </div>
+
         </div>
       </>
     );
@@ -301,7 +273,7 @@ function ModuleAccueil({ onOpen, onNavigate, cpData, filePath }) {
                 <div className="welcome-btn-hint">Importez le JSON exporté depuis ClassPro sur votre clé</div>
               </div>
             </button>
-            <button className="welcome-btn" style={{ gridColumn: '1 / -1', opacity: .5, cursor: 'default' }}>
+            <button className="welcome-btn" style={{ opacity: .5, cursor: 'default' }}>
               <div className="welcome-btn-icon">✨</div>
               <div>
                 <div className="welcome-btn-label" style={{ color: 'var(--text)' }}>Nouveau fichier</div>
@@ -647,6 +619,7 @@ function ModuleSuivi({ cpData, onDataChange }) {
         </div>
         <div className="phd-actions">
           {selId && <button className="btn btn-ghost" onClick={() => setShowNewSeance(true)}>+ Séance</button>}
+
           <button className="btn btn-white" onClick={() => { setNewNom(''); setShowNewClasse(true); }}>+ Classe</button>
           {selId && <>
             <button className="btn btn-ghost" title="Renommer" onClick={() => { setRenomNom(cur?.name || ''); setShowRenomClasse(true); }}>✏️</button>
@@ -688,7 +661,7 @@ function ModuleSuivi({ cpData, onDataChange }) {
 
             {/* Vue observations */}
             {vueSuivi === 'obs' && (
-              <div style={{ flex: 1, overflow: 'auto' }}>
+              <div style={{ flex: 1, overflowX: 'auto', overflowY: 'auto' }}>
                 {curSess.length === 0 ? (
                   <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text3)', fontSize: '.82rem' }}>
                     Aucune séance · <button onClick={() => setShowNewSeance(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontWeight: 700 }}>+ Ajouter une séance</button>
@@ -698,15 +671,15 @@ function ModuleSuivi({ cpData, onDataChange }) {
                     Aucun élève · <button onClick={() => setVueSuivi('eleves')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontWeight: 700 }}>Gérer les élèves →</button>
                   </div>
                 ) : (
-                  <table style={{ borderCollapse: 'collapse', minWidth: '100%', fontSize: '.75rem' }}>
+                  <table style={{ borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: '.75rem' }}>
                     <thead>
                       <tr style={{ background: 'var(--surface2)', position: 'sticky', top: 0, zIndex: 10 }}>
-                        <th style={{ padding: '.55rem .875rem', textAlign: 'left', fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)', minWidth: 140 }}>Élève</th>
+                        <th style={{ padding: '.55rem .875rem', textAlign: 'left', fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)', width: 160, minWidth: 160 }}>Élève</th>
                         {curSess.map(s => (
-                          <th key={s.id} style={{ padding: '.45rem .5rem', textAlign: 'center', fontWeight: 600, color: 'var(--text2)', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border)', minWidth: 90, position: 'relative' }}>
-                            <div style={{ fontSize: '.68rem', fontWeight: 700 }}>{s.date ? new Date(s.date + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '—'}</div>
-                            <div style={{ fontSize: '.62rem', color: 'var(--text3)', fontWeight: 400 }}>{s.label}</div>
-                            <button onClick={() => delSeance(s.id)} style={{ position: 'absolute', top: 2, right: 2, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: '.6rem', opacity: .5 }} title="Supprimer">×</button>
+                          <th key={s.id} style={{ width: 108, minWidth: 108, padding: '.35rem .3rem', textAlign: 'center', fontWeight: 600, color: 'var(--text2)', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border)', position: 'relative' }}>
+                            <div style={{ fontSize: '.65rem', fontWeight: 700, color: 'var(--accent)' }}>{s.date ? new Date(s.date + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '—'}</div>
+                            <div style={{ fontSize: '.58rem', color: 'var(--text3)', fontWeight: 400 }}>{s.label}</div>
+                            <button onClick={() => delSeance(s.id)} style={{ position: 'absolute', top: 2, right: 2, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: '.55rem', opacity: .4 }} title="Supprimer">×</button>
                           </th>
                         ))}
                       </tr>
@@ -714,16 +687,17 @@ function ModuleSuivi({ cpData, onDataChange }) {
                     <tbody>
                       {cur.eleves.map((el, i) => (
                         <tr key={el.id} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)' }}>
-                          <td style={{ padding: '.45rem .875rem', fontWeight: 600, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '.38rem .875rem', fontWeight: 600, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', width: 160 }}>
                             <button onClick={() => setBilanEl(el)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', fontWeight: 600, fontSize: '.78rem', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>{el.nom}</button>
                           </td>
                           {curSess.map(s => (
-                            <td key={s.id} style={{ padding: '.3rem .35rem', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border)', textAlign: 'center' }}>
-                              <div style={{ display: 'flex', gap: '.1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <td key={s.id} style={{ padding: '.28rem .25rem', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border)', textAlign: 'center', width: 108 }}>
+                              <div style={{ display: 'flex', gap: '1px', justifyContent: 'center', flexWrap: 'nowrap' }}>
                                 {OBS.map(o => {
                                   const active = hasObs(s.id, el.id, o.id);
                                   return (
-                                    <button key={o.id} onClick={() => toggleObs(s.id, el.id, o.id)} title={o.label} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${active ? obsColor(o.k) : 'var(--border)'}`, background: active ? obsBg(o.k) : 'transparent', cursor: 'pointer', fontSize: '.72rem', opacity: active ? 1 : .3, transition: 'all .12s' }}>
+                                    <button key={o.id} onClick={() => toggleObs(s.id, el.id, o.id)} title={o.label}
+                                      style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${active ? obsColor(o.k) : 'var(--border)'}`, background: active ? obsBg(o.k) : 'transparent', cursor: 'pointer', fontSize: '.56rem', opacity: active ? 1 : .2, transition: 'all .12s', flexShrink: 0, padding: 0, lineHeight: 1 }}>
                                       {o.emoji}
                                     </button>
                                   );
@@ -1715,7 +1689,7 @@ function ModuleConseil({ cpData }) {
                           <th style={{ padding: '.42rem .65rem', textAlign: 'center', fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>T2</th>
                           <th style={{ padding: '.42rem .65rem', textAlign: 'center', fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>T1</th>
                           <th style={{ padding: '.42rem .65rem', textAlign: 'center', fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>Évol.</th>
-                          <th style={{ padding: '.42rem .65rem', textAlign: 'center', fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>Classe</th>
+                          {optionsPdf.moyClasse && <th style={{ padding: '.42rem .65rem', textAlign: 'center', fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>Classe</th>}
                           <th style={{ padding: '.42rem .75rem', textAlign: 'left', fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>Appréciation</th>
                         </tr>
                       </thead>
@@ -1729,7 +1703,7 @@ function ModuleConseil({ cpData }) {
                             <td style={{ padding: '.38rem .65rem', borderBottom: '1px solid var(--border)', textAlign: 'center', fontWeight: 800, color: colorMoy(sub.gradeStudent) }}>{sub.gradeStudent?.toFixed(2) ?? '—'}</td>
                             <td style={{ padding: '.38rem .65rem', borderBottom: '1px solid var(--border)', textAlign: 'center', color: 'var(--text2)' }}>{sub.gradeT1?.toFixed(2) ?? '—'}</td>
                             <td style={{ padding: '.38rem .65rem', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>{diffBadge(sub.gradeStudent, sub.gradeT1)}</td>
-                            <td style={{ padding: '.38rem .65rem', borderBottom: '1px solid var(--border)', textAlign: 'center', color: 'var(--text3)' }}>{sub.gradeClass?.toFixed(1) ?? '—'}</td>
+                            {optionsPdf.moyClasse && <td style={{ padding: '.38rem .65rem', borderBottom: '1px solid var(--border)', textAlign: 'center', color: 'var(--text3)' }}>{sub.gradeClass?.toFixed(1) ?? '—'}</td>}
                             <td style={{ padding: '.38rem .75rem', borderBottom: '1px solid var(--border)', color: 'var(--text2)', fontSize: '.72rem', maxWidth: 300 }}>
                               <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={sub.appreciation}>{sub.appreciation || '—'}</div>
                             </td>
@@ -1787,6 +1761,1119 @@ function ModuleConseil({ cpData }) {
   );
 }
 
+// ── MODULE PDF CARNET DE BORD ────────────────────────────────────────────────
+function ModulePdfCarnet({ cpData }) {
+  const classes = cpData?.classes || [];
+  const fiches = cpData?.fiches || {};
+  const profile = cpData?.profile || {};
+
+  const [selCls, setSelCls] = useState(() => classes[0]?.id || null);
+  const [mode, setMode] = useState('une'); // 'une' | 'plusieurs'
+  const [generating, setGenerating] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const cls = classes.find(c => c.id === selCls);
+  const clsFiches = (fiches[selCls] || [])
+    .slice()
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+  const fmtD = (iso) => {
+    if (!iso) return '';
+    return new Date(iso + 'T12:00').toLocaleDateString('fr-FR', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+  };
+
+  const CHAMPS = [
+    { key: 'objectif',  label: 'Objectifs' },
+    { key: 'activite',  label: 'Activite / Deroulement' },
+    { key: 'devoirs',   label: 'Devoirs donnes' },
+    { key: 'documents', label: 'Documents / Supports' },
+    { key: 'aRevoir',   label: 'A revoir' },
+  ];
+
+  const drawHeader = (doc, PW, PH, ML, MR, WHITE, ACCENT, GRAY, titre, date, cls, profile, pageNum, total) => {
+    doc.setFillColor(...ACCENT);
+    doc.rect(0, 0, PW, 22, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...WHITE);
+    doc.text(profile.etablissement || 'ClassPro Desktop', ML, 8);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text((profile.prenom || '') + ' ' + (profile.nom || '') + ' - ' + (cls?.name || ''), ML, 13.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text(titre || 'Fiche de cours', PW - MR, 8, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    if (date) doc.text(fmtD(date), PW - MR, 13.5, { align: 'right' });
+    doc.setFontSize(7);
+    doc.setTextColor(...GRAY);
+    doc.text(pageNum + ' / ' + total, PW - MR, PH - 8, { align: 'right' });
+    doc.text('ClassPro Desktop', ML, PH - 8);
+  };
+
+  const genererPdf = async () => {
+    if (!cls || clsFiches.length === 0) return;
+    if (!window.jspdf) { alert('jsPDF non chargé. Vérifiez que vendor/jspdf.umd.min.js est présent.'); return; }
+
+    setGenerating(true);
+    setDone(false);
+
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const PW = 210, PH = 297, ML = 15, MR = 15, MB = 15;
+      const CW = PW - ML - MR;
+      const ACCENT = [59, 91, 219];
+      const DARK = [15, 23, 42];
+      const GRAY = [100, 116, 139];
+      const LIGHT = [241, 245, 249];
+      const WHITE = [255, 255, 255];
+
+      if (mode === 'une') {
+        // UNE FICHE PAR PAGE
+        clsFiches.forEach((fiche, idx) => {
+          if (idx > 0) doc.addPage();
+          drawHeader(doc, PW, PH, ML, MR, WHITE, ACCENT, GRAY, fiche.titre, fiche.date, cls, profile, idx + 1, clsFiches.length);
+
+          let y = 28;
+
+          CHAMPS.forEach(({ key, label }) => {
+            const val = (fiche[key] || '').trim();
+            if (!val) return;
+
+            // Label
+            doc.setFillColor(...LIGHT);
+            doc.roundedRect(ML, y, CW, 6.5, 1, 1, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.setTextColor(...ACCENT);
+            doc.text(label, ML + 2.5, y + 4.5);
+            y += 8;
+
+            // Contenu
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(...DARK);
+            const lines = doc.splitTextToSize(val, CW - 4);
+            lines.forEach(line => {
+              if (y > PH - MB - 10) {
+                doc.addPage();
+                drawHeader(doc, PW, PH, ML, MR, WHITE, ACCENT, GRAY, fiche.titre, fiche.date, cls, profile, idx + 1, clsFiches.length);
+                y = 28;
+              }
+              doc.text(line, ML + 2, y + 3.5);
+              y += 5;
+            });
+            y += 4;
+          });
+
+          // Absents
+          const elevesCls = cls?.eleves || [];
+          const nomsAbsents = (fiche.absents || [])
+            .map(id => elevesCls.find(e => e.id === id)?.nom)
+            .filter(Boolean).join(', ');
+          if (nomsAbsents) {
+            doc.setFillColor(254, 242, 242);
+            doc.roundedRect(ML, y, CW, 6.5, 1, 1, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.setTextColor(220, 38, 38);
+            doc.text('Absents', ML + 2.5, y + 4.5);
+            y += 8;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(...DARK);
+            doc.splitTextToSize(nomsAbsents, CW - 4).forEach(line => {
+              doc.text(line, ML + 2, y + 3.5); y += 5;
+            });
+          }
+        });
+
+      } else {
+        // PLUSIEURS FICHES PAR PAGE (2x2)
+        const colW = (CW - 5) / 2;
+        const colH = 112;
+        const totalPages = Math.ceil(clsFiches.length / 4);
+        let page = 0;
+
+        for (let ficheIdx = 0; ficheIdx < clsFiches.length; ficheIdx++) {
+          const slot = ficheIdx % 4;
+          if (slot === 0) {
+            if (page > 0) doc.addPage();
+            page++;
+            drawHeader(doc, PW, PH, ML, MR, WHITE, ACCENT, GRAY, cls.name + ' - Carnet de bord', null, cls, profile, page, totalPages);
+          }
+          const fiche = clsFiches[ficheIdx];
+          const col = slot % 2;
+          const row = Math.floor(slot / 2);
+          const x = ML + col * (colW + 5);
+          const y0 = 26 + row * (colH + 4);
+
+          // Cadre
+          doc.setDrawColor(220, 230, 250);
+          doc.setLineWidth(0.4);
+          doc.roundedRect(x, y0, colW, colH, 2, 2, 'S');
+
+          // Header fiche
+          doc.setFillColor(...ACCENT);
+          doc.roundedRect(x, y0, colW, 11, 2, 2, 'F');
+          doc.rect(x, y0 + 6, colW, 5, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.5);
+          doc.setTextColor(...WHITE);
+          const titreShort = (fiche.titre || 'Sans titre').slice(0, 32);
+          doc.text(titreShort, x + 2.5, y0 + 5);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(6.5);
+          doc.text(fmtD(fiche.date), x + 2.5, y0 + 9.5);
+
+          let fy = y0 + 14;
+          const maxY = y0 + colH - 3;
+
+          CHAMPS.forEach(({ key, label }) => {
+            const val = (fiche[key] || '').trim();
+            if (!val || fy >= maxY - 8) return;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(6);
+            doc.setTextColor(...ACCENT);
+            doc.text(label, x + 2, fy);
+            fy += 3.5;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(6.5);
+            doc.setTextColor(...DARK);
+            const lines = doc.splitTextToSize(val, colW - 4);
+            const maxLines = Math.max(1, Math.floor((maxY - fy) / 4));
+            lines.slice(0, maxLines).forEach(line => { doc.text(line, x + 2, fy); fy += 4; });
+            if (lines.length > maxLines) { doc.setTextColor(...GRAY); doc.text('...', x + 2, fy); }
+            fy += 2;
+          });
+        }
+      }
+
+      // Sauvegarder
+      const nomClasse = (cls.name || 'classe').replace(/[^a-zA-Z0-9]/g, '_');
+      const dateStr = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
+      const defaultName = 'Carnet_' + nomClasse + '_' + dateStr + '.pdf';
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+      const result = await window.cpd.savePdf(pdfBase64, defaultName);
+      if (result?.ok) { setDone(true); setTimeout(() => setDone(false), 3000); }
+
+    } catch (err) {
+      console.error('Erreur PDF:', err);
+      alert('Erreur : ' + err.message);
+    }
+    setGenerating(false);
+  };
+
+  if (!cpData) return <ModulePlaceholder icon="📄" title="PDF Carnet de bord" sub="Ouvrez d'abord un fichier ClassPro." />;
+
+  return (
+    <>
+      <div className="page-hd">
+        <div>
+          <div className="phd-badge">📄 PDF</div>
+          <div className="phd-title">PDF Carnet de bord</div>
+          <div className="phd-sub">{cls ? cls.name + ' · ' + clsFiches.length + ' fiche(s)' : 'Selectionnez une classe'}</div>
+        </div>
+        <div className="phd-actions">
+          <button className="btn btn-primary" onClick={genererPdf} disabled={!selCls || clsFiches.length === 0 || generating}>
+            {generating ? 'Generation...' : done ? 'PDF sauvegarde !' : 'Generer le PDF'}
+          </button>
+        </div>
+      </div>
+
+      <div className="page-content">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', maxWidth: 760 }}>
+
+          <div className="card">
+            <div className="card-hd"><div className="card-title">Classe a exporter</div></div>
+            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+              {classes.length === 0 ? (
+                <div style={{ color: 'var(--text3)', fontSize: '.82rem' }}>Aucune classe disponible.</div>
+              ) : classes.map(c => {
+                const nb = (fiches[c.id] || []).length;
+                return (
+                  <button key={c.id} onClick={() => setSelCls(c.id)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '.55rem .875rem', border: '1.5px solid ' + (selCls === c.id ? 'var(--accent)' : 'var(--border)'), borderRadius: 'var(--r-s)', background: selCls === c.id ? 'rgba(59,91,219,.07)' : 'var(--surface)', cursor: 'pointer', fontFamily: 'Roboto, sans-serif', fontSize: '.85rem', fontWeight: selCls === c.id ? 700 : 400, color: selCls === c.id ? 'var(--accent)' : 'var(--text)', transition: 'all .15s' }}>
+                    <span>{c.name}</span>
+                    <span style={{ fontSize: '.72rem', color: 'var(--text3)' }}>{nb} fiche{nb > 1 ? 's' : ''}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-hd"><div className="card-title">Options de mise en page</div></div>
+            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
+              <div style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Format</div>
+              {[
+                { id: 'une', label: 'Une fiche par page', desc: 'Detaille, ideal pour l\'impression individuelle' },
+                { id: 'plusieurs', label: 'Plusieurs fiches par page', desc: '4 fiches par page (2x2), format compact' },
+              ].map(opt => (
+                <button key={opt.id} onClick={() => setMode(opt.id)}
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: '.75rem', padding: '.65rem .875rem', border: '1.5px solid ' + (mode === opt.id ? 'var(--accent)' : 'var(--border)'), borderRadius: 'var(--r-s)', background: mode === opt.id ? 'rgba(59,91,219,.07)' : 'var(--surface)', cursor: 'pointer', textAlign: 'left', transition: 'all .15s', fontFamily: 'Roboto, sans-serif' }}>
+                  <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid ' + (mode === opt.id ? 'var(--accent)' : 'var(--border)'), background: mode === opt.id ? 'var(--accent)' : 'transparent', flexShrink: 0, marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {mode === opt.id && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '.85rem', color: mode === opt.id ? 'var(--accent)' : 'var(--text)' }}>{opt.label}</div>
+                    <div style={{ fontSize: '.73rem', color: 'var(--text3)', marginTop: '.15rem' }}>{opt.desc}</div>
+                  </div>
+                </button>
+              ))}
+              <div style={{ padding: '.65rem', background: 'var(--surface2)', borderRadius: 'var(--r-s)', border: '1px solid var(--border)', fontSize: '.75rem', color: 'var(--text2)', lineHeight: 1.6 }}>
+                Contenu inclus : titre, date, objectifs, activite, devoirs, documents, a revoir, absents
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {selCls && (
+          <div className="card" style={{ marginTop: '1rem', maxWidth: 760 }}>
+            <div className="card-hd"><div className="card-title">Fiches a exporter ({clsFiches.length})</div></div>
+            <div className="card-body">
+              {clsFiches.length === 0 ? (
+                <div style={{ color: 'var(--text3)', fontSize: '.82rem', fontStyle: 'italic' }}>
+                  Aucune fiche pour cette classe. Creez des fiches dans le module Carnet de bord.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.32rem' }}>
+                  {clsFiches.map((f, i) => (
+                    <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: '.75rem', padding: '.38rem .65rem', background: 'var(--surface2)', borderRadius: 'var(--r-xs)', fontSize: '.8rem' }}>
+                      <span style={{ color: 'var(--text3)', fontWeight: 600, minWidth: 24 }}>#{i + 1}</span>
+                      <span style={{ flex: 1, fontWeight: 500 }}>{f.titre || 'Sans titre'}</span>
+                      <span style={{ color: 'var(--text3)', fontSize: '.72rem' }}>{fmtD(f.date)}</span>
+                      {(f.absents || []).length > 0 && <span style={{ color: 'var(--danger)', fontSize: '.7rem', fontWeight: 600 }}>{f.absents.length} absent(s)</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ── MODULE PDF BULLETINS ─────────────────────────────────────────────────────
+function ModulePdfBulletins({ cpData }) {
+  const tousLesBulletins = cpData?.bulletins || [];
+  const profile = cpData?.profile || {};
+
+  // Classes disponibles dans les bulletins
+  const classesDispos = useMemo(() => {
+    const s = new Set(tousLesBulletins.map(b => b.classe).filter(Boolean));
+    return [...s].sort();
+  }, [tousLesBulletins]);
+
+  const [selClasse, setSelClasse] = useState(() => classesDispos[0] || null);
+  const [modeSelection, setModeSelection] = useState('tous'); // 'tous' | 'choix'
+  const [generating, setGenerating] = useState(false);
+  const [done, setDone] = useState(false);
+  const [optionsPdf, setOptionsPdf] = useState({
+    moyennes: true,
+    notes: true,
+    moyClasse: true,
+    appreciation: true,
+    absences: true,
+    orientation: true,
+  });
+
+  const toggleOpt = (key) => setOptionsPdf(p => ({ ...p, [key]: !p[key] }));
+
+  // Bulletins de la classe selectionnee
+  const bulletins = useMemo(() => {
+    if (!selClasse) return tousLesBulletins;
+    return tousLesBulletins.filter(b => b.classe === selClasse);
+  }, [tousLesBulletins, selClasse]);
+
+  const [selEleves, setSelEleves] = useState(() => new Set(bulletins.map(b => b.id)));
+
+  // Resync selEleves quand la classe change
+  useEffect(() => {
+    setSelEleves(new Set(bulletins.map(b => b.id)));
+    setModeSelection('tous');
+  }, [selClasse]);
+
+  const elevesExportes = modeSelection === 'tous'
+    ? bulletins
+    : bulletins.filter(b => selEleves.has(b.id));
+
+  const toggleEleve = (id) => {
+    setSelEleves(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleTous = () => {
+    if (selEleves.size === bulletins.length) setSelEleves(new Set());
+    else setSelEleves(new Set(bulletins.map(b => b.id)));
+  };
+
+  const colorMoy = (v) => {
+    if (v == null || isNaN(v)) return [100, 116, 139];
+    if (v >= 16) return [15, 155, 110];
+    if (v >= 12) return [59, 91, 219];
+    if (v >= 10) return [217, 119, 6];
+    return [220, 38, 38];
+  };
+
+  const fmtNote = (v) => {
+    if (v == null || isNaN(v)) return '-';
+    return parseFloat(v).toFixed(2);
+  };
+
+  const genererPdf = async () => {
+    if (elevesExportes.length === 0) return;
+    if (!window.jspdf) { alert('jsPDF non chargé. Vérifiez vendor/jspdf.umd.min.js'); return; }
+
+    setGenerating(true);
+    setDone(false);
+
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const PW = 210, PH = 297, ML = 12, MR = 12, MB = 12;
+      const CW = PW - ML - MR;
+      const ACCENT  = [59, 91, 219];
+      const DARK    = [15, 23, 42];
+      const GRAY    = [100, 116, 139];
+      const LIGHT   = [241, 245, 249];
+      const WHITE   = [255, 255, 255];
+      const SUCCESS = [15, 155, 110];
+      const WARN    = [217, 119, 6];
+      const DANGER  = [220, 38, 38];
+
+      const drawPageHeader = (eleve, pageNum, totalPages) => {
+        // Bande accent
+        doc.setFillColor(...ACCENT);
+        doc.rect(0, 0, PW, 24, 'F');
+
+        // Etablissement + classe
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(...WHITE);
+        doc.text(profile.etablissement || 'ClassPro Desktop', ML, 8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text(
+          (profile.prenom || '') + ' ' + (profile.nom || '') +
+          '   |   Classe : ' + (profile.classe || '?') +
+          '   |   Annee : ' + (profile.annee || '?'),
+          ML, 14
+        );
+
+        // Nom eleve (droite)
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text(eleve.name || '', PW - MR, 9, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text('Trimestre ' + (eleve.trimester || '?'), PW - MR, 14.5, { align: 'right' });
+
+        // Ligne separatrice
+        doc.setDrawColor(220, 230, 250);
+        doc.setLineWidth(0.3);
+        doc.line(ML, 26, PW - MR, 26);
+
+        // Pied de page
+        doc.setFontSize(7);
+        doc.setTextColor(...GRAY);
+        doc.text('ClassPro Desktop', ML, PH - 6);
+        doc.text(pageNum + ' / ' + totalPages, PW - MR, PH - 6, { align: 'right' });
+      };
+
+      const drawMoyenneBox = (eleve, x, y, w) => {
+        const moy = eleve.generalAverage;
+        const moyT1 = eleve.generalAverageT1;
+        const moyClasse = eleve.generalAverageClass;
+        const [r, g, b] = colorMoy(moy);
+
+        doc.setFillColor(...LIGHT);
+        doc.roundedRect(x, y, w, 18, 2, 2, 'F');
+
+        // Moyenne T2
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(...GRAY);
+        doc.text('MOY. T2', x + 4, y + 5);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(15);
+        doc.setTextColor(r, g, b);
+        doc.text(fmtNote(moy) + '/20', x + 4, y + 13);
+
+        // Moyenne T1
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(...GRAY);
+        doc.text('T1 : ' + fmtNote(moyT1), x + w / 2 - 5, y + 6);
+        doc.text('Classe : ' + fmtNote(moyClasse), x + w / 2 - 5, y + 11);
+
+        // Variation
+        if (moy != null && moyT1 != null) {
+          const diff = parseFloat((moy - moyT1).toFixed(2));
+          const [dr, dg, db] = diff >= 0 ? SUCCESS : DANGER;
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.setTextColor(dr, dg, db);
+          const arrow = diff > 0.05 ? '+' : diff < -0.05 ? '' : '';
+          doc.text(arrow + diff.toFixed(2), x + w - 12, y + 10);
+        }
+
+        return y + 20;
+      };
+
+      const totalPages = elevesExportes.length;
+
+      elevesExportes.forEach((eleve, eleveIdx) => {
+        if (eleveIdx > 0) doc.addPage();
+        drawPageHeader(eleve, eleveIdx + 1, totalPages);
+
+        let y = 29;
+
+        // Ligne infos rapides (absences, orientation)
+        const infos = [];
+        if (optionsPdf.absences && eleve.absences?.demiJournees != null)
+          infos.push('Absences : ' + eleve.absences.demiJournees + ' demi-journees');
+        if (optionsPdf.absences && eleve.retards) infos.push('Retards : ' + eleve.retards);
+        if (optionsPdf.orientation && eleve.orientation?.filiere) infos.push('Orientation : ' + eleve.orientation.filiere);
+        if (optionsPdf.orientation && eleve.orientation?.avis) infos.push('Avis : ' + eleve.orientation.avis);
+
+        if (infos.length > 0) {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(...GRAY);
+          doc.text(infos.join('   |   '), ML, y + 3);
+          y += 7;
+        }
+
+        // Box moyenne generale
+        if (optionsPdf.moyennes) y = drawMoyenneBox(eleve, ML, y, CW);
+        else y += 2;
+
+        // Tableau des matieres
+        const subjects = eleve.subjects || [];
+        if (optionsPdf.notes && subjects.length > 0) {
+          // En-tete tableau
+          const cols = { nom: 74, t2: 22, t1: 22, classe: 22, reste: CW - 74 - 22 - 22 - 22 };
+          const rowH = 6.5;
+          const headerH = 7;
+
+          doc.setFillColor(...ACCENT);
+          doc.rect(ML, y, CW, headerH, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7);
+          doc.setTextColor(...WHITE);
+          doc.text('Matiere', ML + 2, y + 4.8);
+          doc.text('T2', ML + cols.nom + 2, y + 4.8);
+          doc.text('T1', ML + cols.nom + cols.t2 + 2, y + 4.8);
+          doc.text('Classe', ML + cols.nom + cols.t2 + cols.t1 + 2, y + 4.8);
+          y += headerH;
+
+          subjects.forEach((sub, si) => {
+            // Verifier debordement page
+            if (y + rowH > PH - MB - 30) {
+              doc.addPage();
+              drawPageHeader(eleve, eleveIdx + 1, totalPages);
+              y = 29;
+              // Re-dessiner en-tete tableau
+              doc.setFillColor(...ACCENT);
+              doc.rect(ML, y, CW, headerH, 'F');
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(7);
+              doc.setTextColor(...WHITE);
+              doc.text('Matiere (suite)', ML + 2, y + 4.8);
+              doc.text('T2', ML + cols.nom + 2, y + 4.8);
+              doc.text('T1', ML + cols.nom + cols.t2 + 2, y + 4.8);
+              doc.text('Classe', ML + cols.nom + cols.t2 + cols.t1 + 2, y + 4.8);
+              y += headerH;
+            }
+
+            const bg = si % 2 === 0 ? WHITE : LIGHT;
+            doc.setFillColor(...bg);
+            doc.rect(ML, y, CW, rowH, 'F');
+
+            // Bordure legere
+            doc.setDrawColor(220, 230, 250);
+            doc.setLineWidth(0.2);
+            doc.line(ML, y + rowH, ML + CW, y + rowH);
+
+            // Nom matiere
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7);
+            doc.setTextColor(...DARK);
+            const nomMat = (sub.name || '').length > 28
+              ? (sub.name || '').slice(0, 27) + '.'
+              : (sub.name || '');
+            doc.text(nomMat, ML + 2, y + 4.5);
+
+            // Note T2
+            const [r2, g2, b2] = colorMoy(sub.gradeStudent);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(r2, g2, b2);
+            doc.text(fmtNote(sub.gradeStudent), ML + cols.nom + 2, y + 4.5);
+
+            // Note T1
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...GRAY);
+            doc.text(fmtNote(sub.gradeT1), ML + cols.nom + cols.t2 + 2, y + 4.5);
+
+            // Moyenne classe
+            doc.text(fmtNote(sub.gradeClass), ML + cols.nom + cols.t2 + cols.t1 + 2, y + 4.5);
+
+            y += rowH;
+          });
+
+          y += 5;
+        }
+
+        // Appreciation generale
+        const appGen = (eleve.appreciationGenerale || '').trim();
+        if (optionsPdf.appreciation && appGen && y < PH - MB - 25) {
+          doc.setFillColor(...LIGHT);
+          doc.roundedRect(ML, y, CW, 6, 1, 1, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.5);
+          doc.setTextColor(...ACCENT);
+          doc.text('Appreciation generale du conseil', ML + 2.5, y + 4.2);
+          y += 7.5;
+
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(7.5);
+          doc.setTextColor(...DARK);
+          const appLines = doc.splitTextToSize('"' + appGen + '"', CW - 4);
+          const maxLines = Math.floor((PH - MB - y - 5) / 4.5);
+          appLines.slice(0, maxLines).forEach(line => {
+            doc.text(line, ML + 2, y + 3.5);
+            y += 4.5;
+          });
+          if (appLines.length > maxLines) {
+            doc.setTextColor(...GRAY);
+            doc.text('...', ML + 2, y);
+          }
+        }
+      });
+
+      // Sauvegarder
+      const dateStr = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
+      const nomClasse = (selClasse || profile.classe || 'classe').replace(/[^a-zA-Z0-9]/g, '_');
+      const defaultName = 'Bulletins_' + nomClasse + '_T' + (bulletins[0]?.trimester || '?') + '_' + dateStr + '.pdf';
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+      const result = await window.cpd.savePdf(pdfBase64, defaultName);
+      if (result?.ok) { setDone(true); setTimeout(() => setDone(false), 3000); }
+
+    } catch (err) {
+      console.error('Erreur PDF Bulletins:', err);
+      alert('Erreur : ' + err.message);
+    }
+    setGenerating(false);
+  };
+
+  if (!cpData || bulletins.length === 0) {
+    return <ModulePlaceholder icon="📄" title="PDF Bulletins" sub="Aucun bulletin disponible dans ce fichier ClassPro." soon={false} />;
+  }
+
+  return (
+    <>
+      <div className="page-hd">
+        <div>
+          <div className="phd-badge">📄 PDF</div>
+          <div className="phd-title">PDF Bulletins — Conseil de classe</div>
+          <div className="phd-sub">
+            {selClasse || profile.classe || '?'} · Trimestre {bulletins[0]?.trimester || '?'} · {elevesExportes.length} eleve(s) a exporter
+          </div>
+        </div>
+        <div className="phd-actions">
+          <button
+            className="btn btn-primary"
+            onClick={genererPdf}
+            disabled={elevesExportes.length === 0 || generating}
+          >
+            {generating ? 'Generation...' : done ? 'PDF sauvegarde !' : 'Generer le PDF (' + elevesExportes.length + ')'}
+          </button>
+        </div>
+      </div>
+
+      <div className="page-content">
+
+        {/* Selecteur de classe */}
+        {classesDispos.length > 1 && (
+          <div style={{ marginBottom: '1rem' }}>
+            <div style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '.4rem' }}>Classe</div>
+            <div style={{ display: 'flex', gap: '.38rem', flexWrap: 'wrap' }}>
+              {classesDispos.map(cls => (
+                <button key={cls} onClick={() => setSelClasse(cls)}
+                  style={{ padding: '.38rem .875rem', borderRadius: 'var(--r-s)', border: '1.5px solid ' + (selClasse === cls ? 'var(--accent)' : 'var(--border)'), background: selClasse === cls ? 'var(--accent)' : 'var(--surface)', color: selClasse === cls ? '#fff' : 'var(--text2)', fontFamily: 'Roboto, sans-serif', fontSize: '.82rem', fontWeight: 600, cursor: 'pointer', transition: 'all .15s' }}>
+                  {cls} <span style={{ opacity: .7, fontSize: '.72rem' }}>({tousLesBulletins.filter(b => b.classe === cls).length})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Options PDF */}
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <div className="card-hd"><div className="card-title">⚙️ Contenu du PDF</div></div>
+          <div className="card-body" style={{ display: 'flex', flexWrap: 'wrap', gap: '.5rem' }}>
+            {[
+              { key: 'moyennes',    label: 'Moyennes T1 / T2' },
+              { key: 'notes',       label: 'Notes par matière' },
+              { key: 'moyClasse',   label: 'Moyenne classe' },
+              { key: 'appreciation',label: 'Appréciation générale' },
+              { key: 'absences',    label: 'Absences / Retards' },
+              { key: 'orientation', label: 'Orientation' },
+            ].map(opt => (
+              <button key={opt.key} onClick={() => toggleOpt(opt.key)}
+                style={{ display: 'flex', alignItems: 'center', gap: '.45rem', padding: '.35rem .75rem', borderRadius: 99, border: '1.5px solid ' + (optionsPdf[opt.key] ? 'var(--accent)' : 'var(--border)'), background: optionsPdf[opt.key] ? 'rgba(59,91,219,.1)' : 'var(--surface2)', color: optionsPdf[opt.key] ? 'var(--accent)' : 'var(--text3)', fontFamily: 'Roboto, sans-serif', fontSize: '.78rem', fontWeight: optionsPdf[opt.key] ? 700 : 400, cursor: 'pointer', transition: 'all .15s' }}>
+                <span style={{ fontSize: '.8rem' }}>{optionsPdf[opt.key] ? '✓' : '○'}</span>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Mode selection */}
+        <div style={{ display: 'flex', gap: '.5rem', marginBottom: '1rem' }}>
+          {[
+            { id: 'tous', label: 'Tous les eleves (' + bulletins.length + ')' },
+            { id: 'choix', label: 'Selection manuelle' },
+          ].map(opt => (
+            <button key={opt.id} onClick={() => setModeSelection(opt.id)}
+              style={{ padding: '.42rem .875rem', borderRadius: 'var(--r-s)', border: '1.5px solid ' + (modeSelection === opt.id ? 'var(--accent)' : 'var(--border)'), background: modeSelection === opt.id ? 'var(--accent)' : 'var(--surface)', color: modeSelection === opt.id ? '#fff' : 'var(--text2)', fontFamily: 'Roboto, sans-serif', fontSize: '.8rem', fontWeight: 600, cursor: 'pointer', transition: 'all .15s' }}>
+              {opt.label}
+            </button>
+          ))}
+          {modeSelection === 'choix' && (
+            <button onClick={toggleTous}
+              style={{ padding: '.42rem .875rem', borderRadius: 'var(--r-s)', border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text2)', fontFamily: 'Roboto, sans-serif', fontSize: '.78rem', cursor: 'pointer' }}>
+              {selEleves.size === bulletins.length ? 'Tout deselectionner' : 'Tout selectionner'}
+            </button>
+          )}
+        </div>
+
+        {/* Liste eleves */}
+        <div className="card">
+          <div className="card-hd">
+            <div className="card-title">
+              {modeSelection === 'tous' ? 'Eleves inclus dans le PDF' : 'Selectionner les eleves (' + selEleves.size + ' selectionnes)'}
+            </div>
+          </div>
+          <div className="card-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '.38rem' }}>
+            {bulletins.map(b => {
+              const inclus = modeSelection === 'tous' || selEleves.has(b.id);
+              const [r, g, bv] = colorMoy(b.generalAverage);
+              return (
+                <button key={b.id}
+                  onClick={() => modeSelection === 'choix' && toggleEleve(b.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '.65rem', padding: '.45rem .75rem', border: '1.5px solid ' + (inclus ? 'var(--accent)' : 'var(--border)'), borderRadius: 'var(--r-s)', background: inclus ? 'rgba(59,91,219,.06)' : 'var(--surface2)', cursor: modeSelection === 'choix' ? 'pointer' : 'default', fontFamily: 'Roboto, sans-serif', transition: 'all .13s', textAlign: 'left' }}>
+                  {modeSelection === 'choix' && (
+                    <div style={{ width: 16, height: 16, borderRadius: 4, border: '2px solid ' + (inclus ? 'var(--accent)' : 'var(--border)'), background: inclus ? 'var(--accent)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {inclus && <span style={{ color: '#fff', fontSize: '.6rem', fontWeight: 900 }}>✓</span>}
+                    </div>
+                  )}
+                  <span style={{ flex: 1, fontSize: '.82rem', fontWeight: inclus ? 600 : 400, color: inclus ? 'var(--text)' : 'var(--text3)' }}>{b.name}</span>
+                  <span style={{ fontSize: '.78rem', fontWeight: 700, color: 'rgb(' + r + ',' + g + ',' + bv + ')' }}>
+                    {b.generalAverage != null ? parseFloat(b.generalAverage).toFixed(1) : '-'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Resume contenu PDF */}
+        <div className="card" style={{ marginTop: '1rem' }}>
+          <div className="card-hd"><div className="card-title">Contenu du PDF</div></div>
+          <div className="card-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '.5rem' }}>
+            {[
+              { label: 'Moyenne T1 et T2', ok: true },
+              { label: 'Notes par matiere', ok: true },
+              { label: 'Moyenne classe / matiere', ok: true },
+              { label: 'Appreciation generale', ok: true },
+              { label: 'Absences et retards', ok: true },
+              { label: 'Orientation', ok: true },
+              { label: 'Une page par eleve', ok: true },
+              { label: 'En-tete etablissement', ok: true },
+            ].map(item => (
+              <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.8rem', color: 'var(--text2)' }}>
+                <span style={{ color: 'var(--success)', fontWeight: 700 }}>✓</span>
+                {item.label}
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </>
+  );
+}
+
+// ── MODULE PDF PROGRESSION ────────────────────────────────────────────────────
+function ModulePdfProgression({ cpData }) {
+  const classes = cpData?.classes || [];
+  const progs = cpData?.progs || {};
+  const profile = cpData?.profile || {};
+
+  // Classes qui ont une progression
+  const classesAvecProg = useMemo(() =>
+    classes.filter(c => progs[c.id]?.rows?.length > 0),
+    [classes, progs]
+  );
+
+  const [modeExport, setModeExport] = useState('toutes'); // 'toutes' | 'choix'
+  const [selClasses, setSelClasses] = useState(() => new Set(classesAvecProg.map(c => c.id)));
+  const [generating, setGenerating] = useState(false);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    setSelClasses(new Set(classesAvecProg.map(c => c.id)));
+  }, [classesAvecProg.length]);
+
+  const classesExportees = modeExport === 'toutes'
+    ? classesAvecProg
+    : classesAvecProg.filter(c => selClasses.has(c.id));
+
+  const toggleClasse = (id) => {
+    setSelClasses(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleToutes = () => {
+    if (selClasses.size === classesAvecProg.length) setSelClasses(new Set());
+    else setSelClasses(new Set(classesAvecProg.map(c => c.id)));
+  };
+
+  const genererPdf = async () => {
+    if (classesExportees.length === 0) return;
+    if (!window.jspdf) { alert('jsPDF non charge. Verifiez vendor/jspdf.umd.min.js'); return; }
+
+    setGenerating(true);
+    setDone(false);
+
+    try {
+      const { jsPDF } = window.jspdf;
+      // Paysage A4
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const PW = 297, PH = 210, ML = 12, MR = 12, MT = 12, MB = 12;
+      const CW = PW - ML - MR;
+      const ACCENT = [59, 91, 219];
+      const DARK   = [15, 23, 42];
+      const GRAY   = [100, 116, 139];
+      const LIGHT  = [241, 245, 249];
+      const WHITE  = [255, 255, 255];
+
+      const drawHeader = (cls, pageNum, totalPages) => {
+        // Bande accent
+        doc.setFillColor(...ACCENT);
+        doc.rect(0, 0, PW, 20, 'F');
+
+        // Etablissement
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(...WHITE);
+        doc.text(profile.etablissement || 'ClassPro Desktop', ML, 8);
+
+        // Prof + annee
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text(
+          (profile.prenom || '') + ' ' + (profile.nom || '') +
+          '   |   Annee : ' + (profile.annee || '?'),
+          ML, 14
+        );
+
+        // Classe (droite)
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.text('Progression annuelle — ' + (cls?.name || ''), PW - MR, 9, { align: 'right' });
+
+        // Pagination
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(...GRAY);
+        doc.text('ClassPro Desktop', ML, PH - 6);
+        doc.text(pageNum + ' / ' + totalPages, PW - MR, PH - 6, { align: 'right' });
+      };
+
+      let pageNum = 0;
+      const totalPages = classesExportees.length;
+
+      classesExportees.forEach((cls, clsIdx) => {
+        if (clsIdx > 0) doc.addPage();
+        pageNum++;
+        drawHeader(cls, pageNum, totalPages);
+
+        const prog = progs[cls.id];
+        const cols = prog?.cols || [];
+        const rows = prog?.rows || [];
+
+        if (cols.length === 0 || rows.length === 0) {
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(10);
+          doc.setTextColor(...GRAY);
+          doc.text('Aucune sequence enregistree pour cette classe.', ML, 35);
+          return;
+        }
+
+        // Calcul des largeurs de colonnes
+        const availW = CW;
+        // Largeur min par colonne, proportionnelle
+        const totalConfigW = cols.reduce((s, c) => s + (c.width || 120), 0);
+        const colWidths = cols.map(c => Math.max(15, ((c.width || 120) / totalConfigW) * availW));
+
+        const rowH = 8;
+        const headerH = 9;
+        let y = 23;
+
+        // En-tete du tableau
+        doc.setFillColor(...ACCENT);
+        doc.rect(ML, y, CW, headerH, 'F');
+
+        let x = ML;
+        cols.forEach((col, ci) => {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.5);
+          doc.setTextColor(...WHITE);
+          const label = (col.label || '').slice(0, 18);
+          doc.text(label, x + 2, y + 6);
+          x += colWidths[ci];
+        });
+        y += headerH;
+
+        // Lignes du tableau
+        rows.forEach((row, ri) => {
+          // Verifier debordement
+          if (y + rowH > PH - MB - 10) {
+            doc.addPage();
+            pageNum++;
+            // Note: on ne compte pas ces pages dans totalPages car on ne peut pas savoir à l'avance
+            drawHeader(cls, pageNum, totalPages);
+            y = 23;
+
+            // Re-dessiner en-tete tableau
+            doc.setFillColor(...ACCENT);
+            doc.rect(ML, y, CW, headerH, 'F');
+            let xh = ML;
+            cols.forEach((col, ci) => {
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(7.5);
+              doc.setTextColor(...WHITE);
+              doc.text((col.label || '').slice(0, 18), xh + 2, y + 6);
+              xh += colWidths[ci];
+            });
+            y += headerH;
+          }
+
+          // Fond alterné
+          doc.setFillColor(...(ri % 2 === 0 ? WHITE : LIGHT));
+          doc.rect(ML, y, CW, rowH, 'F');
+
+          // Bordure basse
+          doc.setDrawColor(220, 230, 250);
+          doc.setLineWidth(0.2);
+          doc.line(ML, y + rowH, ML + CW, y + rowH);
+
+          // Cellules
+          let cx = ML;
+          cols.forEach((col, ci) => {
+            const val = (row[col.id] || '').toString().trim();
+            const maxChars = Math.floor(colWidths[ci] / 1.8);
+            const display = val.length > maxChars ? val.slice(0, maxChars - 1) + '...' : val;
+
+            doc.setFont('helvetica', ci === 0 ? 'bold' : 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(...DARK);
+            doc.text(display, cx + 2, y + 5.5);
+
+            // Separateur vertical
+            doc.setDrawColor(220, 230, 250);
+            doc.setLineWidth(0.2);
+            doc.line(cx + colWidths[ci], y, cx + colWidths[ci], y + rowH);
+
+            cx += colWidths[ci];
+          });
+
+          y += rowH;
+        });
+
+        // Bordure du tableau
+        doc.setDrawColor(200, 215, 245);
+        doc.setLineWidth(0.4);
+        doc.rect(ML, 23, CW, y - 23, 'S');
+
+        // Recap bas de page
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...GRAY);
+        doc.text(rows.length + ' sequence(s) · ' + cols.length + ' colonne(s)', ML, PH - 10);
+      });
+
+      // Sauvegarder
+      const dateStr = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
+      const suffixe = classesExportees.length === 1
+        ? classesExportees[0].name.replace(/[^a-zA-Z0-9]/g, '_')
+        : 'toutes_classes';
+      const defaultName = 'Progression_' + suffixe + '_' + dateStr + '.pdf';
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+      const result = await window.cpd.savePdf(pdfBase64, defaultName);
+      if (result?.ok) { setDone(true); setTimeout(() => setDone(false), 3000); }
+
+    } catch (err) {
+      console.error('Erreur PDF Progression:', err);
+      alert('Erreur : ' + err.message);
+    }
+    setGenerating(false);
+  };
+
+  if (!cpData) return <ModulePlaceholder icon="📄" title="PDF Progression" sub="Ouvrez d'abord un fichier ClassPro." />;
+
+  if (classesAvecProg.length === 0) {
+    return (
+      <>
+        <div className="page-hd">
+          <div>
+            <div className="phd-badge">📄 PDF</div>
+            <div className="phd-title">PDF Progression annuelle</div>
+            <div className="phd-sub">Aucune progression renseignee</div>
+          </div>
+        </div>
+        <div className="page-content">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '3rem', color: 'var(--text3)' }}>
+            <div style={{ fontSize: '3rem', opacity: .15 }}>📆</div>
+            <div style={{ fontWeight: 700, color: 'var(--text2)' }}>Aucune progression a exporter</div>
+            <div style={{ fontSize: '.83rem' }}>Creez des progressions dans le module Progression annuelle.</div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="page-hd">
+        <div>
+          <div className="phd-badge">📄 PDF</div>
+          <div className="phd-title">PDF Progression annuelle</div>
+          <div className="phd-sub">{classesExportees.length} classe(s) a exporter · Format paysage A4</div>
+        </div>
+        <div className="phd-actions">
+          <button
+            className="btn btn-primary"
+            onClick={genererPdf}
+            disabled={classesExportees.length === 0 || generating}
+          >
+            {generating ? 'Generation...' : done ? 'PDF sauvegarde !' : 'Generer le PDF (' + classesExportees.length + ' classe' + (classesExportees.length > 1 ? 's' : '') + ')'}
+          </button>
+        </div>
+      </div>
+
+      <div className="page-content">
+
+        {/* Mode export */}
+        <div style={{ display: 'flex', gap: '.5rem', marginBottom: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {[
+            { id: 'toutes', label: 'Toutes les classes (' + classesAvecProg.length + ')' },
+            { id: 'choix',  label: 'Selection manuelle' },
+          ].map(opt => (
+            <button key={opt.id} onClick={() => setModeExport(opt.id)}
+              style={{ padding: '.42rem .875rem', borderRadius: 'var(--r-s)', border: '1.5px solid ' + (modeExport === opt.id ? 'var(--accent)' : 'var(--border)'), background: modeExport === opt.id ? 'var(--accent)' : 'var(--surface)', color: modeExport === opt.id ? '#fff' : 'var(--text2)', fontFamily: 'Roboto, sans-serif', fontSize: '.8rem', fontWeight: 600, cursor: 'pointer', transition: 'all .15s' }}>
+              {opt.label}
+            </button>
+          ))}
+          {modeExport === 'choix' && (
+            <button onClick={toggleToutes}
+              style={{ padding: '.42rem .875rem', borderRadius: 'var(--r-s)', border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text2)', fontFamily: 'Roboto, sans-serif', fontSize: '.78rem', cursor: 'pointer' }}>
+              {selClasses.size === classesAvecProg.length ? 'Tout deselectionner' : 'Tout selectionner'}
+            </button>
+          )}
+        </div>
+
+        {/* Liste des classes */}
+        <div className="card">
+          <div className="card-hd">
+            <div className="card-title">
+              {modeExport === 'toutes' ? 'Classes incluses' : 'Selectionner les classes (' + selClasses.size + ')'}
+            </div>
+          </div>
+          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '.38rem' }}>
+            {classesAvecProg.map(cls => {
+              const prog = progs[cls.id];
+              const nb = prog?.rows?.length || 0;
+              const nbCols = prog?.cols?.length || 0;
+              const incluse = modeExport === 'toutes' || selClasses.has(cls.id);
+              return (
+                <button key={cls.id}
+                  onClick={() => modeExport === 'choix' && toggleClasse(cls.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '.75rem', padding: '.55rem .875rem', border: '1.5px solid ' + (incluse ? 'var(--accent)' : 'var(--border)'), borderRadius: 'var(--r-s)', background: incluse ? 'rgba(59,91,219,.06)' : 'var(--surface2)', cursor: modeExport === 'choix' ? 'pointer' : 'default', fontFamily: 'Roboto, sans-serif', transition: 'all .13s', textAlign: 'left' }}>
+                  {modeExport === 'choix' && (
+                    <div style={{ width: 16, height: 16, borderRadius: 4, border: '2px solid ' + (incluse ? 'var(--accent)' : 'var(--border)'), background: incluse ? 'var(--accent)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {incluse && <span style={{ color: '#fff', fontSize: '.6rem', fontWeight: 900 }}>✓</span>}
+                    </div>
+                  )}
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: incluse ? 'var(--accent)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: incluse ? '#fff' : 'var(--text3)', fontWeight: 800, fontSize: '.82rem', flexShrink: 0 }}>
+                    {(cls.name || '?').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: '.9rem', color: incluse ? 'var(--text)' : 'var(--text3)' }}>{cls.name}</div>
+                    <div style={{ fontSize: '.73rem', color: 'var(--text3)', marginTop: '.1rem' }}>
+                      {nb} sequence{nb > 1 ? 's' : ''} · {nbCols} colonne{nbCols > 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '.72rem', color: 'var(--text3)' }}>1 page</div>
+                </button>
+              );
+            })}
+
+            {/* Classes sans progression */}
+            {classes.filter(c => !progs[c.id]?.rows?.length).map(cls => (
+              <div key={cls.id} style={{ display: 'flex', alignItems: 'center', gap: '.75rem', padding: '.55rem .875rem', border: '1px dashed var(--border)', borderRadius: 'var(--r-s)', opacity: .45 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontWeight: 800, fontSize: '.82rem', flexShrink: 0 }}>
+                  {(cls.name || '?').slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '.88rem', color: 'var(--text3)' }}>{cls.name}</div>
+                  <div style={{ fontSize: '.72rem', color: 'var(--text3)' }}>Aucune progression — non exportable</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Info format */}
+        <div className="card" style={{ marginTop: '1rem' }}>
+          <div className="card-hd"><div className="card-title">Format du PDF</div></div>
+          <div className="card-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '.5rem' }}>
+            {[
+              'Format paysage A4',
+              'Une page par classe',
+              'Toutes les colonnes',
+              'En-tete etablissement + prof',
+              'Tableau alterne bicolore',
+              'Pagination automatique',
+            ].map(item => (
+              <div key={item} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.8rem', color: 'var(--text2)' }}>
+                <span style={{ color: 'var(--success)', fontWeight: 700 }}>✓</span>
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </>
+  );
+}
+
 // ── SHELL PRINCIPAL ───────────────────────────────────────────────────────────
 function Shell() {
   const [module, setModule] = useState('accueil');
@@ -1794,6 +2881,7 @@ function Shell() {
   const [filePath, setFilePath] = useState(null);   // chemin du fichier ouvert
   const [appVersion, setAppVersion] = useState('1.0.0');
   const [theme, setTheme] = useState(() => localStorage.getItem('cpd-theme') || 'light');
+  const [showAbout, setShowAbout] = useState(false);
   const { toasts, push: pushToast } = useToast();
 
   // Infos app Electron
@@ -1895,11 +2983,11 @@ function Shell() {
       case 'conseil':
         return <ModuleConseil cpData={cpData} />;
       case 'pdf-progression':
-        return <ModulePlaceholder icon="📄" title="PDF Progression" sub="Génération du récapitulatif de progression annuelle." />;
+        return <ModulePdfProgression cpData={cpData} />;
       case 'pdf-carnet':
-        return <ModulePlaceholder icon="📄" title="PDF Carnet de bord" sub="Génération du PDF des fiches séance." />;
+        return <ModulePdfCarnet cpData={cpData} />;
       case 'pdf-bulletins':
-        return <ModulePlaceholder icon="📄" title="PDF Bulletins" sub="Export des bulletins pour le conseil de classe." />;
+        return <ModulePdfBulletins cpData={cpData} />;
       default:
         return <ModulePlaceholder icon="❓" title="Module introuvable" />;
     }
@@ -1922,7 +3010,7 @@ function Shell() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
             <span>© {new Date().getFullYear()} Lucas Le Coadou</span>
             <span style={{ color: 'var(--border)' }}>·</span>
-            <strong style={{ color: 'var(--text2)' }}>ClassPro Desktop</strong>
+            <button onClick={() => setShowAbout(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Roboto, sans-serif', fontSize: 'inherit', fontWeight: 700, color: 'var(--accent)', padding: 0, textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>ClassPro Desktop</button>
             <span style={{ color: 'var(--border)' }}>·</span>
             <span>Tous droits réservés</span>
           </div>
@@ -1955,6 +3043,80 @@ function Shell() {
       </div>
 
       <ToastStack toasts={toasts} />
+
+      {/* Modale À propos */}
+      {showAbout && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          onClick={e => e.target === e.currentTarget && setShowAbout(false)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 16, width: 460, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,.35)' }}>
+
+            {/* Hero gradient */}
+            <div style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #3b5bdb 50%, #7c3aed 100%)', padding: '2rem 1.75rem 1.75rem', position: 'relative' }}>
+              <button onClick={() => setShowAbout(false)}
+                style={{ position: 'absolute', top: '1rem', right: '1rem', width: 30, height: 30, borderRadius: 8, background: 'rgba(255,255,255,.15)', border: 'none', cursor: 'pointer', color: '#fff', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+                ×
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(255,255,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}
+                  dangerouslySetInnerHTML={{ __html: LOGO_SVG.replace('width="34"', 'width="36"').replace('height="38"', 'height="40"') }} />
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '1.4rem', color: '#fff', fontFamily: 'Roboto Slab, serif', letterSpacing: '-.01em' }}>ClassPro Desktop</div>
+                  <div style={{ fontSize: '.85rem', color: 'rgba(255,255,255,.7)', marginTop: '.2rem' }}>Logiciel parent de ClassPro · v{appVersion}</div>
+                </div>
+              </div>
+              <p style={{ fontSize: '.88rem', color: 'rgba(255,255,255,.85)', lineHeight: 1.65, margin: 0 }}>
+                Outil de gestion pédagogique pour les enseignants — progressions, carnet de bord, suivi de classe, bulletins et génération PDF. Tout fonctionne localement, sans serveur.
+              </p>
+            </div>
+
+            {/* Carte auteur */}
+            <div style={{ margin: '1.25rem 1.5rem', padding: '1rem 1.25rem', background: 'var(--surface2)', borderRadius: 12, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '.9rem', flexShrink: 0 }}>LL</div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '.95rem' }}>Lucas Le Coadou</div>
+                <div style={{ fontSize: '.78rem', color: 'var(--text2)', marginTop: '.15rem' }}>Professeur d'Espagnol · Collège Alfred Crouzet</div>
+                <div style={{ fontSize: '.75rem', color: 'var(--text3)' }}>Développeur de ClassPro</div>
+              </div>
+            </div>
+
+            {/* Infos techniques en grille */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', padding: '0 1.5rem 1.25rem' }}>
+              {[
+                { label: 'VERSION', value: 'v' + appVersion, icon: '🔖' },
+                { label: 'LICENCE', value: 'Privée', icon: '🔒' },
+                { label: 'PLATEFORME', value: typeof navigator !== 'undefined' ? navigator.platform : '—', icon: '💻' },
+                { label: 'DONNÉES', value: 'Locales uniquement', icon: '🗄️' },
+              ].map(item => (
+                <div key={item.label} style={{ padding: '.75rem 1rem', background: 'var(--surface2)', borderRadius: 10, border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '.6rem', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '.3rem' }}>{item.icon} {item.label}</div>
+                  <div style={{ fontWeight: 700, fontSize: '.88rem', color: 'var(--text)' }}>{item.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Modules disponibles */}
+            <div style={{ padding: '0 1.5rem 1.25rem' }}>
+              <div style={{ fontSize: '.65rem', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '.6rem' }}>Modules disponibles</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.38rem' }}>
+                {[
+                  '🏠 Accueil', '👥 Suivi de classe', '📓 Carnet de bord',
+                  '📋 Travaux non rendus', '📆 Progression annuelle', '🎓 Conseil de classe',
+                  '📄 PDF Carnet', '📄 PDF Progression', '📄 PDF Bulletins',
+                ].map(m => (
+                  <span key={m} style={{ fontSize: '.72rem', padding: '.25rem .65rem', borderRadius: 99, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', fontWeight: 500 }}>{m}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '.875rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '.73rem', color: 'var(--text3)' }}>© {new Date().getFullYear()} Lucas Le Coadou · Tous droits réservés</span>
+              <button onClick={() => setShowAbout(false)} className="btn btn-primary" style={{ fontSize: '.78rem' }}>Fermer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
