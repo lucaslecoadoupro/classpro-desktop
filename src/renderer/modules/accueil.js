@@ -8,8 +8,20 @@ function ModuleAccueil({ onOpen, onNavigate, cpData, filePath }) {
   });
 
   const [showNewProfil, setShowNewProfil] = useState(false);
-  const [newProfil, setNewProfil] = useState({
-    prenom: '', nom: '', etablissement: '', annee: '2025/2026', classe: '', matiere: ''
+
+  // Pré-remplir depuis le profil onboarding si disponible
+  const [newProfil, setNewProfil] = useState(() => {
+    try {
+      const up = JSON.parse(localStorage.getItem('cpd-user-profile') || 'null');
+      return {
+        prenom:        up?.prenom        || '',
+        nom:           up?.nom           || '',
+        etablissement: up?.etablissement || '',
+        annee:         '2025/2026',
+        classe:        '',
+        matiere:       up?.matieres      || '',
+      };
+    } catch { return { prenom:'', nom:'', etablissement:'', annee:'2025/2026', classe:'', matiere:'' }; }
   });
 
   const openJson = async () => {

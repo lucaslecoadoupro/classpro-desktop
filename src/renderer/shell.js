@@ -65,6 +65,7 @@ function Shell() {
   const [showTour,     setShowTour]     = useState(() => !localStorage.getItem('cpd-tour-done'));
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('cpd-onboarding-done'));
   const [showProfile,  setShowProfile]  = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [rewards,      setRewards]      = useState([]); // file d'attente d'animations récompense
   const { toasts, push: pushToast } = useToast();
 
@@ -177,11 +178,26 @@ function Shell() {
 
   // Rendu du module actif
   const renderModule = () => {
+    // Guard global : tous les modules sauf accueil et classpro nécessitent un fichier
+    if (!cpData && module !== 'accueil' && module !== 'classpro' && module !== 'academie') {
+      return (
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:'1rem', color:'var(--text3)' }}>
+          <div style={{ fontSize:'3rem', opacity:.2 }}>📂</div>
+          <div style={{ fontWeight:700, fontSize:'1rem', color:'var(--text2)' }}>Aucun fichier ouvert</div>
+          <div style={{ fontSize:'.83rem', color:'var(--text3)', textAlign:'center', lineHeight:1.6 }}>
+            Ouvrez un fichier ClassPro depuis l'Accueil pour accéder à ce module,<br/>ou créez votre fichier directement.
+          </div>
+          <button className="btn btn-primary" style={{ marginTop:'.5rem' }} onClick={() => setModule('accueil')}>
+            Aller à l'Accueil
+          </button>
+        </div>
+      );
+    }
     switch (module) {
       case 'accueil':
         return <ModuleAccueil onOpen={handleOpenResult} onNavigate={setModule} cpData={cpData} filePath={filePath} />;
-      case 'donnees':
-        return <ModuleDonnees cpData={cpData} />;
+      case 'classpro':
+        return <ModuleClassPro cpData={cpData} />;
       case 'suivi':
         return <ModuleSuivi cpData={cpData} onDataChange={handleDataChange} />;
       case 'carnet':
@@ -234,6 +250,12 @@ function Shell() {
             <button onClick={() => setShowAbout(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Roboto, sans-serif', fontSize: 'inherit', fontWeight: 700, color: 'var(--accent)', padding: 0, textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>ClassPro Desktop</button>
             <span style={{ color: 'var(--border)' }}>·</span>
             <span>Tous droits réservés</span>
+            <span style={{ color: 'var(--border)' }}>·</span>
+            <button onClick={() => setShowFeedback(true)}
+              style={{ background:'none', border:'none', cursor:'pointer', fontFamily:'Roboto, sans-serif', fontSize:'inherit', color:'var(--text3)', padding:0 }}
+              title="Donner mon avis">
+              💬 Feedback
+            </button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>
             {cpData && (
@@ -282,6 +304,45 @@ function Shell() {
           reward={rewards[0]}
           onDone={() => setRewards(r => r.slice(1))}
         />
+      )}
+
+      {/* Modale Feedback */}
+      {showFeedback && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:9998, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }}
+          onClick={e => e.target === e.currentTarget && setShowFeedback(false)}>
+          <div style={{ background:'var(--surface)', borderRadius:16, width:440, boxShadow:'0 24px 64px rgba(0,0,0,.3)', overflow:'hidden' }}>
+            <div style={{ background:'linear-gradient(135deg,#1e3a8a,#3b5bdb)', padding:'1.5rem 1.75rem', position:'relative' }}>
+              <button onClick={() => setShowFeedback(false)} style={{ position:'absolute', top:'1rem', right:'1rem', width:28, height:28, borderRadius:7, background:'rgba(255,255,255,.15)', border:'none', cursor:'pointer', color:'#fff', fontSize:'1rem', display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+              <div style={{ fontSize:'2rem', marginBottom:'.5rem' }}>💬</div>
+              <div style={{ fontFamily:'Roboto Slab,serif', fontWeight:800, fontSize:'1.1rem', color:'#fff' }}>Votre avis est précieux</div>
+              <div style={{ fontSize:'.8rem', color:'rgba(255,255,255,.75)', marginTop:'.3rem', lineHeight:1.6 }}>
+                ClassPro Desktop est développé par un enseignant, pour les enseignants. Chaque retour compte pour faire avancer l'application.
+              </div>
+            </div>
+            <div style={{ padding:'1.5rem 1.75rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
+              <div style={{ fontSize:'.83rem', color:'var(--text2)', lineHeight:1.7 }}>
+                Que vous ayez trouvé un <strong>bug</strong>, une <strong>idée d'amélioration</strong> ou simplement envie de dire ce que vous pensez — Lucas lit chaque message avec attention.
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:'.4rem' }}>
+                {['Un bug ou comportement inattendu','Une idée de fonctionnalité','Une suggestion de design','Un module manquant pour ma discipline'].map(item => (
+                  <div key={item} style={{ display:'flex', alignItems:'center', gap:'.55rem', fontSize:'.78rem', color:'var(--text2)', padding:'.32rem .5rem' }}>
+                    <span style={{ color:'var(--accent)', flexShrink:0 }}>→</span> {item}
+                  </div>
+                ))}
+              </div>
+              <a href="mailto:lucas.le-coadou@ac-montpellier.fr?subject=Feedback ClassPro Desktop"
+                onClick={() => setShowFeedback(false)}
+                style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'.6rem', padding:'.875rem', background:'var(--accent)', color:'#fff', borderRadius:'var(--r-s)', textDecoration:'none', fontWeight:700, fontSize:'.88rem', fontFamily:'Roboto,sans-serif', transition:'opacity .15s' }}
+                onMouseEnter={e => e.currentTarget.style.opacity='.88'}
+                onMouseLeave={e => e.currentTarget.style.opacity='1'}>
+                📧 Envoyer un email à Lucas
+              </a>
+              <div style={{ textAlign:'center', fontSize:'.7rem', color:'var(--text3)' }}>
+                lucas.le-coadou@ac-montpellier.fr
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modale À propos */}

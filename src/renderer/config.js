@@ -11,7 +11,6 @@ const LOGO_SVG = `<svg width="34" height="38" viewBox="0 0 100 110" xmlns="http:
 const NAV = [
   { section: 'Vue générale', items: [
     { id: 'accueil',      icon: '🏠', label: 'Accueil' },
-    { id: 'donnees',      icon: '📊', label: 'Données importées' },
   ]},
   { section: 'Gestion administrative', items: [
     { id: 'classes',      icon: '👥', label: 'Classes & élèves' },
@@ -34,7 +33,8 @@ const NAV = [
     { id: 'pdf-bulletins',   icon: '📄', label: 'PDF Bulletins' },
   ]},
   { section: 'ClassPro Académie', items: [
-    { id: 'academie', icon: '📖', label: "Centre d'aide" },
+    { id: 'academie',  icon: '📖', label: "Centre d'aide" },
+    { id: 'classpro',  icon: '🛡️', label: 'ClassPro (logiciel)' },
   ]},
 ];
 

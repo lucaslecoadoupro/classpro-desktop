@@ -124,7 +124,7 @@ function RewardToast({ reward, onDone }) {
         backdropFilter: 'blur(12px)',
         minWidth: 280,
       }}>
-        {/* Icône animée */}
+        {/* Icone animee */}
         <div style={{
           width: 44, height: 44, borderRadius: 12, flexShrink: 0,
           background: levelUp ? 'rgba(255,255,255,.2)' : 'rgba(59,91,219,.1)',
@@ -179,6 +179,7 @@ function SidebarProfile({ onOpenProfile }) {
     : '';
 
   return (
+    <>
     <button
       onClick={onOpenProfile}
       style={{
@@ -220,6 +221,8 @@ function SidebarProfile({ onOpenProfile }) {
         </div>
       </div>
     </button>
+
+    </>
   );
 }
 
@@ -310,7 +313,7 @@ function ProfileModal({ onClose }) {
 
         {/* Tabs */}
         <div style={{ display:'flex', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
-          {[['profil','👤 Profil'],['badges','🏆 Badges'],['memo','🔐 Mémo']].map(([id,label]) => (
+          {[['profil','👤 Profil'],['badges','🏆 Badges'],['memo','🔐 Mémo'],['feedback','💬 Feedback']].map(([id,label]) => (
             <button key={id} onClick={() => setTab(id)}
               style={{ flex:1, padding:'.65rem', border:'none', background:'none', cursor:'pointer', fontFamily:'Roboto,sans-serif', fontSize:'.78rem', fontWeight: tab===id ? 700 : 400, color: tab===id ? 'var(--accent)' : 'var(--text2)', borderBottom: tab===id ? '2px solid var(--accent)' : '2px solid transparent', marginBottom:-1, transition:'all .15s' }}>
               {label}
@@ -321,7 +324,7 @@ function ProfileModal({ onClose }) {
         {/* Body */}
         <div style={{ flex:1, overflowY:'auto', padding:'1.25rem 1.75rem' }}>
 
-          {/* ── Onglet Profil ── */}
+          {/* Onglet Profil */}
           {tab === 'profil' && (
             <div style={{ display:'flex', flexDirection:'column', gap:'.75rem' }}>
               {editing ? (
@@ -361,12 +364,33 @@ function ProfileModal({ onClose }) {
                   <button className="btn" style={{ alignSelf:'flex-start', marginTop:'.5rem', fontSize:'.78rem' }} onClick={() => { setForm({...profile}); setEditing(true); }}>
                     ✏️ Modifier le profil
                   </button>
+                  {/* Module Pro teaser dans le profil */}
+                  <div style={{ marginTop:'1rem', padding:'.875rem 1rem', background:'linear-gradient(135deg,rgba(245,158,11,.08),rgba(234,88,12,.05))', border:'1px solid rgba(245,158,11,.2)', borderRadius:'var(--r-s)' }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'.5rem' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'.4rem' }}>
+                        <span>⭐</span>
+                        <span style={{ fontWeight:800, fontSize:'.82rem', color:'#f59e0b' }}>Module Pro</span>
+                      </div>
+                      <span style={{ fontSize:'.58rem', fontWeight:700, background:'rgba(245,158,11,.15)', color:'#f59e0b', padding:'.1rem .45rem', borderRadius:99, textTransform:'uppercase', letterSpacing:'.07em' }}>v1.1 - Bientot</span>
+                    </div>
+                    <div style={{ fontSize:'.75rem', color:'var(--text2)', lineHeight:1.6, marginBottom:'.6rem' }}>
+                      Des outils supplementaires adaptes a votre discipline enseignee, integres directement dans ClassPro Desktop.
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'.35rem' }}>
+                      {[['🔢','ClassMath'],['🔬','ClassScience'],['🌍','ClassLangue']].map(([icon,name]) => (
+                        <div key={name} style={{ padding:'.38rem .5rem', background:'rgba(245,158,11,.08)', border:'1px solid rgba(245,158,11,.15)', borderRadius:6, textAlign:'center' }}>
+                          <div style={{ fontSize:'.85rem' }}>{icon}</div>
+                          <div style={{ fontSize:'.62rem', fontWeight:700, color:'var(--text3)', marginTop:'.1rem' }}>{name}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </>
               )}
             </div>
           )}
 
-          {/* ── Onglet Badges ── */}
+          {/* Onglet Badges */}
           {tab === 'badges' && (
             <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
               {/* Stats rapides */}
@@ -423,7 +447,7 @@ function ProfileModal({ onClose }) {
             </div>
           )}
 
-          {/* ── Onglet Mémo ── */}
+          {/* Onglet Memo */}
           {tab === 'memo' && (
             <div style={{ display:'flex', flexDirection:'column', gap:'.75rem' }}>
               <div style={{ padding:'.65rem .875rem', background:'rgba(245,158,11,.08)', border:'1px solid rgba(245,158,11,.25)', borderRadius:'var(--r-s)', fontSize:'.75rem', color:'var(--text2)', lineHeight:1.6 }}>
@@ -482,6 +506,38 @@ function ProfileModal({ onClose }) {
               )}
             </div>
           )}
+
+          {/* Onglet Feedback */}
+          {tab === 'feedback' && (
+            <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
+              <div style={{ textAlign:'center', padding:'.5rem 0 .25rem' }}>
+                <div style={{ fontSize:'2rem', marginBottom:'.5rem' }}>💬</div>
+                <div style={{ fontWeight:700, fontSize:'.92rem', color:'var(--text)', marginBottom:'.35rem' }}>Votre avis compte !</div>
+                <div style={{ fontSize:'.8rem', color:'var(--text2)', lineHeight:1.65 }}>
+                  ClassPro Desktop évolue grâce à vos retours. Un bug, une idée, une suggestion ? Lucas lit chaque message.
+                </div>
+              </div>
+              <a href="mailto:lucas.le-coadou@ac-montpellier.fr?subject=Feedback ClassPro Desktop"
+                style={{ display:'flex', alignItems:'center', gap:'.75rem', padding:'.875rem 1rem', background:'rgba(59,91,219,.07)', border:'1px solid rgba(59,91,219,.2)', borderRadius:'var(--r-s)', textDecoration:'none' }}
+                onMouseEnter={e => e.currentTarget.style.background='rgba(59,91,219,.13)'}
+                onMouseLeave={e => e.currentTarget.style.background='rgba(59,91,219,.07)'}>
+                <span style={{ fontSize:'1.4rem' }}>📧</span>
+                <div>
+                  <div style={{ fontWeight:700, fontSize:'.85rem', color:'var(--accent)' }}>Envoyer un email</div>
+                  <div style={{ fontSize:'.72rem', color:'var(--text3)', marginTop:'.1rem' }}>lucas.le-coadou@ac-montpellier.fr</div>
+                </div>
+              </a>
+              <div style={{ display:'flex', flexDirection:'column', gap:'.4rem' }}>
+                <div style={{ fontSize:'.65rem', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.08em' }}>Que remonter ?</div>
+                {['Un bug ou comportement inattendu', 'Une idee de fonctionnalite', 'Une suggestion d\'ergonomie ou de design', 'Un module manquant pour votre discipline'].map(item => (
+                  <div key={item} style={{ padding:'.4rem .65rem', background:'var(--surface2)', borderRadius:8, border:'1px solid var(--border)', fontSize:'.78rem', color:'var(--text2)' }}>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>
@@ -554,7 +610,7 @@ function OnboardingPage({ onComplete }) {
 
   return (
     <div style={{ position:'fixed', inset:0, background:'var(--bg, #f3f4f6)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99990, padding:'1rem' }}>
-      {/* Fond dégradé subtil */}
+      {/* Fond degrade subtil */}
       <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(59,91,219,.08) 0%, rgba(124,58,237,.06) 100%)', pointerEvents:'none' }} />
 
       <div style={{ background:'var(--surface)', borderRadius:20, width:'100%', maxWidth:480, boxShadow:'0 24px 80px rgba(0,0,0,.18)', overflow:'hidden', position:'relative' }}>
@@ -564,7 +620,7 @@ function OnboardingPage({ onComplete }) {
           <div style={{ height:'100%', width:`${((step) / (totalSteps-1)) * 100}%`, background:'var(--accent)', borderRadius:4, transition:'width .4s ease' }} />
         </div>
 
-        {/* Header coloré */}
+        {/* Header colore */}
         <div style={{ background:'linear-gradient(135deg, #1e3a8a 0%, #3b5bdb 55%, #7c3aed 100%)', padding:'2rem 2rem 1.5rem' }}>
           {/* Logo */}
           <div style={{ display:'flex', alignItems:'center', gap:'.65rem', marginBottom:'1.25rem' }}>
@@ -575,7 +631,7 @@ function OnboardingPage({ onComplete }) {
             <div style={{ fontFamily:'Roboto Slab,serif', fontWeight:800, fontSize:'1.4rem', color:'#fff', lineHeight:1.2 }}>{current.title}</div>
             <div style={{ fontSize:'.82rem', color:'rgba(255,255,255,.7)', marginTop:'.3rem' }}>{current.sub}</div>
           </div>
-          {/* Étapes */}
+          {/* Etapes */}
           <div style={{ display:'flex', gap:'.3rem', marginTop:'1.25rem' }}>
             {ONBOARDING_STEPS.map((_, i) => (
               <div key={i} style={{ flex:1, height:3, borderRadius:99, background: i <= step ? 'rgba(255,255,255,.8)' : 'rgba(255,255,255,.2)', transition:'background .3s' }} />
@@ -586,7 +642,7 @@ function OnboardingPage({ onComplete }) {
         {/* Corps */}
         <div style={{ padding:'1.75rem 2rem', minHeight:220, opacity: visible ? 1 : 0, transform: visible ? 'none' : `translateY(${animDir * 10}px)`, transition:'opacity .2s, transform .2s' }}>
 
-          {/* Étape 0 — Bienvenue */}
+          {/* Etape 0 - Bienvenue */}
           {step === 0 && (
             <div style={{ textAlign:'center', padding:'.5rem 0' }}>
               <div style={{ fontSize:'3rem', marginBottom:'.75rem' }}>👋</div>
@@ -604,7 +660,7 @@ function OnboardingPage({ onComplete }) {
             </div>
           )}
 
-          {/* Étape 1 — Identité */}
+          {/* Etape 1 - Identite */}
           {step === 1 && (
             <div style={{ display:'flex', flexDirection:'column', gap:'.75rem' }}>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'.6rem' }}>
@@ -630,7 +686,7 @@ function OnboardingPage({ onComplete }) {
             </div>
           )}
 
-          {/* Étape 2 — Matières */}
+          {/* Etape 2 - Matieres */}
           {step === 2 && (
             <div style={{ display:'flex', flexDirection:'column', gap:'.75rem' }}>
               <div style={fieldWrap}>
@@ -645,7 +701,7 @@ function OnboardingPage({ onComplete }) {
             </div>
           )}
 
-          {/* Étape 3 — Mémo */}
+          {/* Etape 3 - Memo */}
           {step === 3 && (
             <div style={{ display:'flex', flexDirection:'column', gap:'.6rem' }}>
               <div style={{ padding:'.5rem .75rem', background:'rgba(245,158,11,.08)', border:'1px solid rgba(245,158,11,.2)', borderRadius:'var(--r-s)', fontSize:'.73rem', color:'var(--text2)', lineHeight:1.6 }}>
@@ -666,7 +722,7 @@ function OnboardingPage({ onComplete }) {
             </div>
           )}
 
-          {/* Étape 4 — Done */}
+          {/* Etape 4 - Done */}
           {step === 4 && (
             <div style={{ textAlign:'center', padding:'.5rem 0' }}>
               <div style={{ fontSize:'3rem', marginBottom:'.75rem' }}>🎉</div>
