@@ -67,7 +67,6 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "ClassPro Desktop",
-      "installerHeader": "assets/nsis-header.bmp",
       "deleteAppDataOnUninstall": false
     },
     "dmg": {
