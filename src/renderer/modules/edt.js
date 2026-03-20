@@ -219,9 +219,43 @@ function ModuleEDT({ cpData, onDataChange }) {
   const [importStatus,  setImportStatus]  = useState(null); // null | 'loading' | {blocks, error}
   const [importPreview, setImportPreview] = useState(false);
 
+  // ── Vacances ──────────────────────────────────────────────────────────────
+  const [vacances,     setVacances]     = useState(() => { try { return JSON.parse(localStorage.getItem('cdc-vacances') || '[]'); } catch { return []; } });
+  const [showVacances, setShowVacances] = useState(false);
+  const [newVac,       setNewVac]       = useState({ label:'', debut:'', fin:'' });
+
+  // ── Jours annulés (malade, formation, férié…) ────────────────────────────
+  // Structure: { 'YYYY-MM-DD': { motif: 'malade'|'formation'|'ferie'|'autre', label: '' } }
+  const [joursAnnules, setJoursAnnules] = useState(() => { try { return JSON.parse(localStorage.getItem('cdc-jours-annules') || '{}'); } catch { return {}; } });
+  const [dayCtxMenu,   setDayCtxMenu]   = useState(null); // { dayIdx, dateIso, x, y }
+  const [motifModal,   setMotifModal]   = useState(null); // { dayIdx, dateIso }
+  const [motifForm,    setMotifForm]    = useState({ motif:'malade', label:'' });
+
   const weekType = edtGetWeekType(viewMonday, refWeekA);
   const todayStr = edtIso(new Date());
   const isCurrentWeek = edtIso(viewMonday) === edtIso(edtGetMonday(new Date()));
+
+  // Persistance vacances + jours annulés
+  useEffect(() => { localStorage.setItem('cdc-vacances', JSON.stringify(vacances)); }, [vacances]);
+  useEffect(() => { localStorage.setItem('cdc-jours-annules', JSON.stringify(joursAnnules)); }, [joursAnnules]);
+
+  // Jours en vacances cette semaine (indices 0=lundi…4=vendredi)
+  const vacancesDaySet = (() => {
+    const set = new Set();
+    for (let di = 0; di < 5; di++) {
+      const dayIso = edtIso(edtDateForDay(viewMonday, di));
+      if (vacances.some(v => dayIso >= v.debut && dayIso <= v.fin)) set.add(di);
+    }
+    return set;
+  })();
+  // Période de vacances qui chevauche la semaine (pour le bandeau)
+  const vacanceSemaine = (() => {
+    const mondayIso = edtIso(viewMonday);
+    const fridayIso = edtIso(edtDateForDay(viewMonday, 4));
+    return vacances.find(v => mondayIso <= v.fin && fridayIso >= v.debut) || null;
+  })();
+
+  const MOTIF_LABELS = { malade:'🤒 Malade', formation:'📚 Formation', ferie:'🎉 Jour férié', autre:'📌 Autre' };
 
   const dayHeaders = EDT_DAYS.map((label, i) => {
     const date = edtDateForDay(viewMonday, i);
@@ -229,6 +263,9 @@ function ModuleEDT({ cpData, onDataChange }) {
   });
 
   const visibleBlocks = edtData.filter(b => {
+    if (vacancesDaySet.has(b.day)) return false; // masquer si jour en vacances
+    const dateIso = edtIso(edtDateForDay(viewMonday, b.day));
+    if (joursAnnules[dateIso]) return false;     // masquer si jour annulé
     const w = b.weeks || 'AB';
     return w === 'AB' || w === weekType;
   });
@@ -311,7 +348,11 @@ function ModuleEDT({ cpData, onDataChange }) {
     for (let i = 0; i < autoNbWeeks * 3 + 10; i++) {
       const wt = edtGetWeekType(cursor, refWeekA);
       const w  = block.weeks || 'AB';
-      if (w === 'AB' || w === wt) targetWeeks.push(new Date(cursor));
+      const courseDate = edtDateForDay(cursor, block.day);
+      const courseDateIso = edtIso(courseDate);
+      const isVacance = vacances.some(v => courseDateIso >= v.debut && courseDateIso <= v.fin);
+      const isAnnule  = !!joursAnnules[courseDateIso];
+      if ((w === 'AB' || w === wt) && !isVacance && !isAnnule) targetWeeks.push(new Date(cursor));
       cursor.setDate(cursor.getDate() + 7);
       if (targetWeeks.length >= autoNbWeeks) break;
     }
@@ -366,30 +407,41 @@ function ModuleEDT({ cpData, onDataChange }) {
           </div>
         </div>
         <div className="phd-actions">
-          {/* Navigation */}
+          {/* Navigation semaine */}
           <div style={{ display:'flex', alignItems:'center', gap:'.3rem', background:'rgba(255,255,255,.12)', border:'1px solid rgba(255,255,255,.2)', borderRadius:'var(--r-s)', padding:'.28rem .5rem' }}>
             <button onClick={prevWeek} style={{ background:'none', border:'none', color:'#fff', cursor:'pointer', fontSize:'.9rem', padding:'.1rem .35rem', borderRadius:4, opacity:.8 }}>◀</button>
             <span style={{ fontSize:'.75rem', color:'#fff', fontWeight:700, minWidth:80, textAlign:'center' }}>Sem. {weekType}</span>
             <button onClick={nextWeek} style={{ background:'none', border:'none', color:'#fff', cursor:'pointer', fontSize:'.9rem', padding:'.1rem .35rem', borderRadius:4, opacity:.8 }}>▶</button>
           </div>
           {!isCurrentWeek && <button className="btn btn-ghost" onClick={goToday} style={{ fontSize:'.75rem' }}>Aujourd&apos;hui</button>}
+          {/* Créer fiches et suivi */}
           <button className="btn btn-ghost"
             style={{ fontSize:'.72rem', background:'rgba(255,255,255,.15)', border:'1px solid rgba(255,255,255,.3)', color:'#fff' }}
             onClick={() => { setAutoClassId(''); setAutoResult(null); setAutoPopup({ block: null, fromHeader: true }); }}>
-            🔁 Créer fiches et suivi
+            🔁 Créer les fiches et le suivi
           </button>
+          {/* Vacances */}
+          <button className="btn btn-ghost"
+            style={{ fontSize:'.72rem', background:'rgba(255,255,255,.12)', border:'1px solid rgba(255,255,255,.25)', color:'#fff', display:'flex', alignItems:'center', gap:'.35rem' }}
+            onClick={() => setShowVacances(true)}
+            title="Gérer les périodes de vacances scolaires">
+            🏖️ Vacances {vacances.length > 0 && <span style={{ background:'rgba(255,255,255,.25)', borderRadius:99, padding:'0 .35rem', fontSize:'.65rem' }}>{vacances.length}</span>}
+          </button>
+          {/* Import PDF */}
           <button className="btn btn-ghost"
             style={{ fontSize:'.75rem', background:'rgba(255,255,255,.15)', border:'1px solid rgba(255,255,255,.3)', color:'#fff' }}
             onClick={() => setShowImport(true)}>
-            📄 Importer PDF Pronote
+            📄 Importer l&apos;EDT
           </button>
+          {/* Ajouter */}
           <button className="btn btn-primary" onClick={() => { setEditId(null); setForm(EMPTY_FORM); setShowAdd(true); }}>
             + Ajouter un cours
           </button>
+          {/* Purger */}
           {edtData.length > 0 && (
             <button className="btn" style={{ background:'rgba(220,38,38,.15)', border:'1px solid rgba(220,38,38,.3)', color:'#fca5a5', fontSize:'.72rem' }}
-              onClick={() => { if (window.confirm('Supprimer tous les cours ?')) saveBlocks([]); }}>
-              🗑️ Purger
+              onClick={() => { if (window.confirm('Supprimer tous les cours de l\'EDT ? Cette action est irréversible.')) saveBlocks([]); }}>
+              🗑️ Purger l&apos;EDT
             </button>
           )}
         </div>
@@ -398,16 +450,26 @@ function ModuleEDT({ cpData, onDataChange }) {
       {/* Grille EDT */}
       <div className="page-content" style={{ paddingTop:0, overflow:'hidden', flex:1, display:'flex', flexDirection:'column' }}>
         <div style={{ flex:1, overflow:'auto' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'54px repeat(5,1fr)', minWidth:680 }} onClick={() => ctxMenu && setCtxMenu(null)}>
+          <div style={{ display:'grid', gridTemplateColumns:'54px repeat(5,1fr)', minWidth:680 }} onClick={() => { ctxMenu && setCtxMenu(null); dayCtxMenu && setDayCtxMenu(null); }}>
             {/* Header vide */}
             <div style={{ background:'var(--surface2)', position:'sticky', top:0, zIndex:20, borderRight:'1px solid var(--border)', borderBottom:'2px solid var(--border)' }} />
             {/* Headers jours */}
-            {dayHeaders.map((dh, i) => (
-              <div key={i} style={{ padding:'.45rem .4rem', textAlign:'center', fontSize:'.74rem', fontWeight:700, borderRight:'1px solid var(--border)', borderBottom: dh.isToday ? '2px solid var(--accent)' : '2px solid var(--border)', background: dh.isToday ? 'rgba(59,91,219,.06)' : 'var(--surface2)', position:'sticky', top:0, zIndex:20, color: dh.isToday ? 'var(--accent)' : 'var(--text2)' }}>
-                <div style={{ fontWeight: dh.isToday ? 800 : 700 }}>{dh.label}</div>
-                <div style={{ fontSize:'.62rem', fontWeight:400, color:'var(--text3)', marginTop:'.06rem' }}>{edtFmtShort(dh.date)}</div>
-              </div>
-            ))}
+            {dayHeaders.map((dh, i) => {
+              const dateIso = edtIso(dh.date);
+              const isAnnule = !!joursAnnules[dateIso];
+              const isVac = vacancesDaySet.has(i);
+              return (
+                <div key={i}
+                  style={{ padding:'.45rem .4rem', textAlign:'center', fontSize:'.74rem', fontWeight:700, borderRight:'1px solid var(--border)', borderBottom: dh.isToday ? '2px solid var(--accent)' : '2px solid var(--border)', background: isAnnule ? 'rgba(239,68,68,.07)' : isVac ? 'rgba(245,158,11,.07)' : dh.isToday ? 'rgba(59,91,219,.06)' : 'var(--surface2)', position:'sticky', top:0, zIndex:20, color: isAnnule ? 'var(--danger)' : dh.isToday ? 'var(--accent)' : 'var(--text2)', cursor:'pointer' }}
+                  onContextMenu={e => { e.preventDefault(); setDayCtxMenu({ dayIdx:i, dateIso, x:e.clientX, y:e.clientY }); }}>
+                  <div style={{ fontWeight: dh.isToday ? 800 : 700, textDecoration: isAnnule ? 'line-through' : 'none' }}>{dh.label}</div>
+                  <div style={{ fontSize:'.62rem', fontWeight:400, color: isAnnule ? 'var(--danger)' : 'var(--text3)', marginTop:'.06rem' }}>
+                    {edtFmtShort(dh.date)}
+                    {isAnnule && <span style={{ marginLeft:'.25rem' }}>{MOTIF_LABELS[joursAnnules[dateIso]?.motif] || '📌'}</span>}
+                  </div>
+                </div>
+              );
+            })}
             {/* Colonne heures */}
             <div style={{ borderRight:'1px solid var(--border)', background:'var(--surface)' }}>
               {EDT_HOURS.map(h => (
@@ -416,14 +478,35 @@ function ModuleEDT({ cpData, onDataChange }) {
             </div>
             {/* Colonnes jours avec blocs */}
             {EDT_DAYS.map((_, di) => {
-              const isToday = edtIso(edtDateForDay(viewMonday, di)) === todayStr;
+              const dateIso = edtIso(edtDateForDay(viewMonday, di));
+              const isToday = dateIso === todayStr;
+              const isVac   = vacancesDaySet.has(di);
+              const annule  = joursAnnules[dateIso] || null;
               const colH = ROWS * 60;
               const dayBlocks = visibleBlocks.filter(b => b.day === di);
               return (
-                <div key={di} style={{ position:'relative', height:colH, borderRight:'1px solid var(--border)', background: isToday ? 'rgba(59,91,219,.02)' : 'var(--surface)' }}>
+                <div key={di} style={{ position:'relative', height:colH, borderRight:'1px solid var(--border)', background: annule ? 'rgba(239,68,68,.03)' : isToday ? 'rgba(59,91,219,.02)' : 'var(--surface)' }}
+                  onContextMenu={e => { e.preventDefault(); if (!e.target.closest('[data-edt-block]')) setDayCtxMenu({ dayIdx:di, dateIso, x:e.clientX, y:e.clientY }); }}>
                   {EDT_HOURS.map((h, hi) => (
                     <div key={h} style={{ position:'absolute', top:hi*60, left:0, right:0, height:60, borderBottom:'1px solid rgba(0,0,0,.04)', pointerEvents:'none' }} />
                   ))}
+                  {/* Overlay vacances */}
+                  {isVac && vacanceSemaine && (
+                    <div style={{ position:'absolute', inset:0, background:'rgba(245,158,11,.06)', borderTop:'2px solid rgba(245,158,11,.25)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'.4rem', zIndex:1, pointerEvents:'none' }}>
+                      <span style={{ fontSize:'1.5rem', opacity:.5 }}>🏖️</span>
+                      <div style={{ fontSize:'.62rem', fontWeight:700, color:'var(--warning)', opacity:.8, textTransform:'uppercase', letterSpacing:'.04em', textAlign:'center', padding:'0 .3rem', lineHeight:1.3 }}>{vacanceSemaine.label}</div>
+                    </div>
+                  )}
+                  {/* Overlay jour annulé */}
+                  {annule && (
+                    <div style={{ position:'absolute', inset:0, background:'rgba(239,68,68,.04)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'.4rem', zIndex:1, pointerEvents:'none' }}>
+                      <span style={{ fontSize:'1.4rem', opacity:.45 }}>{annule.motif === 'malade' ? '🤒' : annule.motif === 'formation' ? '📚' : annule.motif === 'ferie' ? '🎉' : '📌'}</span>
+                      <div style={{ fontSize:'.62rem', fontWeight:700, color:'var(--danger)', opacity:.7, textTransform:'uppercase', letterSpacing:'.04em', textAlign:'center', padding:'0 .3rem', lineHeight:1.3 }}>
+                        {MOTIF_LABELS[annule.motif]?.replace(/^.+ /,'')}
+                        {annule.label ? <><br/><span style={{fontWeight:400,textTransform:'none',letterSpacing:0}}>{annule.label}</span></> : null}
+                      </div>
+                    </div>
+                  )}
                   {dayBlocks.map(b => {
                     const col = EDT_COLORS[b.colorIdx || 0];
                     const topPx = (b.startH - 8)*60 + b.startM;
@@ -431,6 +514,7 @@ function ModuleEDT({ cpData, onDataChange }) {
                     const w    = b.weeks || 'AB';
                     return (
                       <div key={b.id}
+                        data-edt-block="1"
                         style={{ position:'absolute', left:2, right:2, top:topPx, height:hPx, borderRadius:6, padding:'.22rem .4rem', fontSize:'.67rem', fontWeight:700, overflow:'hidden', cursor:'pointer', borderLeft:`3px solid ${col.border}`, background:col.bg, color:col.text, boxShadow:'0 1px 4px rgba(0,0,0,.1)', zIndex:2 }}
                         onClick={() => editBlock(b)}
                         onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ block:b, x:e.clientX, y:e.clientY }); }}>
@@ -640,6 +724,148 @@ function ModuleEDT({ cpData, onDataChange }) {
                 style={{ marginTop:'.4rem', padding:'.65rem', borderRadius:'var(--r-s)', border:'none', background:'var(--accent)', color:'#fff', fontFamily:'Roboto,sans-serif', fontWeight:700, fontSize:'.88rem', cursor:'pointer', opacity: form.title.trim() ? 1 : .5 }}>
                 {editId ? 'Enregistrer' : 'Ajouter le cours'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Menu contextuel clic droit sur un jour ── */}
+      {dayCtxMenu && (
+        <>
+          <div style={{ position:'fixed', inset:0, zIndex:3000 }} onClick={() => setDayCtxMenu(null)} onContextMenu={e => { e.preventDefault(); setDayCtxMenu(null); }} />
+          <div style={{ position:'fixed', left: dayCtxMenu.x, top: dayCtxMenu.y, zIndex:3001, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r-s)', boxShadow:'var(--shadow-l)', minWidth:210, overflow:'hidden', padding:'.3rem 0' }}>
+            <div style={{ padding:'.3rem .85rem .35rem', fontSize:'.65rem', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.07em', borderBottom:'1px solid var(--border)' }}>
+              {EDT_DAYS[dayCtxMenu.dayIdx]} · {new Date(dayCtxMenu.dateIso + 'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}
+            </div>
+            {joursAnnules[dayCtxMenu.dateIso] ? (
+              <button onClick={() => { setJoursAnnules(j => { const n={...j}; delete n[dayCtxMenu.dateIso]; return n; }); setDayCtxMenu(null); }}
+                style={{ display:'flex', alignItems:'center', gap:'.55rem', width:'100%', padding:'.42rem .85rem', background:'none', border:'none', cursor:'pointer', fontSize:'.82rem', color:'var(--text)', textAlign:'left' }}
+                onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
+                onMouseLeave={e => e.currentTarget.style.background='none'}>
+                ✅ Rétablir la journée
+              </button>
+            ) : (
+              <button onClick={() => { setMotifForm({ motif:'malade', label:'' }); setMotifModal({ dayIdx:dayCtxMenu.dayIdx, dateIso:dayCtxMenu.dateIso }); setDayCtxMenu(null); }}
+                style={{ display:'flex', alignItems:'center', gap:'.55rem', width:'100%', padding:'.42rem .85rem', background:'none', border:'none', cursor:'pointer', fontSize:'.82rem', color:'var(--danger)', textAlign:'left' }}
+                onMouseEnter={e => e.currentTarget.style.background='rgba(220,38,38,.07)'}
+                onMouseLeave={e => e.currentTarget.style.background='none'}>
+                🚫 Supprimer cette journée…
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── Modale choix motif annulation journée ── */}
+      {motifModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999 }}
+          onClick={e => e.target === e.currentTarget && setMotifModal(null)}>
+          <div style={{ background:'var(--surface)', borderRadius:'var(--r)', width:380, boxShadow:'var(--shadow-l)', overflow:'hidden' }}>
+            <div style={{ background:'linear-gradient(135deg,#dc2626,#b91c1c)', padding:'1.1rem 1.5rem', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div>
+                <div style={{ fontFamily:'Roboto Slab,serif', fontWeight:800, fontSize:'.95rem', color:'#fff' }}>🚫 Journée annulée</div>
+                <div style={{ fontSize:'.73rem', color:'rgba(255,255,255,.75)', marginTop:'.1rem' }}>
+                  {EDT_DAYS[motifModal.dayIdx]} {new Date(motifModal.dateIso+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}
+                </div>
+              </div>
+              <button onClick={() => setMotifModal(null)} style={{ background:'rgba(255,255,255,.15)', border:'none', borderRadius:6, color:'#fff', cursor:'pointer', fontSize:'1.1rem', width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+            </div>
+            <div style={{ padding:'1.25rem 1.5rem', display:'flex', flexDirection:'column', gap:'.75rem' }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:'.25rem' }}>
+                <label style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Motif</label>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'.38rem' }}>
+                  {Object.entries(MOTIF_LABELS).map(([key, label]) => (
+                    <button key={key} onClick={() => setMotifForm(f => ({...f, motif:key}))}
+                      style={{ padding:'.45rem .65rem', borderRadius:'var(--r-s)', border:`2px solid ${motifForm.motif===key ? 'var(--accent)' : 'var(--border)'}`, background: motifForm.motif===key ? 'rgba(59,91,219,.08)' : 'var(--surface2)', color:'var(--text)', fontSize:'.8rem', cursor:'pointer', fontFamily:'Roboto,sans-serif', textAlign:'left', fontWeight: motifForm.motif===key ? 700 : 400 }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:'.25rem' }}>
+                <label style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Précision (optionnel)</label>
+                <input type="text" placeholder="Ex: Journée pédagogique, Formation CPF…" value={motifForm.label} onChange={e => setMotifForm(f=>({...f,label:e.target.value}))}
+                  style={{ padding:'.5rem .75rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.83rem', outline:'none' }} />
+              </div>
+              <div style={{ display:'flex', gap:'.5rem', justifyContent:'flex-end', marginTop:'.25rem' }}>
+                <button className="btn" onClick={() => setMotifModal(null)}>Annuler</button>
+                <button className="btn btn-primary" style={{ background:'#dc2626', borderColor:'#dc2626' }}
+                  onClick={() => { setJoursAnnules(j => ({...j, [motifModal.dateIso]: { motif:motifForm.motif, label:motifForm.label.trim() }})); setMotifModal(null); }}>
+                  🚫 Confirmer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modale gestion vacances ── */}
+      {showVacances && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:'1rem' }}
+          onClick={e => e.target === e.currentTarget && setShowVacances(false)}>
+          <div style={{ background:'var(--surface)', borderRadius:'var(--r)', width:500, maxHeight:'85vh', display:'flex', flexDirection:'column', boxShadow:'var(--shadow-l)', overflow:'hidden' }}>
+            <div style={{ padding:'1.25rem 1.75rem', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
+              <div>
+                <div style={{ fontFamily:'Roboto Slab,serif', fontWeight:800, fontSize:'1rem' }}>🏖️ Périodes de vacances</div>
+                <div style={{ fontSize:'.78rem', color:'var(--text3)', marginTop:'.15rem' }}>Les automatisations sauteront ces périodes</div>
+              </div>
+              <button onClick={() => setShowVacances(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'1.3rem', color:'var(--text3)' }}>×</button>
+            </div>
+            <div style={{ flex:1, overflowY:'auto', padding:'1.25rem 1.75rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
+              {/* Formulaire ajout */}
+              <div style={{ padding:'.75rem', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:'var(--r-s)', display:'flex', flexDirection:'column', gap:'.5rem' }}>
+                <div style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.07em' }}>Ajouter une période</div>
+                <input type="text" placeholder="Nom (ex : Toussaint, Noël…)" value={newVac.label} onChange={e => setNewVac(v => ({...v, label:e.target.value}))}
+                  style={{ padding:'.38rem .65rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-xs)', background:'var(--surface)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.82rem', outline:'none' }} />
+                <div style={{ display:'flex', gap:'.5rem', alignItems:'flex-end' }}>
+                  <div style={{ flex:1 }}>
+                    <label style={{ fontSize:'.72rem', color:'var(--text2)', display:'block', marginBottom:'.2rem' }}>Début</label>
+                    <input type="date" value={newVac.debut} onChange={e => setNewVac(v => ({...v, debut:e.target.value}))}
+                      style={{ width:'100%', padding:'.38rem .65rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-xs)', background:'var(--surface)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.8rem', outline:'none' }} />
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <label style={{ fontSize:'.72rem', color:'var(--text2)', display:'block', marginBottom:'.2rem' }}>Fin</label>
+                    <input type="date" value={newVac.fin} onChange={e => setNewVac(v => ({...v, fin:e.target.value}))}
+                      style={{ width:'100%', padding:'.38rem .65rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-xs)', background:'var(--surface)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.8rem', outline:'none' }} />
+                  </div>
+                  <button className="btn btn-primary" style={{ padding:'.42rem .9rem', flexShrink:0 }}
+                    disabled={!newVac.label.trim() || !newVac.debut || !newVac.fin || newVac.fin < newVac.debut}
+                    onClick={() => {
+                      setVacances(v => [...v, { id:'v'+Date.now(), label:newVac.label.trim(), debut:newVac.debut, fin:newVac.fin }].sort((a,b) => a.debut.localeCompare(b.debut)));
+                      setNewVac({ label:'', debut:'', fin:'' });
+                    }}>+ Ajouter</button>
+                </div>
+              </div>
+              {/* Liste */}
+              {vacances.length === 0 ? (
+                <div style={{ textAlign:'center', color:'var(--text3)', fontSize:'.8rem', padding:'.75rem', fontStyle:'italic' }}>Aucune période enregistrée</div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:'.3rem' }}>
+                  {vacances.map(v => {
+                    const debut = new Date(v.debut+'T12:00');
+                    const fin   = new Date(v.fin+'T12:00');
+                    const fmt   = d => d.toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
+                    const duree = Math.round((fin - debut) / 86400000) + 1;
+                    const isNow = edtIso(new Date()) >= v.debut && edtIso(new Date()) <= v.fin;
+                    return (
+                      <div key={v.id} style={{ display:'flex', alignItems:'center', gap:'.65rem', padding:'.55rem .875rem', background: isNow ? 'rgba(16,185,129,.08)' : 'var(--surface2)', border:`1px solid ${isNow ? 'rgba(16,185,129,.3)' : 'var(--border)'}`, borderRadius:'var(--r-s)' }}>
+                        <span>🏖️</span>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontWeight:700, fontSize:'.82rem' }}>{v.label}
+                            {isNow && <span style={{ marginLeft:'.4rem', background:'rgba(16,185,129,.15)', color:'#059669', fontSize:'.65rem', fontWeight:700, padding:'.08rem .35rem', borderRadius:99 }}>En cours</span>}
+                          </div>
+                          <div style={{ fontSize:'.72rem', color:'var(--text2)', marginTop:'.04rem' }}>{fmt(debut)} → {fmt(fin)} · {duree} jour{duree > 1 ? 's' : ''}</div>
+                        </div>
+                        <button onClick={() => setVacances(v2 => v2.filter(x => x.id !== v.id))}
+                          style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:'1rem', padding:'.1rem .3rem' }}>×</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div style={{ padding:'.875rem 1.75rem', borderTop:'1px solid var(--border)', display:'flex', justifyContent:'flex-end', flexShrink:0 }}>
+              <button className="btn btn-primary" onClick={() => setShowVacances(false)}>Fermer</button>
             </div>
           </div>
         </div>

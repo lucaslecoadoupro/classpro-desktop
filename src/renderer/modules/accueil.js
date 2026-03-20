@@ -157,7 +157,7 @@ function ModuleAccueil({ onOpen, onNavigate, cpData, filePath }) {
             <div className="welcome-sub">Importez votre fichier JSON ClassPro pour commencer</div>
           </div>
 
-          <div className="welcome-actions">
+          <div className="welcome-actions accueil-import-zone">
             <button className="welcome-btn primary" onClick={openJson}>
               <div className="welcome-btn-icon">📂</div>
               <div>

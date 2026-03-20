@@ -1,5 +1,5 @@
 // ── SIDEBAR ───────────────────────────────────────────────────────────────────
-function Sidebar({ activeModule, onNavigate, cpData, filePath, appVersion }) {
+function Sidebar({ activeModule, onNavigate, cpData, filePath, appVersion, onOpenProfile }) {
   const profile = cpData?.profile;
   const fileName = filePath ? basename(filePath) : null;
 
@@ -17,12 +17,13 @@ function Sidebar({ activeModule, onNavigate, cpData, filePath, appVersion }) {
 
       <div className="sb-nav">
         {NAV.map(section => (
-          <div key={section.section}>
+          <div key={section.section} className={section.section === 'Génération PDF' ? 'sb-section-pdf' : ''}>
             <div className="sb-section-label">{section.section}</div>
             {section.items.map(item => (
               <button
                 key={item.id}
                 className={`sb-item ${activeModule === item.id ? 'on' : ''}`}
+                data-id={item.id}
                 onClick={() => onNavigate(item.id)}
               >
                 <span className="sb-item-icon">{item.icon}</span>
@@ -44,6 +45,8 @@ function Sidebar({ activeModule, onNavigate, cpData, filePath, appVersion }) {
             )}
           </div>
         )}
+        {/* Profil utilisateur gamifié */}
+        <SidebarProfile onOpenProfile={onOpenProfile} />
         <div className="sb-version">ClassPro Desktop v{appVersion}</div>
       </div>
     </div>
@@ -58,7 +61,11 @@ function Shell() {
   const [filePath, setFilePath] = useState(null);   // chemin du fichier ouvert
   const [appVersion, setAppVersion] = useState('1.0.0');
   const [theme, setTheme] = useState(() => localStorage.getItem('cpd-theme') || 'light');
-  const [showAbout, setShowAbout] = useState(false);
+  const [showAbout,    setShowAbout]    = useState(false);
+  const [showTour,     setShowTour]     = useState(() => !localStorage.getItem('cpd-tour-done'));
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('cpd-onboarding-done'));
+  const [showProfile,  setShowProfile]  = useState(false);
+  const [rewards,      setRewards]      = useState([]); // file d'attente d'animations récompense
   const { toasts, push: pushToast } = useToast();
 
   // Infos app Electron
@@ -68,10 +75,18 @@ function Shell() {
     });
   }, []);
 
+  // Écouter les récompenses gamification
+  useEffect(() => {
+    const handler = (e) => setRewards(r => [...r, { ...e.detail, key: Date.now() + Math.random() }]);
+    window.addEventListener('cpd-reward', handler);
+    return () => window.removeEventListener('cpd-reward', handler);
+  }, []);
+
   // Thème
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('cpd-theme', theme);
+    if (theme === 'dark') cpdUnlockBadge('dark_mode');
   }, [theme]);
 
   // Écoute des événements menu natif
@@ -101,6 +116,8 @@ function Shell() {
     setFilePath(result.filePath);
     setModule('accueil');
     pushToast(`Fichier chargé avec succès !`, 'success');
+    cpdUnlockBadge('first_json');
+    cpdCountOpen();
 
     // Historique récent
     const recent = JSON.parse(localStorage.getItem('cpd-recent') || '[]');
@@ -123,6 +140,7 @@ function Shell() {
     const result = await window.cpd?.saveJson(cpData._raw, defaultName);
     if (result?.ok) {
       pushToast(`Fichier sauvegardé !`, 'success');
+      cpdUnlockBadge('json_saved');
     } else if (result && !result.ok) {
       pushToast('Erreur lors de la sauvegarde.', 'error');
     }
@@ -189,7 +207,7 @@ function Shell() {
       case 'plan-classe':
         return <ModulePlanClasse cpData={cpData} onDataChange={handlePlanChange} />;
       case 'academie':
-        return <ModuleAcademie />;
+        return <ModuleAcademie onStartTour={() => { localStorage.removeItem('cpd-tour-done'); setShowTour(true); }} />;
       default:
         return <ModulePlaceholder icon="❓" title="Module introuvable" />;
     }
@@ -203,6 +221,7 @@ function Shell() {
         cpData={cpData}
         filePath={filePath}
         appVersion={appVersion}
+        onOpenProfile={() => setShowProfile(true)}
       />
 
       <div className="main-area">
@@ -219,6 +238,7 @@ function Shell() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>
             {cpData && (
               <button onClick={handleSaveJson}
+                className="tour-save-btn"
                 style={{
                   display: 'flex', alignItems: 'center', gap: '.32rem',
                   padding: '.28rem .75rem', borderRadius: 'var(--r-xs)',
@@ -245,6 +265,24 @@ function Shell() {
       </div>
 
       <ToastStack toasts={toasts} />
+
+      {/* Visite guidée */}
+      {showTour && <TourGuide onFinish={() => { setShowTour(false); cpdUnlockBadge('tour_done'); }} onNavigate={setModule} />}
+
+      {/* Onboarding premier lancement */}
+      {showOnboarding && <OnboardingPage onComplete={() => setShowOnboarding(false)} />}
+
+      {/* Modale profil */}
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
+
+      {/* File d'animations récompenses */}
+      {rewards.length > 0 && (
+        <RewardToast
+          key={rewards[0].key}
+          reward={rewards[0]}
+          onDone={() => setRewards(r => r.slice(1))}
+        />
+      )}
 
       {/* Modale À propos */}
       {showAbout && (
@@ -301,11 +339,10 @@ function Shell() {
               <div style={{ fontSize: '.65rem', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '.6rem' }}>Modules disponibles</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.38rem' }}>
                 {[
-                  '🏠 Accueil', '👥 Classes & élèves', '📅 Emploi du temps',
-                  '✏️ Créer un cours', '📆 Progression annuelle', '🪑 Plan de classe',
-                  '👁️ Suivi de classe', '📓 Carnet de bord', '📋 Travaux non rendus',
-                  '🎓 Conseil de classe', '📄 PDF Carnet', '📄 PDF Progression',
-                  '📄 PDF Bulletins', '📖 Centre d\'aide',
+                  '🏠 Accueil', '👥 Suivi de classe', '📓 Carnet de bord',
+                  '📋 Travaux non rendus', '📆 Progression annuelle', '🎓 Conseil de classe',
+                  '📄 PDF Carnet', '📄 PDF Progression', '📄 PDF Bulletins',
+                  '🪑 Plan de classe',
                 ].map(m => (
                   <span key={m} style={{ fontSize: '.72rem', padding: '.25rem .65rem', borderRadius: 99, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', fontWeight: 500 }}>{m}</span>
                 ))}

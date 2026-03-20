@@ -209,7 +209,9 @@ Le fichier JSON échangé entre ClassPro et ClassPro Desktop a la structure suiv
     "cdc-cours":      "{...}",   // cours préparés
     "cdc-liens":      "{...}",   // liens & raccourcis
     "dash-notes":     "{...}",   // notes tableau de bord
-    "dash-taches":    "{...}"    // tâches tableau de bord
+    "dash-taches":    "{...}",   // tâches tableau de bord
+    "cdc-vacances":   "{...}",   // périodes de vacances scolaires (localStorage)
+    "cdc-jours-annules": "{...}" // journées annulées avec motif (localStorage)
   }
 }
 ```
@@ -240,6 +242,8 @@ Le fichier JSON échangé entre ClassPro et ClassPro Desktop a la structure suiv
 - Emploi du temps hebdomadaire avec grille horaire
 - Import PDF Pronote (parser automatique semaines A/B)
 - Automatisation création fiches + séances depuis l'EDT
+- Gestion des vacances scolaires (overlay + exclusion automatisation)
+- Journées annulées avec motif (malade, formation, férié, autre) via clic droit
 
 ### ✅ Étape 5 — Créer un cours
 - Éditeur de fiches de préparation (sections drag & drop)
@@ -258,19 +262,34 @@ Le fichier JSON échangé entre ClassPro et ClassPro Desktop a la structure suiv
 - Marquage binômes (à éviter / à rapprocher)
 - Refactorisation : découpe de `app.js` en modules séparés
 
-### 📋 Étape 7 — BetaTest et correctifs
-- Test de la simplicité de l'utilisation
-- Retour utilisateur et correctifs sous la dénomination **1.0.X**
+### ✅ Étape 7 — BetaTest, correctifs & UX v1.0
+
+#### Navigation & interface
+- Sidebar : sections repliables/dépliables avec persistance `localStorage`
+- Visite guidée corrigée (tooltip positionné au-dessus de la zone cible)
+- Header EDT réordonné (navigation → fiches → vacances → import → ajouter → purger)
+
+#### Gamification & fidélisation (`onboarding.js`)
+- Wizard d'onboarding au premier lancement (5 étapes animées : identité, matières, mémo)
+- Profil enseignant persisté en `localStorage` (`cpd-user-profile`)
+- Mémo sécurisé : identifiant poste, mot de passe (masqué + bouton œil), code photocopieuse
+- Système XP + 5 niveaux progressifs (Stagiaire → Expert ClassPro)
+- 16 badges débloquables sur les actions clés (import EDT, création classe, PDF…)
+- Widget profil en bas de sidebar (avatar initiales, barre XP, compteur badges)
+- Modale profil complète (3 onglets : Profil · Badges · Mémo)
+- Animation récompense élégante (toast animé à chaque badge/niveau débloqué)
+- Fonction globale `cpdUnlockBadge(id)` appelable depuis n'importe quel module
 
 ---
 
 ## Pour la version 1.1
 
-### 📋 Étape 8 — Profil du professeur
+### 📋 Étape 8 — Profil du professeur & modules disciplinaires
 - Activer des modules en fonction de la discipline enseignée
 - **ClassMath** — équations et géométrie
 - **ClassScience** — schémas techniques
 - **ClassLangue** — outils dédiés aux langues
+- Déclencher les badges restants depuis les modules (edt.js, classes.js, progression.js…)
 
 ### 🔬 Étape 9 — R&D module élève *(conditionnel)*
 - Cette étape reste conditionnelle ; à définir selon les retours utilisateurs

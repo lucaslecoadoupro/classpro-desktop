@@ -295,7 +295,7 @@ const GUIDES = [
   },
 ];
 
-function ModuleAcademie() {
+function ModuleAcademie({ onStartTour }) {
   const [search, setSearch] = useState('');
   const [selGuide, setSelGuide] = useState(null);
 
@@ -371,6 +371,11 @@ function ModuleAcademie() {
           <div className="phd-badge">🎓 Académie</div>
           <div className="phd-title">ClassPro Académie</div>
           <div className="phd-sub">Centre d'aide · {GUIDES.length} guides disponibles</div>
+        </div>
+        <div className="phd-actions">
+          <button className="btn btn-ghost" onClick={onStartTour}>
+            🗺️ Revoir la visite guidée
+          </button>
         </div>
       </div>
 

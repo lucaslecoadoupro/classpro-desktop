@@ -587,3 +587,18 @@ body {
 .seg button{padding:.37rem .78rem;border:none;background:transparent;color:var(--text2);font-family:'Roboto',sans-serif;font-size:.75rem;font-weight:500;cursor:pointer;transition:all .15s}
 .seg button.on{background:var(--accent);color:#fff;font-weight:700}
 .seg button:hover:not(.on){color:var(--text);background:var(--border)}
+
+/* ── Gamification & Onboarding ─────────────────────────────────────────────── */
+@keyframes cpd-bounce {
+  0%   { transform: scale(.6) rotate(-8deg); opacity: 0; }
+  55%  { transform: scale(1.18) rotate(3deg); opacity: 1; }
+  75%  { transform: scale(.94) rotate(-1deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* Profil sidebar */
+.sb-footer {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
