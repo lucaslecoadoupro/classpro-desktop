@@ -1,4 +1,4 @@
-function ModuleClasses({ cpData, onDataChange }) {
+function ModuleClasses({ cpData, onDataChange, pushToast }) {
   const classes = cpData?.classes || [];
   const [selCls, setSelCls] = useState(classes[0]?.id || null);
   const [newEleve, setNewEleve] = useState('');
@@ -8,9 +8,35 @@ function ModuleClasses({ cpData, onDataChange }) {
   const [newClsName, setNewClsName] = useState('');
   const [editingCls, setEditingCls] = useState(null);
   const [editClsVal, setEditClsVal] = useState('');
+  const [importOnglet, setImportOnglet] = useState('csv');
 
   const cls = classes.find(c => c.id === selCls);
   const save = (newClasses) => onDataChange('sc-classes', newClasses);
+
+  // Import CSV — lit la première colonne, ignore l'en-tête si non alphanumérique dominant
+  const importCsv = (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !cls) return;
+    e.target.value = '';
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const lines = ev.target.result.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      // Ignorer la première ligne si c'est un en-tête (contient "nom", "élève", "name" ou commence par une minuscule)
+      const firstCell = lines[0]?.split(/[;,\t]/)[0].replace(/['"]/g, '').trim().toLowerCase();
+      const isHeader = /^(nom|prenom|prénom|name|eleve|élève|student)/.test(firstCell) || /^[a-z]/.test(firstCell);
+      const start = isHeader ? 1 : 0;
+      const existNoms = (cls.eleves || []).map(el => el.nom.toLowerCase());
+      const nouveaux = lines.slice(start)
+        .map(l => l.split(/[;,\t]/)[0].replace(/['"«»""'']/g, '').trim()) // supprimer guillemets
+        .filter(nom => nom.length > 1 && !existNoms.includes(nom.toLowerCase()))
+        .map(nom => ({ id: 'el-' + Date.now() + Math.random().toString(36).slice(2), nom }));
+      if (!nouveaux.length) { alert('Aucun nom détecté ou tous les élèves existent déjà.'); return; }
+      save(classes.map(c => c.id === selCls ? { ...c, eleves: [...(c.eleves || []), ...nouveaux] } : c));
+      setShowImportEleves(false);
+      if (pushToast) pushToast(`${nouveaux.length} élève(s) importé(s) avec succès !`, 'success');
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
 
   const addClasse = () => {
     if (!newClsName.trim()) return;
@@ -55,6 +81,7 @@ function ModuleClasses({ cpData, onDataChange }) {
     save(classes.map(c => c.id === selCls ? { ...c, eleves: [...(c.eleves || []), ...newEleves] } : c));
     setImportText('');
     setShowImportEleves(false);
+    if (pushToast) pushToast(`${newEleves.length} élève(s) importé(s) avec succès !`, 'success');
   };
 
   if (!cpData) return <ModulePlaceholder icon="👥" title="Classes et eleves" sub="Ouvrez d'abord un fichier ClassPro." />;
@@ -139,6 +166,11 @@ function ModuleClasses({ cpData, onDataChange }) {
                   style={{ flex: 1, padding: '.55rem .875rem', border: '1.5px solid var(--border)', borderRadius: 'var(--r-s)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Roboto,sans-serif', fontSize: '.85rem', outline: 'none' }}
                   onFocus={e => e.target.style.borderColor='var(--accent)'} onBlur={e => e.target.style.borderColor='var(--border)'} />
                 <button onClick={addEleve} disabled={!newEleve.trim()} className="btn btn-primary">+ Ajouter</button>
+                <button className="btn" onClick={() => { setShowImportEleves(true); setImportText(''); }}>
+                  📋 Importer une liste
+                </button>
+                <input id="csv-import-input" type="file" accept=".csv,.txt" onChange={importCsv}
+                  style={{ display: 'none' }} />
               </div>
 
               {/* Liste élèves */}
@@ -185,49 +217,120 @@ function ModuleClasses({ cpData, onDataChange }) {
         </div>
       )}
 
-      {/* Modale import liste élèves */}
+      {/* Modale import liste élèves — guidée CSV + texte */}
       {showImportEleves && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:'1rem' }}
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:'1rem' }}
           onClick={e => e.target===e.currentTarget && setShowImportEleves(false)}>
-          <div style={{ background:'var(--surface)', borderRadius:'var(--r)', padding:'1.5rem', width:480, boxShadow:'var(--shadow-l)', display:'flex', flexDirection:'column', gap:'1rem' }}>
-            <div>
-              <div style={{ fontFamily:'Roboto Slab,serif', fontWeight:800, fontSize:'1.05rem' }}>
-                📋 Importer la liste d&apos;élèves
-                {cls && <span style={{ fontWeight:400, fontSize:'.85rem', color:'var(--text3)', marginLeft:'.5rem' }}>— {cls.name}</span>}
+          <div style={{ background:'var(--surface)', borderRadius:16, width:520, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 24px 64px rgba(0,0,0,.3)', display:'flex', flexDirection:'column' }}>
+
+            {/* Header */}
+            <div style={{ background:'linear-gradient(135deg,#1e3a8a,#3b5bdb)', padding:'1.25rem 1.5rem', borderRadius:'16px 16px 0 0', flexShrink:0 }}>
+              <div style={{ fontFamily:'Roboto Slab,serif', fontWeight:800, fontSize:'1.05rem', color:'#fff', marginBottom:'.2rem' }}>
+                📋 Importer une liste d&apos;élèves
+              </div>
+              <div style={{ fontSize:'.78rem', color:'rgba(255,255,255,.75)' }}>
+                {cls ? cls.name : ''} — choisissez votre méthode d&apos;import
               </div>
             </div>
 
-            {/* Instructions Pronote */}
-            <div style={{ padding:'.75rem 1rem', background:'rgba(59,91,219,.07)', border:'1px solid rgba(59,91,219,.25)', borderRadius:'var(--r-s)', fontSize:'.8rem', lineHeight:1.75 }}>
-              <div style={{ fontWeight:700, color:'var(--accent)', marginBottom:'.3rem' }}>Comment récupérer la liste depuis PRONOTE</div>
-              Allez sur <strong>PRONOTE (version web)</strong> → <strong>Mes données</strong> → <strong>Liste d&apos;élèves</strong>.
-              Sélectionnez la classe souhaitée et affichez la liste.
-              Cliquez en haut à droite sur l&apos;icône des <strong>carrés entremêlés</strong> pour copier la liste CSV.
-              Collez ensuite la <strong>première colonne (noms)</strong> dans le champ ci-dessous.
-            </div>
-
-            <div>
-              <div style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:'.35rem' }}>
-                Liste — un élève par ligne (NOM Prénom)
-              </div>
-              <textarea value={importText} onChange={e => setImportText(e.target.value)}
-                placeholder={"DUPONT Marie\nMARTIN Paul\nBERNARD Lea\n..."}
-                rows={8} style={{ width:'100%', padding:'.65rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.85rem', outline:'none', resize:'vertical', boxSizing:'border-box' }} />
-            </div>
-
-            <div style={{ display:'flex', gap:'.5rem', justifyContent:'space-between', alignItems:'center' }}>
-              <div style={{ fontSize:'.75rem', color:'var(--text3)' }}>
-                {importText.trim() ? importText.trim().split('\n').filter(Boolean).length + ' élève(s) détecté(s)' : 'Collez votre liste ci-dessus'}
-              </div>
-              <div style={{ display:'flex', gap:'.5rem' }}>
-                <button className="btn" onClick={() => { setShowImportEleves(false); setImportText(''); }}>
-                  {importText.trim() ? 'Passer' : 'Fermer'}
+            {/* Onglets */}
+            <div style={{ display:'flex', borderBottom:'1px solid var(--border)', background:'var(--surface2)', flexShrink:0 }}>
+              {[
+                {id:'csv', label:'📂 Depuis PRONOTE (CSV)', recommended:true},
+                {id:'texte', label:'✏️ Coller une liste texte'}
+              ].map(o => (
+                <button key={o.id} onClick={() => setImportOnglet(o.id)}
+                  style={{ flex:1, padding:'.65rem 1rem', border:'none', borderBottom:`2.5px solid ${importOnglet===o.id ? 'var(--accent)' : 'transparent'}`, background:'none', cursor:'pointer', fontFamily:'Roboto,sans-serif', fontSize:'.8rem', fontWeight:importOnglet===o.id ? 700 : 500, color:importOnglet===o.id ? 'var(--accent)' : 'var(--text2)', display:'flex', alignItems:'center', justifyContent:'center', gap:'.4rem' }}>
+                  {o.label}
+                  {o.recommended && <span style={{ fontSize:'.58rem', padding:'.08rem .4rem', borderRadius:99, background:'rgba(59,91,219,.12)', color:'var(--accent)', fontWeight:700 }}>Recommandé</span>}
                 </button>
-                <button className="btn btn-primary" disabled={!importText.trim()} onClick={importEleves}>
-                  Importer
-                </button>
-              </div>
+              ))}
             </div>
+
+            {/* Onglet CSV */}
+            {importOnglet === 'csv' && (
+              <div style={{ padding:'1.25rem 1.5rem', display:'flex', flexDirection:'column', gap:'.875rem' }}>
+                <div style={{ fontSize:'.8rem', color:'var(--text2)', lineHeight:1.6, padding:'.65rem .875rem', background:'rgba(59,91,219,.05)', border:'1px solid rgba(59,91,219,.15)', borderRadius:10 }}>
+                  💡 Exportez votre liste depuis <strong>PRONOTE</strong> en quelques clics — ClassPro lit automatiquement la première colonne.
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:'.42rem' }}>
+                  <div style={{ display:'flex', gap:'.875rem', alignItems:'flex-start', padding:'.65rem .75rem', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10 }}>
+                    <div style={{ width:26, height:26, borderRadius:'50%', background:'var(--border)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text2)', fontSize:'.72rem', fontWeight:800, flexShrink:0, marginTop:'.05rem' }}>
+                      1
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontWeight:700, fontSize:'.83rem', color:'var(--text)', marginBottom:'.2rem' }}>Ouvrez PRONOTE</div>
+                      <div style={{ fontSize:'.76rem', color:'var(--text2)', lineHeight:1.55 }}>Connectez-vous sur la version web de PRONOTE (pronote.net ou ENT de votre académie).</div>
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', gap:'.875rem', alignItems:'flex-start', padding:'.65rem .75rem', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10 }}>
+                    <div style={{ width:26, height:26, borderRadius:'50%', background:'var(--border)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text2)', fontSize:'.72rem', fontWeight:800, flexShrink:0, marginTop:'.05rem' }}>
+                      2
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontWeight:700, fontSize:'.83rem', color:'var(--text)', marginBottom:'.2rem' }}>Allez dans "Mes données"</div>
+                      <div style={{ fontSize:'.76rem', color:'var(--text2)', lineHeight:1.55 }}>Dans le menu principal, cliquez sur Mes données → Liste d'élèves.</div>
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', gap:'.875rem', alignItems:'flex-start', padding:'.65rem .75rem', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10 }}>
+                    <div style={{ width:26, height:26, borderRadius:'50%', background:'var(--border)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text2)', fontSize:'.72rem', fontWeight:800, flexShrink:0, marginTop:'.05rem' }}>
+                      3
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontWeight:700, fontSize:'.83rem', color:'var(--text)', marginBottom:'.2rem' }}>Sélectionnez la classe</div>
+                      <div style={{ fontSize:'.76rem', color:'var(--text2)', lineHeight:1.55 }}>Choisissez la classe dont vous voulez importer les élèves dans le menu déroulant.</div>
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', gap:'.875rem', alignItems:'flex-start', padding:'.65rem .75rem', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10 }}>
+                    <div style={{ width:26, height:26, borderRadius:'50%', background:'var(--border)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text2)', fontSize:'.72rem', fontWeight:800, flexShrink:0, marginTop:'.05rem' }}>
+                      4
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontWeight:700, fontSize:'.83rem', color:'var(--text)', marginBottom:'.2rem' }}>Exportez en CSV</div>
+                      <div style={{ fontSize:'.76rem', color:'var(--text2)', lineHeight:1.55 }}>Cliquez sur le bouton Export (icône carrés entremêlés en haut à droite) puis choisissez CSV.</div>
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', gap:'.875rem', alignItems:'flex-start', padding:'.65rem .75rem', background:'rgba(59,91,219,.05)', border:'1px solid rgba(59,91,219,.2)', borderRadius:10 }}>
+                    <div style={{ width:26, height:26, borderRadius:'50%', background:'var(--accent)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:'.72rem', fontWeight:800, flexShrink:0, marginTop:'.05rem' }}>
+                      5
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontWeight:700, fontSize:'.83rem', color:'var(--text)', marginBottom:'.2rem' }}>Importez le fichier ici</div>
+                      <div style={{ fontSize:'.76rem', color:'var(--text2)', lineHeight:1.55 }}>Cliquez sur le bouton ci-dessous et sélectionnez le fichier .csv téléchargé. ClassPro lit automatiquement la première colonne.</div>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display:'flex', gap:'.5rem', justifyContent:'flex-end', paddingTop:'.25rem' }}>
+                  <button className="btn" onClick={() => setShowImportEleves(false)}>Annuler</button>
+                  <button className="btn btn-primary" onClick={() => document.getElementById('csv-import-input').click()}>
+                    📂 Sélectionner le fichier CSV
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Onglet texte */}
+            {importOnglet === 'texte' && (
+              <div style={{ padding:'1.25rem 1.5rem', display:'flex', flexDirection:'column', gap:'.875rem' }}>
+                <div style={{ fontSize:'.8rem', color:'var(--text2)', lineHeight:1.6, padding:'.65rem .875rem', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10 }}>
+                  Collez directement votre liste — <strong>un élève par ligne</strong>, au format <code style={{ background:'var(--surface)', padding:'.1rem .3rem', borderRadius:4, fontSize:'.74rem' }}>NOM Prénom</code>. Les doublons sont ignorés.
+                </div>
+                <textarea value={importText} onChange={e => setImportText(e.target.value)}
+                  autoFocus
+                  placeholder={"DUPONT Marie\nMARTIN Paul\nBERNARD Léa\n..."}
+                  rows={9} style={{ width:'100%', padding:'.65rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.85rem', outline:'none', resize:'vertical', boxSizing:'border-box' }} />
+                <div style={{ display:'flex', gap:'.5rem', justifyContent:'space-between', alignItems:'center' }}>
+                  <div style={{ fontSize:'.75rem', color:'var(--text3)' }}>
+                    {importText.trim() ? importText.trim().split('\n').filter(Boolean).length + ' élève(s) détecté(s)' : 'Collez votre liste ci-dessus'}
+                  </div>
+                  <div style={{ display:'flex', gap:'.5rem' }}>
+                    <button className="btn" onClick={() => { setShowImportEleves(false); setImportText(''); }}>Annuler</button>
+                    <button className="btn btn-primary" disabled={!importText.trim()} onClick={importEleves}>Importer</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}
