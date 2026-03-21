@@ -63,9 +63,10 @@ function ModuleAccueil({ onOpen, onNavigate, cpData, filePath }) {
 
   if (cpData) {
     // Fichier déjà ouvert → dashboard résumé
+    const totalSeances = Object.values(cpData.sessions || {}).reduce((s, arr) => s + (Array.isArray(arr) ? arr.length : 0), 0);
     const stats = [
       { label: 'Classes', value: cpData.classes.length },
-      { label: 'Séances', value: cpData.sessions.length },
+      { label: 'Séances', value: totalSeances },
       { label: 'Devoirs', value: cpData.devoirs.length },
       { label: 'Bulletins', value: cpData.bulletins.length },
     ];
@@ -126,7 +127,7 @@ function ModuleAccueil({ onOpen, onNavigate, cpData, filePath }) {
               <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '.42rem' }}>
                 {[
                   ['Classes enregistrées', cpData.classes.length],
-                  ['Séances (carnet)', cpData.sessions.length],
+                  ['Séances (carnet)', totalSeances],
                   ['Devoirs / TNR', cpData.devoirs.length],
                   ['Fiches séance', cpData.fiches.length],
                   ['Plans de classe', cpData.plans.length],
@@ -184,6 +185,16 @@ function ModuleAccueil({ onOpen, onNavigate, cpData, filePath }) {
                 <div className="welcome-btn-hint">Créer un profil ClassPro Desktop sans clé USB</div>
               </div>
             </button>
+          </div>
+
+          {/* Conseil organisation fichiers */}
+          <div style={{ maxWidth: 480, width: '100%', margin: '0 auto', padding: '.75rem 1rem', background: 'rgba(59,91,219,.06)', border: '1px solid rgba(59,91,219,.18)', borderRadius: 12, display: 'flex', alignItems: 'flex-start', gap: '.75rem' }}>
+            <span style={{ fontSize: '1.1rem', flexShrink: 0, marginTop: '.05rem' }}>💡</span>
+            <div style={{ fontSize: '.78rem', color: 'var(--text2)', lineHeight: 1.6 }}>
+              <strong style={{ color: 'var(--text)' }}>Conseil d'organisation :</strong> enregistrez vos fichiers JSON dans le dossier{' '}
+              <code style={{ background: 'var(--surface2)', padding: '.1rem .35rem', borderRadius: 4, fontSize: '.74rem', fontFamily: 'monospace', color: 'var(--accent)' }}>Documents/ClassPro</code>
+              {' '}pour que ClassPro Desktop les retrouve automatiquement à l'ouverture.
+            </div>
           </div>
 
           {recent.length > 0 && (
