@@ -4,6 +4,8 @@ function ModuleConseil({ cpData }) {
   const [selEleve, setSelEleve] = useState(null);
   const [search, setSearch] = useState('');
   const [filtPole, setFiltPole] = useState('');
+  // optionsPdf : options d'affichage du tableau (moyenne classe visible par défaut)
+  const optionsPdf = { moyClasse: true };
 
   if (!cpData || bulletins.length === 0) {
     return <ModulePlaceholder icon="🎓" title="Conseil de classe" sub="Aucun bulletin importé dans ce fichier ClassPro." soon={false} />;
