@@ -8,7 +8,7 @@
 const CPD_LEVELS = [
   { level: 1, title: 'Stagiaire',      minXP: 0,    color: '#6b7280', emoji: '🌱' },
   { level: 2, title: 'Enseignant',     minXP: 50,   color: '#3b82f6', emoji: '📚' },
-  { level: 3, title: 'Pédagogue',      minXP: 150,  color: '#8b5cf6', emoji: '✏️' },
+  { level: 3, title: 'Pédagogue',      minXP: 150,  color: '#8b5cf6', emoji: '✏' },
   { level: 4, title: 'Formateur',      minXP: 300,  color: '#f59e0b', emoji: '🏆' },
   { level: 5, title: 'Expert ClassPro',minXP: 600,  color: '#10b981', emoji: '⭐' },
 ];
@@ -20,10 +20,10 @@ const CPD_BADGES = [
   // Fichiers
   { id: 'first_json',    emoji: '📄', title: 'Premier fichier',      desc: 'Premier fichier JSON créé ou ouvert',       xp: 30  },
   { id: 'json_saved',    emoji: '💾', title: 'Sauvegardeur',         desc: 'Fichier JSON sauvegardé pour la 1ère fois', xp: 15  },
-  { id: 'json_5',        emoji: '🗂️', title: 'Archiviste',           desc: '5 fichiers ouverts au total',               xp: 25  },
+  { id: 'json_5',        emoji: '🗂', title: 'Archiviste',           desc: '5 fichiers ouverts au total',               xp: 25  },
   // EDT
   { id: 'edt_import',    emoji: '📅', title: 'EDT importé',          desc: 'Emploi du temps importé depuis Pronote',    xp: 40  },
-  { id: 'edt_manual',    emoji: '✏️', title: 'Éditeur EDT',          desc: 'Premier créneau ajouté manuellement',       xp: 15  },
+  { id: 'edt_manual',    emoji: '✏', title: 'Éditeur EDT',          desc: 'Premier créneau ajouté manuellement',       xp: 15  },
   { id: 'edt_auto',      emoji: '🔁', title: 'Automatiseur',         desc: 'Fiches et suivi générés depuis l\'EDT',     xp: 35  },
   // Classes
   { id: 'first_class',   emoji: '👥', title: 'Ma première classe',   desc: 'Première classe créée',                     xp: 25  },
@@ -36,9 +36,24 @@ const CPD_BADGES = [
   // PDF
   { id: 'first_pdf',     emoji: '📄', title: 'Générateur PDF',       desc: 'Premier PDF généré',                        xp: 20  },
   // Fidélité
-  { id: 'tour_done',     emoji: '🗺️', title: 'Explorateur',          desc: 'Visite guidée terminée',                    xp: 10  },
+  { id: 'tour_done',     emoji: '🗺', title: 'Explorateur',          desc: 'Visite guidée terminée',                    xp: 10  },
   { id: 'dark_mode',     emoji: '🌙', title: 'Nuit blanche',         desc: 'Mode sombre activé',                        xp: 5   },
-  { id: 'vacances',      emoji: '🏖️', title: 'Vacances méritées',    desc: 'Première période de vacances configurée',   xp: 10  },
+  { id: 'vacances',      emoji: '🏖', title: 'Vacances méritées',    desc: 'Première période de vacances configurée',   xp: 10  },
+  // Spéciaux
+  { id: 'betatesteur',   emoji: '🧪', title: 'Premier Supporter',    desc: 'Bétatesteur de la première heure — merci !', xp: 100 },
+  { id: 'fidele',        emoji: '📱', title: 'Fidèle ClassPro',       desc: 'JSON avec 50 séances ou plus enregistrées',  xp: 50  },
+  { id: 'completiste',   emoji: '🎯', title: 'Complétiste',           desc: 'Tous les champs du profil renseignés',        xp: 40  },
+  // Assiduité
+  { id: 'marathon',      emoji: '🏃', title: 'Marathon',              desc: '10 seances ou plus dans une meme semaine',    xp: 35  },
+  { id: 'polyglotte',    emoji: '🗺', title: 'Polyglotte',            desc: '3 classes differentes dans l EDT',             xp: 30  },
+  // Communauté
+  { id: 'ambassadeur',   emoji: '🤝', title: 'Ambassadeur',           desc: 'Feedback envoye a l equipe ClassPro',          xp: 25  },
+  // Progression
+  { id: 'perfectionniste', emoji: '✨', title: 'Perfectionniste',     desc: 'Toutes les colonnes remplies dans une prog',   xp: 40  },
+  { id: 'bilan',         emoji: '📊', title: 'Bilan complet',         desc: 'Les 3 types de PDF générés',                  xp: 60  },
+  // Usage
+  { id: 'nomade',        emoji: '🎒', title: 'Nomade',                desc: 'JSON importé sans EDT configuré',             xp: 20  },
+  { id: 'veteran',       emoji: '🎖', title: 'Vétéran',               desc: 'JSON créé il y a plus de 6 mois',             xp: 50  },
 ];
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -78,6 +93,31 @@ function cpdUnlockBadge(badgeId) {
   // Émettre un événement custom pour que le shell réagisse
   window.dispatchEvent(new CustomEvent('cpd-reward', { detail: { badge, xp: g.xp, level: newLevel, levelUp } }));
   return { badge, xp: g.xp, level: newLevel, levelUp };
+}
+
+
+// Tracker streak jours consécutifs
+function cpdTrackStreak() {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const data  = JSON.parse(localStorage.getItem('cpd-streak') || '{"last":"","count":0}');
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (data.last === today) return; // déjà compté aujourd'hui
+    data.count = data.last === yesterday ? data.count + 1 : 1;
+    data.last  = today;
+    localStorage.setItem('cpd-streak', JSON.stringify(data));
+    if (data.count >= 7) cpdUnlockBadge('assidu');
+  } catch (_) {}
+}
+
+// Tracker PDF générés (cumul par type)
+function cpdTrackPdf(type) { // type: 'carnet' | 'bulletins' | 'progression'
+  try {
+    const data = JSON.parse(localStorage.getItem('cpd-pdf-types') || '[]');
+    if (!data.includes(type)) data.push(type);
+    localStorage.setItem('cpd-pdf-types', JSON.stringify(data));
+    if (data.length >= 3) cpdUnlockBadge('bilan');
+  } catch (_) {}
 }
 
 // Incrémenter le compteur d'ouvertures de fichiers
@@ -234,6 +274,8 @@ function ProfileModal({ onClose }) {
   const [gamif, setGamif] = React.useState(cpdGamifLoad);
   const [tab, setTab] = React.useState('profil'); // 'profil' | 'badges' | 'memo'
   const [showMdp, setShowMdp] = React.useState(false);
+  const [codeSecret, setCodeSecret] = React.useState('');
+  const [codeResult, setCodeResult] = React.useState(null); // null | 'ok' | 'already' | 'error'
   const [profile, setProfile] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem('cpd-user-profile') || 'null') || {}; }
     catch { return {}; }
@@ -265,6 +307,20 @@ function ProfileModal({ onClose }) {
     setProfile(p);
     setEditing(false);
     if (p.prenom && p.nom) cpdUnlockBadge('profile_done');
+    if (p.prenom && p.nom && p.matieres && p.etablissement) cpdUnlockBadge('completiste');
+  };
+
+  const tryCode = () => {
+    const code = codeSecret.trim().toUpperCase();
+    if (code === 'PREMIERSUPPORTER') {
+      const result = cpdUnlockBadge('betatesteur');
+      setCodeResult(result ? 'ok' : 'already');
+      if (result) setGamif(cpdGamifLoad());
+    } else {
+      setCodeResult('error');
+    }
+    setTimeout(() => setCodeResult(null), 3000);
+    setCodeSecret('');
   };
 
   const unlockedIds = new Set(gamif.badges);
@@ -429,20 +485,35 @@ function ProfileModal({ onClose }) {
               {/* Grille badges */}
               <div>
                 <div style={{ fontSize:'.65rem', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:'.5rem' }}>Tous les badges</div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'.4rem' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:'.4rem', overflowX:'hidden' }}>
                   {CPD_BADGES.map(b => {
                     const has = unlockedIds.has(b.id);
                     return (
-                      <div key={b.id} style={{ display:'flex', alignItems:'center', gap:'.55rem', padding:'.5rem .65rem', background: has ? 'rgba(59,91,219,.06)' : 'var(--surface2)', border:`1px solid ${has ? 'rgba(59,91,219,.25)' : 'var(--border)'}`, borderRadius:8, opacity: has ? 1 : .45, filter: has ? 'none' : 'grayscale(1)' }}>
+                      <div key={b.id} style={{ display:'flex', alignItems:'center', gap:'.55rem', padding:'.5rem .65rem', background: has ? 'rgba(59,91,219,.06)' : 'var(--surface2)', border:`1px solid ${has ? 'rgba(59,91,219,.25)' : 'var(--border)'}`, borderRadius:8, opacity: has ? 1 : .45, filter: has ? 'none' : 'grayscale(1)', minWidth:0, overflow:'hidden' }}>
                         <span style={{ fontSize:'1.1rem', flexShrink:0 }}>{b.emoji}</span>
                         <div style={{ minWidth:0 }}>
-                          <div style={{ fontWeight: has ? 700 : 500, fontSize:'.75rem', color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{b.title}</div>
-                          <div style={{ fontSize:'.62rem', color:'var(--text3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{has ? `+${b.xp} XP · débloqué` : b.desc}</div>
+                          <div style={{ fontWeight: has ? 700 : 500, fontSize:'.75rem', color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0 }}>{b.title}</div>
+                          <div style={{ fontSize:'.62rem', color:'var(--text3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0 }}>{has ? `+${b.xp} XP · débloqué` : b.desc}</div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
+              </div>
+              {/* Code secret */}
+              <div style={{ marginTop:'.5rem', padding:'.875rem 1rem', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10 }}>
+                <div style={{ fontSize:'.65rem', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:'.5rem' }}>🔑 Code de déverrouillage</div>
+                <div style={{ display:'flex', gap:'.5rem' }}>
+                  <input value={codeSecret} onChange={e => setCodeSecret(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && tryCode()}
+                    placeholder="Saisissez un code…"
+                    style={{ flex:1, padding:'.5rem .75rem', border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', background:'var(--surface)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.82rem', outline:'none' }}
+                    onFocus={e => e.target.style.borderColor='var(--accent)'} onBlur={e => e.target.style.borderColor='var(--border)'} />
+                  <button className="btn btn-primary" onClick={tryCode} disabled={!codeSecret.trim()} style={{ fontSize:'.78rem' }}>Valider</button>
+                </div>
+                {codeResult === 'ok'      && <div style={{ marginTop:'.5rem', fontSize:'.75rem', color:'var(--success)', fontWeight:600 }}>✅ Badge débloqué ! Félicitations 🎉</div>}
+                {codeResult === 'already' && <div style={{ marginTop:'.5rem', fontSize:'.75rem', color:'var(--text3)' }}>Tu possèdes déjà ce badge.</div>}
+                {codeResult === 'error'   && <div style={{ marginTop:'.5rem', fontSize:'.75rem', color:'var(--danger)' }}>❌ Code invalide.</div>}
               </div>
             </div>
           )}
@@ -553,6 +624,7 @@ const ONBOARDING_STEPS = [
   { id:'identity', title:'Qui êtes-vous ?',                  sub:'Votre identité enseignante' },
   { id:'matieres', title:'Vos matières',                     sub:'Ce que vous enseignez' },
   { id:'memo',     title:'Mémo pratique',                    sub:'Vos accès au travail (optionnel)' },
+  { id:'flux',     title:'Comment ça marche ?',              sub:'Le lien entre ClassPro et Desktop' },
   { id:'done',     title:'Tout est prêt !',                  sub:'Bonne rentrée 🎉' },
 ];
 
@@ -592,6 +664,7 @@ function OnboardingPage({ onComplete }) {
     localStorage.setItem('cpd-onboarding-done', '1');
     cpdUnlockBadge('first_launch');
     if (p.prenom && p.nom) cpdUnlockBadge('profile_done');
+    if (p.prenom && p.nom && p.matieres && p.etablissement) cpdUnlockBadge('completiste');
     onComplete();
   };
 
@@ -722,8 +795,57 @@ function OnboardingPage({ onComplete }) {
             </div>
           )}
 
-          {/* Etape 4 - Done */}
+          {/* Etape 4 - Flux ClassPro */}
           {step === 4 && (
+            <div style={{ display:'flex', flexDirection:'column', gap:'.875rem' }}>
+              {/* Schéma flux */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'.5rem', padding:'1rem', background:'var(--surface2)', borderRadius:12, border:'1px solid var(--border)' }}>
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ fontSize:'1.6rem' }}>📱</div>
+                  <div style={{ fontSize:'.68rem', fontWeight:700, color:'var(--text2)', marginTop:'.25rem' }}>ClassPro</div>
+                  <div style={{ fontSize:'.62rem', color:'var(--text3)' }}>En classe</div>
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'.15rem', flex:1 }}>
+                  <div style={{ fontSize:'.62rem', color:'var(--accent)', fontWeight:600 }}>Export JSON</div>
+                  <div style={{ width:'100%', height:2, background:'linear-gradient(90deg, var(--accent), var(--accent))', borderRadius:99, position:'relative' }}>
+                    <div style={{ position:'absolute', right:-4, top:-4, width:10, height:10, borderTop:'2px solid var(--accent)', borderRight:'2px solid var(--accent)', transform:'rotate(45deg)' }} />
+                  </div>
+                  <div style={{ fontSize:'.62rem', color:'var(--text3)' }}>→ Téléchargements</div>
+                </div>
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ fontSize:'1.6rem' }}>🖥️</div>
+                  <div style={{ fontSize:'.68rem', fontWeight:700, color:'var(--text2)', marginTop:'.25rem' }}>Desktop</div>
+                  <div style={{ fontSize:'.62rem', color:'var(--text3)' }}>À la maison</div>
+                </div>
+              </div>
+
+              <div style={{ fontSize:'.82rem', color:'var(--text2)', lineHeight:1.7 }}>
+                <strong style={{ color:'var(--text)' }}>ClassPro</strong> (l'outil HTML utilisé en classe) génère un fichier <code style={{ background:'var(--surface2)', padding:'.1rem .3rem', borderRadius:4, fontSize:'.76rem' }}>.json</code> qui contient toutes vos données du jour.
+              </div>
+
+              <div style={{ padding:'.75rem 1rem', background:'rgba(59,91,219,.06)', border:'1px solid rgba(59,91,219,.18)', borderRadius:10, fontSize:'.8rem', color:'var(--text2)', lineHeight:1.65 }}>
+                💡 <strong style={{ color:'var(--text)' }}>Conseil :</strong> enregistrez ce fichier JSON dans{' '}
+                <code style={{ background:'var(--surface)', padding:'.1rem .35rem', borderRadius:4, fontSize:'.75rem', color:'var(--accent)', fontWeight:600 }}>Documents/ClassPro</code>
+                {' '}— ClassPro Desktop s'ouvrira directement dans ce dossier lors de l'import.
+              </div>
+
+              <div style={{ display:'flex', flexDirection:'column', gap:'.45rem' }}>
+                {[
+                  '1. Exportez votre JSON depuis ClassPro en fin de journée',
+                  '2. Déplacez-le dans Documents/ClassPro sur votre ordinateur',
+                  '3. Ouvrez ClassPro Desktop et importez-le depuis l\'Accueil',
+                ].map((step, i) => (
+                  <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:'.6rem', fontSize:'.78rem', color:'var(--text2)' }}>
+                    <span style={{ color:'var(--accent)', fontWeight:700, flexShrink:0 }}>→</span>
+                    <span>{step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Etape 5 - Done */}
+          {step === 5 && (
             <div style={{ textAlign:'center', padding:'.5rem 0' }}>
               <div style={{ fontSize:'3rem', marginBottom:'.75rem' }}>🎉</div>
               <div style={{ fontWeight:800, fontSize:'1rem', color:'var(--text)', marginBottom:'.6rem' }}>
