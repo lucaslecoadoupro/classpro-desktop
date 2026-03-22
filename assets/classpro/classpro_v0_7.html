@@ -15,6 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -245,32 +246,59 @@ input[type="file"]{display:none}
 .empty{padding:2.5rem;text-align:center;color:var(--text2);font-size:.8rem}
 
 /* ── TABLEAU BLANC ── */
-.wb-bar{display:flex;align-items:center;gap:.45rem;padding:.65rem .9rem;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0}
-.wb-tool{padding:.4rem .7rem;border-radius:var(--r-xs);border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.77rem;font-weight:600;transition:all .15s;color:var(--text2)}
-.wb-tool:hover{border-color:var(--accent);color:var(--accent)}
-.wb-tool.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.wb-dot{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;transition:all .15s;flex-shrink:0}
-.wb-dot.on{border-color:var(--text);transform:scale(1.25)}
-.wb-sep{width:1px;height:22px;background:var(--border);margin:0 .18rem;flex-shrink:0}
-.wb-wrap{flex:1;overflow:hidden;background:#fff;position:relative}
-[data-theme="dark"] .wb-wrap{background:#1a1a2e}
-.wb-wrap canvas{display:block;width:100%;height:100%;touch-action:none}
+/* ── TABLEAU BLANC v2 — Widgets ── */
+.wb2-root{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;position:relative}
+.wb2-stage{flex:1;position:relative;overflow:hidden;cursor:default;user-select:none}
+.wb2-bg{position:absolute;inset:0;z-index:0}
+.wb2-bar{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:8px 12px;background:rgba(255,255,255,.93);backdrop-filter:blur(14px);border:1px solid rgba(0,0,0,.1);border-radius:99px;box-shadow:0 4px 28px rgba(0,0,0,.18);z-index:200}
+[data-theme="dark"] .wb2-bar{background:rgba(22,27,34,.93);border-color:rgba(255,255,255,.12)}
+.wb2-bar-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 9px;border-radius:10px;border:none;background:transparent;cursor:pointer;transition:all .15s;font-family:'Roboto',sans-serif;color:var(--text2);min-width:48px}
+.wb2-bar-btn:hover{background:rgba(59,91,219,.1);color:var(--accent)}
+.wb2-bar-btn-icon{font-size:1.2rem;line-height:1}
+.wb2-bar-btn-label{font-size:.54rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.wb2-bar-sep{width:1px;height:28px;background:var(--border);margin:0 2px;flex-shrink:0}
+.wb2-widget{position:absolute;border-radius:14px;background:rgba(255,255,255,.97);box-shadow:0 4px 24px rgba(0,0,0,.12);border:1.5px solid rgba(0,0,0,.07);z-index:10;min-width:180px;min-height:80px;overflow:hidden;display:flex;flex-direction:column}
+[data-theme="dark"] .wb2-widget{background:rgba(22,27,34,.97);border-color:rgba(255,255,255,.1)}
+.wb2-widget.selected{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent),0 8px 28px rgba(59,91,219,.18)}
+.wb2-widget-hd{height:28px;cursor:move;display:flex;align-items:center;justify-content:space-between;padding:0 8px;border-bottom:1px solid rgba(0,0,0,.06);border-radius:14px 14px 0 0}
+[data-theme="dark"] .wb2-widget-hd{border-bottom-color:rgba(255,255,255,.08)}
+.wb2-widget-title{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);display:flex;align-items:center;gap:4px}
+.wb2-widget-close{width:18px;height:18px;border-radius:50%;border:none;background:rgba(0,0,0,.08);color:var(--text3);font-size:.65rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .13s;padding:0;line-height:1}
+.wb2-widget-close:hover{background:var(--danger);color:#fff}
+.wb2-widget-body{padding:10px 12px 12px;overflow:hidden;display:flex;flex-direction:column}
+[contenteditable][data-ph]:empty::before{content:attr(data-ph);color:var(--text3);pointer-events:none;font-style:italic;font-size:.9rem}
+.wb2-resize{position:absolute;bottom:3px;right:3px;width:14px;height:14px;cursor:se-resize;z-index:5}
+.wb2-resize::after{content:'';position:absolute;bottom:2px;right:2px;width:7px;height:7px;border-right:2px solid var(--accent);border-bottom:2px solid var(--accent);opacity:.55}
+.wb2-timer-display{font-family:'Roboto Slab',serif;font-size:2.6rem;font-weight:800;text-align:center;letter-spacing:.04em;line-height:1;transition:color .3s}
+.wb2-timer-btn{width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.95rem;transition:all .15s}
+.wb2-timer-adj-btn{border:none;background:rgba(59,91,219,.08);color:var(--accent);border-radius:6px;font-size:.65rem;font-weight:700;cursor:pointer;padding:2px 4px;transition:all .13s;line-height:1.4}
+.wb2-timer-adj-btn:hover{background:var(--accent);color:#fff}
+.wb2-feu-light{width:60px;height:60px;border-radius:50%;cursor:pointer;transition:all .25s;border:3px solid rgba(0,0,0,.1);flex-shrink:0}
+.wb2-feu-light.off{opacity:.15;filter:grayscale(1)}
+.wb2-bg-picker{position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(255,255,255,.9);backdrop-filter:blur(8px);border-radius:99px;border:1px solid rgba(0,0,0,.1);z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.1)}
+[data-theme="dark"] .wb2-bg-picker{background:rgba(22,27,34,.9);border-color:rgba(255,255,255,.12)}
+.wb2-bg-swatch{width:18px;height:18px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;transition:all .13s;flex-shrink:0}
+.wb2-bg-swatch.on{border-color:var(--accent);transform:scale(1.2)}
+
+
 
 /* ── ÉTUDE DOC ── */
-.doc-shell{display:grid;grid-template-columns:1fr 270px;flex:1;overflow:hidden;min-height:0}
-.doc-viewer-area{overflow:auto;background:#525659;display:flex;justify-content:center;padding:1rem;position:relative}
-.doc-annot-canvas{position:absolute}
-.doc-panel{background:var(--surface2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-.doc-panel-hd{padding:.75rem .9rem;border-bottom:1px solid var(--border);font-weight:700;font-size:.82rem;flex-shrink:0}
-.doc-tools-list{padding:.65rem .9rem;display:flex;flex-direction:column;gap:.42rem;flex-shrink:0;border-bottom:1px solid var(--border)}
-.doc-tbtn{display:flex;align-items:center;gap:.45rem;padding:.5rem .8rem;border-radius:var(--r-s);border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:.77rem;font-weight:500;transition:all .15s;color:var(--text2)}
+.doc-shell{display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0}
+.doc-toolbar{display:flex;align-items:center;gap:5px;padding:6px 10px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.doc-toolbar-sep{width:1px;height:22px;background:var(--border);margin:0 3px;flex-shrink:0}
+.doc-tbtn{display:inline-flex;align-items:center;gap:.3rem;padding:.28rem .58rem;border-radius:var(--r-xs);border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;font-size:.73rem;font-weight:600;transition:all .13s;color:var(--text2);white-space:nowrap;flex-shrink:0}
 .doc-tbtn:hover{border-color:var(--accent);color:var(--accent)}
 .doc-tbtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.doc-zoom-row{display:flex;gap:.38rem;padding:.65rem .9rem;border-bottom:1px solid var(--border);flex-shrink:0}
-.annot-list-area{flex:1;overflow-y:auto;padding:.65rem .9rem}
-.annot-item{padding:.45rem .7rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xs);margin-bottom:.35rem;font-size:.75rem;display:flex;justify-content:space-between;align-items:flex-start;gap:.4rem}
-.annot-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:.85rem;flex-shrink:0;padding:.08rem .18rem;border-radius:4px}
-.annot-del:hover{color:var(--danger);background:var(--surface2)}
+.doc-color-sw{width:16px;height:16px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .12s;flex-shrink:0}
+.doc-color-sw.on{border-color:#fff;box-shadow:0 0 0 2px var(--accent);transform:scale(1.15)}
+.doc-viewer-wrap{display:flex;flex:1;overflow:hidden;min-height:0}
+.doc-viewer-area{flex:1;overflow:auto;background:#525659;display:flex;justify-content:center;padding:1.5rem;position:relative}
+.doc-panel{width:224px;flex-shrink:0;border-left:1px solid var(--border);background:var(--surface2);display:flex;flex-direction:column;overflow:hidden}
+.doc-panel-hd{padding:.55rem .75rem;border-bottom:1px solid var(--border);font-weight:700;font-size:.76rem;flex-shrink:0}
+.annot-list-area{flex:1;overflow-y:auto;padding:.45rem .65rem;display:flex;flex-direction:column;gap:.25rem}
+.annot-item{padding:.38rem .55rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xs);font-size:.71rem;display:flex;align-items:center;gap:.35rem}
+.annot-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:.8rem;flex-shrink:0;padding:.05rem .15rem;border-radius:4px;margin-left:auto}
+.annot-del:hover{color:var(--danger)}
 
 /* ── EDT ── */
 .edt-outer{flex:1;overflow:auto;padding:0}
@@ -297,7 +325,6 @@ input[type="file"]{display:none}
   .sb-item{padding:.55rem;justify-content:center}
   .sb-profile{justify-content:center}
   .cbody{grid-template-columns:1fr}
-  .doc-shell{grid-template-columns:1fr}
   .doc-panel{display:none}
   .field-row{grid-template-columns:1fr}
   .page-content{padding:.875rem}
@@ -367,6 +394,7 @@ input[type="file"]{display:none}
 .cs-fiche-full{grid-column:1/-1}
 .cs-section{display:flex;flex-direction:column;gap:.32rem}
 .cs-sec-label{font-size:.65rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:.3rem}
+[contenteditable][data-ph]:empty::before{content:attr(data-ph);color:var(--text3);pointer-events:none;font-style:italic}
 .cs-sec-ta{padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:var(--r-xs);background:var(--surface2);color:var(--text);font-family:'Roboto',sans-serif;font-size:.8rem;line-height:1.55;resize:vertical;min-height:70px;transition:border-color .15s}
 .cs-sec-ta:focus{outline:none;border-color:var(--accent);background:var(--surface)}
 .cs-sec-ta::placeholder{color:var(--text3)}
@@ -415,7 +443,7 @@ input[type="file"]{display:none}
 .pdc-palette-sub{font-size:.6rem;color:var(--text3);line-height:1.2;margin-top:.06rem}
 
 /* Canvas zone */
-.pdc-canvas-wrap{flex:1;overflow:hidden;background:var(--bg);min-width:0;min-height:0;box-sizing:border-box}
+.pdc-canvas-wrap{flex:1;overflow:auto;background:var(--bg);min-width:0;min-height:0;box-sizing:border-box}
 .pdc-canvas-wrap::-webkit-scrollbar{width:8px;height:8px}
 .pdc-canvas-wrap::-webkit-scrollbar-track{background:var(--bg)}
 .pdc-canvas-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
@@ -1215,108 +1243,430 @@ function ModalDetail({s,onClose}){
 }
 
 /* ══ MODULE 2 — TABLEAU BLANC ════════════════════════════════════════════ */
+/* ── TABLEAU BLANC v2 ─────────────────────────────────────────────────── */
+const WB_BACKGROUNDS=[
+  {id:'white',  label:'Blanc',    style:{background:'#ffffff'}},
+  {id:'black',  label:'Noir',     style:{background:'#1a1a2e'}},
+  {id:'green',  label:'Tableau',  style:{background:'#1a5c3a'}},
+  {id:'grid',   label:'Quadrillé',style:{background:'#f8faff',backgroundImage:'linear-gradient(rgba(59,91,219,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(59,91,219,.08) 1px,transparent 1px)',backgroundSize:'40px 40px'}},
+  {id:'lines',  label:'Ligné',    style:{background:'#fffef7',backgroundImage:'linear-gradient(rgba(100,100,200,.1) 1px,transparent 1px)',backgroundSize:'100% 36px'}},
+  {id:'dark',   label:'Sombre',   style:{background:'#0d1117'}},
+];
+const WB_BG_COLORS=['#ffffff','#1a5c3a','#1a1a2e','#f8faff','#fffef7','#0d1117'];
+
+let wbWidgetId=0;
+const newWid=()=>'w'+(++wbWidgetId)+Date.now();
+
+function WbWidget({w, onClose, onMouseDownDrag, onMouseDownResize, children, selected, onClick}){
+  const elRef=useRef(null);
+  const heightVal=(w.type==='texte' && !w.height)?'auto':( w.height||'auto');
+  const minHeightVal=(w.type==='texte' && w.height)?undefined:undefined;
+  return(
+    <div ref={elRef} className={`wb2-widget${selected?' selected':''}`}
+      style={{left:w.x,top:w.y,width:w.width,height:heightVal}}
+      onClick={e=>{e.stopPropagation();onClick&&onClick();}}>
+      <div className="wb2-widget-hd" onMouseDown={e=>onMouseDownDrag(e,w)}>
+        <span className="wb2-widget-title">{w.icon} {w.label}</span>
+        <button className="wb2-widget-close" onClick={e=>{e.stopPropagation();onClose(w.id);}}>×</button>
+      </div>
+      <div className="wb2-widget-body">{children}</div>
+      <div className="wb2-resize" onMouseDown={e=>{e.stopPropagation();onMouseDownResize(e,w,elRef.current);}}/>
+    </div>
+  );
+}
+
+function WbTimer({w, update}){
+  const[running,setRunning]=useState(false);
+  const[secs,setSecs]=useState(w.secs??600);
+  const intervalRef=useRef(null);
+  useEffect(()=>{
+    if(running){
+      intervalRef.current=setInterval(()=>{
+        setSecs(s=>{if(s<=1){clearInterval(intervalRef.current);setRunning(false);return 0;}return s-1;});
+      },1000);
+    } else clearInterval(intervalRef.current);
+    return()=>clearInterval(intervalRef.current);
+  },[running]);
+  const fmt=s=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  const adj=(unit,delta)=>setSecs(s=>{
+    const m=Math.floor(s/60),sec=s%60;
+    if(unit==='m')return Math.max(0,Math.min(5999,(m+delta)*60+sec));
+    return Math.max(0,Math.min(5999,m*60+(sec+delta)));
+  });
+  const pct=secs>0?(secs/(w.secs||600)):0;
+  const warn=secs>0&&secs<=60;
+  const color=secs===0?'#dc2626':warn?'#d97706':'var(--accent)';
+  return(
+    <div style={{textAlign:'center',minWidth:200}}>
+      <div className="wb2-timer-display" style={{color}}>{fmt(secs)}</div>
+      <div style={{display:'flex',justifyContent:'center',gap:4,marginTop:8}}>
+        {[['−1m','m',-1],['−10s','s',-10],['+10s','s',10],['+1m','m',1]].map(([l,u,d])=>(
+          <button key={l} className="wb2-timer-adj-btn" onClick={()=>adj(u,d)}>{l}</button>
+        ))}
+      </div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:10}}>
+        <button className="wb2-timer-btn" style={{background:running?'#fef2f2':'#f0fdf4',color:running?'#dc2626':'#16a34a'}}
+          onClick={()=>setRunning(r=>!r)}>{running?'⏸':'▶'}</button>
+        <button className="wb2-timer-btn" style={{background:'var(--surface2)',color:'var(--text2)'}}
+          onClick={()=>{setRunning(false);setSecs(w.secs||600);}}>↺</button>
+      </div>
+      {/* Barre de progression */}
+      <div style={{marginTop:8,height:4,background:'var(--border)',borderRadius:2,overflow:'hidden'}}>
+        <div style={{height:'100%',width:`${pct*100}%`,background:color,transition:'width .5s linear,background .3s'}}/>
+      </div>
+    </div>
+  );
+}
+
+function WbClock(){
+  const[now,setNow]=useState(new Date());
+  useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);
+  const h=now.getHours()%12,m=now.getMinutes(),s=now.getSeconds();
+  const hd=(h+m/60)*30, md=(m+s/60)*6, sd=s*6;
+  const hand=(deg,len,w,col)=>{
+    const rad=(deg-90)*Math.PI/180;
+    return <line x1="50" y1="50" x2={50+len*Math.cos(rad)} y2={50+len*Math.sin(rad)} stroke={col} strokeWidth={w} strokeLinecap="round"/>;
+  };
+  return(
+    <div style={{textAlign:'center',width:'100%'}}>
+      {/* SVG 100% width — s'adapte au resize du widget */}
+      <svg viewBox="0 0 100 100" style={{display:'block',width:'100%',maxWidth:200,margin:'0 auto'}}>
+        <circle cx="50" cy="50" r="47" fill="none" stroke="var(--accent)" strokeWidth="2.5"/>
+        {[...Array(12)].map((_,i)=>{const a=(i*30-90)*Math.PI/180;return<line key={i} x1={50+38*Math.cos(a)} y1={50+38*Math.sin(a)} x2={50+44*Math.cos(a)} y2={50+44*Math.sin(a)} stroke="var(--text2)" strokeWidth={i%3===0?2:1}/>;})}
+        {hand(hd,28,3,'var(--text)')}
+        {hand(md,38,2,'var(--text)')}
+        {hand(sd,40,1,'#dc2626')}
+        <circle cx="50" cy="50" r="2.5" fill="var(--text)"/>
+      </svg>
+      <div className="wb2-clock-time">{now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
+    </div>
+  );
+}
+
+function WbTirage({classes}){
+  const[picked,setPicked]=useState('');
+  const[spinning,setSpinning]=useState(false);
+  const[selCls,setSelCls]=useState('');
+  const allEleves=selCls
+    ?(classes.find(c=>c.id===selCls)?.eleves||[])
+    :classes.flatMap(c=>c.eleves);
+  const pick=()=>{
+    if(!allEleves.length)return;
+    setSpinning(true);
+    let i=0;const t=setInterval(()=>{
+      setPicked(allEleves[Math.floor(Math.random()*allEleves.length)].nom);
+      if(++i>14){clearInterval(t);setSpinning(false);}
+    },80);
+  };
+  return(
+    <div style={{width:'100%',textAlign:'center',boxSizing:'border-box'}}>
+      {classes.length>1&&(
+        <select value={selCls} onChange={e=>setSelCls(e.target.value)}
+          style={{width:'100%',marginBottom:8,padding:'.3rem .5rem',border:'1px solid var(--border)',borderRadius:6,background:'var(--surface2)',color:'var(--text)',fontFamily:'Roboto,sans-serif',fontSize:'.75rem',boxSizing:'border-box'}}>
+          <option value="">Toutes les classes ({classes.flatMap(c=>c.eleves).length} élèves)</option>
+          {classes.map(c=><option key={c.id} value={c.id}>{c.name} ({c.eleves.length})</option>)}
+        </select>
+      )}
+      {/* Nom tiré */}
+      <div style={{minHeight:56,display:'flex',alignItems:'center',justifyContent:'center',margin:'6px 0',padding:'8px 12px',background:'rgba(59,91,219,.06)',borderRadius:10,border:'1.5px solid rgba(59,91,219,.15)'}}>
+        {picked
+          ?<span style={{fontFamily:'Roboto Slab,serif',fontSize:'1.4rem',fontWeight:800,color:spinning?'var(--warning)':'var(--accent)',transition:'color .2s'}}>{picked}</span>
+          :<span style={{color:'var(--text3)',fontSize:'.82rem'}}>Appuyez sur le bouton !</span>}
+      </div>
+      {/* Bouton */}
+      <button onClick={pick} disabled={!allEleves.length||spinning}
+        style={{display:'inline-flex',alignItems:'center',gap:6,padding:'.5rem 1.2rem',border:'none',borderRadius:99,background:spinning?'var(--warning)':'var(--accent)',color:'#fff',fontFamily:'Roboto,sans-serif',fontSize:'.85rem',fontWeight:700,cursor:allEleves.length&&!spinning?'pointer':'not-allowed',transition:'all .2s',boxShadow:'0 2px 8px rgba(59,91,219,.3)',opacity:!allEleves.length?.5:1}}>
+        <span style={{fontSize:'1rem'}}>{spinning?'⏳':'🎲'}</span>
+        {spinning?'Tirage…':'Tirer au sort'}
+      </button>
+      {allEleves.length===0&&<div style={{fontSize:'.72rem',color:'var(--text3)',marginTop:6}}>Aucun élève trouvé</div>}
+    </div>
+  );
+}
+
+function WbQR({w,update}){
+  const[url,setUrl]=useState(w.url||'');
+  const[generated,setGenerated]=useState(false);
+  const qrSrc=`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url||' ')}`;
+  return(
+    <div style={{width:'100%',textAlign:'center',boxSizing:'border-box'}}>
+      {/* Champ URL stylisé */}
+      <div style={{display:'flex',gap:6,marginBottom:10,alignItems:'center'}}>
+        <div style={{flex:1,display:'flex',alignItems:'center',gap:6,padding:'.4rem .7rem',border:'1.5px solid var(--border)',borderRadius:10,background:'var(--surface2)',transition:'border-color .15s'}}
+          onFocusCapture={e=>e.currentTarget.style.borderColor='var(--accent)'}
+          onBlurCapture={e=>e.currentTarget.style.borderColor='var(--border)'}>
+          <span style={{fontSize:'.85rem',opacity:.5}}>🔗</span>
+          <input value={url} onChange={e=>setUrl(e.target.value)} onKeyDown={e=>e.key==='Enter'&&setGenerated(true)}
+            placeholder="Entrez une URL…"
+            style={{flex:1,border:'none',background:'transparent',color:'var(--text)',fontFamily:'Roboto,sans-serif',fontSize:'.82rem',outline:'none',minWidth:0}}/>
+          {url&&<button onClick={()=>setUrl('')} style={{border:'none',background:'none',cursor:'pointer',color:'var(--text3)',fontSize:'.8rem',padding:0,lineHeight:1}}>×</button>}
+        </div>
+        <button onClick={()=>setGenerated(true)} disabled={!url.trim()}
+          style={{padding:'.4rem .75rem',border:'none',borderRadius:10,background:'var(--accent)',color:'#fff',cursor:url.trim()?'pointer':'not-allowed',fontSize:'.78rem',fontWeight:700,fontFamily:'Roboto,sans-serif',opacity:url.trim()?1:.5,flexShrink:0}}>
+          QR
+        </button>
+      </div>
+      {/* QR affiché */}
+      {generated&&url.trim()
+        ?<img src={qrSrc} alt="QR" style={{width:'100%',maxWidth:200,height:'auto',display:'block',margin:'0 auto',borderRadius:10,border:'1px solid var(--border)'}}/>
+        :<div style={{width:'100%',minHeight:120,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',margin:'0 auto',background:'var(--surface2)',borderRadius:10,border:'1.5px dashed var(--border)',color:'var(--text3)',gap:6,boxSizing:'border-box',padding:'12px'}}>
+          <span style={{fontSize:'2rem',opacity:.3}}>📱</span>
+          <span style={{fontSize:'.72rem',textAlign:'center'}}>Entrez une URL puis cliquez QR</span>
+        </div>}
+    </div>
+  );
+}
+
+function WbFeu(){
+  const[state,setState]=useState('rouge');
+  const lights=[
+    {id:'rouge', color:'#ef4444'},
+    {id:'orange',color:'#f59e0b'},
+    {id:'vert',  color:'#22c55e'},
+  ];
+  return(
+    <div style={{display:'flex',justifyContent:'center',width:'100%'}}>
+      <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:10,padding:'10px 14px',background:'#1a1a1a',borderRadius:14}}>
+        {lights.map(l=>(
+          <div key={l.id} onClick={()=>setState(l.id)}
+            style={{width:44,height:44,borderRadius:'50%',cursor:'pointer',transition:'all .22s',background:l.color,
+              opacity:state===l.id?1:.12,
+              boxShadow:state===l.id?`0 0 18px 4px ${l.color}99`:undefined,
+              border:'2px solid rgba(255,255,255,.08)'}}/>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WbTexte({w,update}){
+  const[fontSize,setFontSize]=useState(w.fontSize||18);
+  const[bold,setBold]=useState(w.bold||false);
+  const[color,setColor]=useState(w.color||'#1a2236');
+  const[bgColor,setBgColor]=useState(w.bgColor||'transparent');
+  const[fontFamily,setFontFamily]=useState(w.fontFamily||'Roboto');
+  const editRef=useRef(null);
+
+  // Initialiser le contenu une seule fois au montage
+  useEffect(()=>{
+    if(editRef.current && w.txt) editRef.current.innerHTML=w.txt;
+  },[]); // eslint-disable-line
+
+  const FONTS=[
+    {v:'Roboto',        label:'Roboto'},
+    {v:'Roboto Slab',   label:'Slab'},
+    {v:'Georgia',       label:'Georgia'},
+    {v:'Arial',         label:'Arial'},
+    {v:'Courier New',   label:'Mono'},
+    {v:'Comic Sans MS', label:'Comic'},
+  ];
+  const BG_OPTS=[
+    {v:'transparent'},{v:'#ffffff'},{v:'#fef9c3'},{v:'#dbeafe'},
+    {v:'#dcfce7'},{v:'#fee2e2'},{v:'#f3e8ff'},{v:'#1a1a2e'},
+  ];
+  const editH=w.height?Math.max(36,w.height-118):undefined;
+  return(
+    <div style={{width:'100%',boxSizing:'border-box'}}>
+      {/* Ligne 1 : gras + tailles + couleur + fond */}
+      <div style={{display:'flex',gap:3,marginBottom:4,alignItems:'center',flexWrap:'wrap',flexShrink:0}}>
+        <button onMouseDown={e=>e.preventDefault()} onClick={()=>setBold(b=>!b)}
+          style={{width:24,height:24,borderRadius:4,border:`1.5px solid ${bold?'var(--accent)':'var(--border)'}`,background:bold?'var(--accent)':'var(--surface2)',color:bold?'#fff':'var(--text)',fontWeight:800,cursor:'pointer',fontSize:'.78rem',padding:0,display:'flex',alignItems:'center',justifyContent:'center'}}>B</button>
+        {[14,18,24,32,48].map(s=>(
+          <button key={s} onMouseDown={e=>e.preventDefault()} onClick={()=>setFontSize(s)}
+            style={{height:24,padding:'0 5px',borderRadius:4,border:`1.5px solid ${fontSize===s?'var(--accent)':'var(--border)'}`,background:fontSize===s?'var(--accent)':'var(--surface2)',color:fontSize===s?'#fff':'var(--text)',cursor:'pointer',fontSize:'.65rem',fontWeight:600}}>{s}</button>
+        ))}
+        <input type="color" value={color} onChange={e=>setColor(e.target.value)}
+          style={{width:24,height:24,padding:1,border:'1.5px solid var(--border)',borderRadius:4,cursor:'pointer',background:'none'}}/>
+        <div style={{height:20,width:1,background:'var(--border)',margin:'0 2px'}}/>
+        {BG_OPTS.map(opt=>(
+          <div key={opt.v} onClick={()=>setBgColor(opt.v)}
+            style={{width:18,height:18,borderRadius:3,cursor:'pointer',flexShrink:0,
+              background:opt.v==='transparent'?'repeating-conic-gradient(#ccc 0% 25%,#fff 0% 50%) 0/8px 8px':opt.v,
+              border:`2px solid ${bgColor===opt.v?'var(--accent)':'rgba(0,0,0,.15)'}`,
+              transform:bgColor===opt.v?'scale(1.2)':'scale(1)',transition:'all .13s'}}/>
+        ))}
+      </div>
+      {/* Ligne 2 : choix de police */}
+      <div style={{display:'flex',gap:3,marginBottom:6,alignItems:'center',flexShrink:0}}>
+        <span style={{fontSize:'.62rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em',flexShrink:0}}>Police :</span>
+        <select value={fontFamily} onChange={e=>setFontFamily(e.target.value)}
+          style={{flex:1,height:24,padding:'0 6px',borderRadius:4,border:'1.5px solid var(--border)',
+            background:'var(--surface2)',color:'var(--text)',fontFamily:fontFamily+',sans-serif',
+            fontSize:'.72rem',cursor:'pointer',outline:'none'}}>
+          {FONTS.map(f=>(
+            <option key={f.v} value={f.v} style={{fontFamily:f.v}}>{f.label}</option>
+          ))}
+        </select>
+      </div>
+      {/* Zone texte via ref — React ne touche plus au DOM interne */}
+      <div ref={editRef}
+        contentEditable suppressContentEditableWarning
+        onMouseDown={e=>e.stopPropagation()}
+        onInput={e=>update({txt:e.currentTarget.innerHTML})}
+        data-ph="Tapez votre texte…"
+        style={{width:'100%',minHeight:36,height:editH,border:'1.5px solid rgba(0,0,0,.08)',borderRadius:8,
+          background:bgColor,fontFamily:fontFamily+',sans-serif',fontSize:fontSize,
+          fontWeight:bold?700:400,color,lineHeight:1.5,overflow:'auto',
+          outline:'none',boxSizing:'border-box',padding:'8px 10px',
+          transition:'background .2s',whiteSpace:'pre-wrap',wordBreak:'break-word'}}/>
+    </div>
+  );
+}
+
 function TableauBlanc(){
-  const cvRef=useRef(null);
-  const[tool,setTool]=useState('pen');
-  const[color,setColor]=useState('#1a2236');
-  const[size,setSize]=useState(3);
-  const[drawing,setDrawing]=useState(false);
-  const[editTxt,setEditTxt]=useState(null);
-  const hist=useRef([]);const histIdx=useRef(-1);
+  const stageRef=useRef(null);
+  const[classes]=useState(()=>{try{return JSON.parse(localStorage.getItem('sc-classes')||'[]')}catch{return[]}});
+  const[widgets,setWidgets]=useState(()=>{try{const s=localStorage.getItem('wb-widgets');return s?JSON.parse(s):[];}catch{return[];}});
+  const[bgId,setBgId]=useState(()=>localStorage.getItem('wb-bgId')||'white');
+  const[selId,setSelId]=useState(null);
+  const dragRef=useRef(null);
 
-  const ctx=()=>cvRef.current?.getContext('2d');
+  // Persister à chaque changement
+  useEffect(()=>{try{localStorage.setItem('wb-widgets',JSON.stringify(widgets));}catch{};},[widgets]);
+  useEffect(()=>{localStorage.setItem('wb-bgId',bgId);},[bgId]);
 
-  const saveHist=()=>{
-    const c=cvRef.current;if(!c)return;
-    const d=c.toDataURL();
-    hist.current=hist.current.slice(0,histIdx.current+1);
-    hist.current.push(d);histIdx.current=hist.current.length-1;
+  const bg=WB_BACKGROUNDS.find(b=>b.id===bgId)||WB_BACKGROUNDS[0];
+
+  const addWidget=(type)=>{
+    const stage=stageRef.current;
+    const cx=stage?stage.clientWidth/2-100:200;
+    const cy=stage?stage.clientHeight/2-80:150;
+    const base={id:newWid(),x:cx,y:cy,width:240,type};
+    const defs={
+      texte:  {label:'Texte',    icon:'📝', txt:'',fontSize:18,bold:false,color:'#1a2236'},
+      timer:  {label:'Minuteur', icon:'⏱️', secs:600},
+      clock:  {label:'Horloge',  icon:'🕐'},
+      tirage: {label:'Tirage',   icon:'🎲'},
+      qr:     {label:'QR Code',  icon:'📱', url:''},
+      feu:    {label:'Feu',      icon:'🚦', width:120, height:220},
+    };
+    setWidgets(w=>[...w,{...base,...defs[type]}]);
+    setSelId(base.id);
   };
 
-  const initCv=()=>{
-    const c=cvRef.current;if(!c)return;
-    const w=c.parentElement;c.width=w.clientWidth;c.height=w.clientHeight;saveHist();
+  const closeWidget=id=>setWidgets(w=>w.filter(x=>x.id!==id));
+  const updateWidget=(id,patch)=>setWidgets(w=>w.map(x=>x.id===id?{...x,...patch}:x));
+
+  // Drag
+  const onDragStart=(e,w)=>{
+    e.preventDefault();
+    const startX=e.clientX,startY=e.clientY,ox=w.x,oy=w.y;
+    setSelId(w.id);
+    const move=ev=>{
+      updateWidget(w.id,{x:ox+(ev.clientX-startX),y:oy+(ev.clientY-startY)});
+    };
+    const up=()=>{window.removeEventListener('mousemove',move);window.removeEventListener('mouseup',up);};
+    window.addEventListener('mousemove',move);
+    window.addEventListener('mouseup',up);
   };
 
-  useEffect(()=>{initCv();window.addEventListener('resize',initCv);return()=>window.removeEventListener('resize',initCv)},[]);
-
-  const getPos=e=>{
-    const c=cvRef.current;if(!c)return{x:0,y:0};
-    const r=c.getBoundingClientRect();const sx=c.width/r.width,sy=c.height/r.height;
-    if(e.touches)return{x:(e.touches[0].clientX-r.left)*sx,y:(e.touches[0].clientY-r.top)*sy};
-    return{x:(e.clientX-r.left)*sx,y:(e.clientY-r.top)*sy};
+  // Resize
+  const onResizeStart=(e,w)=>{
+    e.preventDefault();e.stopPropagation();
+    const startX=e.clientX,startY=e.clientY,ow=w.width,oh=w.height||200;
+    const move=ev=>{
+      updateWidget(w.id,{
+        width:Math.max(160,ow+(ev.clientX-startX)),
+        height:Math.max(80,oh+(ev.clientY-startY)),
+      });
+    };
+    const up=()=>{window.removeEventListener('mousemove',move);window.removeEventListener('mouseup',up);};
+    window.addEventListener('mousemove',move);
+    window.addEventListener('mouseup',up);
   };
 
-  const onDown=e=>{
-    if(tool==='text'){const pos=getPos(e);setEditTxt({x:pos.x,y:pos.y,text:'',color,size:size*5});return;}
-    setDrawing(true);const pos=getPos(e);const c=ctx();if(!c)return;c.beginPath();c.moveTo(pos.x,pos.y);
-  };
-  const onMove=e=>{
-    if(!drawing)return;const c=ctx();if(!c)return;const pos=getPos(e);
-    c.lineWidth=tool==='eraser'?size*6:size;c.lineCap='round';c.lineJoin='round';
-    c.strokeStyle=tool==='eraser'?'rgba(0,0,0,1)':color;
-    c.globalCompositeOperation=tool==='eraser'?'destination-out':'source-over';
-    c.lineTo(pos.x,pos.y);c.stroke();c.beginPath();c.moveTo(pos.x,pos.y);
-  };
-  const onUp=()=>{if(drawing){setDrawing(false);saveHist();const c=ctx();if(c)c.globalCompositeOperation='source-over';}};
+  const BTNS=[
+    {type:'texte',  icon:'📝', label:'Texte'},
+    {type:'timer',  icon:'⏱️', label:'Minuteur'},
+    {type:'clock',  icon:'🕐', label:'Horloge'},
+    {type:'tirage', icon:'🎲', label:'Tirage'},
+    {type:'qr',     icon:'📱', label:'QR Code'},
+    {type:'feu',    icon:'🚦', label:'Feu'},
+  ];
 
-  const undo=()=>{
-    if(histIdx.current<=0)return;histIdx.current--;
-    const img=new Image();img.onload=()=>{const c=ctx();if(!c)return;const cv=cvRef.current;c.clearRect(0,0,cv.width,cv.height);c.drawImage(img,0,0)};
-    img.src=hist.current[histIdx.current];
-  };
-  const clear=()=>{const c=ctx();if(!c)return;const cv=cvRef.current;c.clearRect(0,0,cv.width,cv.height);saveHist()};
-
-  const saveText=()=>{
-    if(!editTxt)return;
-    if(editTxt.text.trim()){const c=ctx();if(!c)return;c.font=`bold ${editTxt.size}px Roboto,sans-serif`;c.fillStyle=editTxt.color;c.fillText(editTxt.text,editTxt.x,editTxt.y);saveHist();}
-    setEditTxt(null);
+  const renderBody=(w)=>{
+    if(w.type==='texte')  return <WbTexte  w={w} update={p=>updateWidget(w.id,p)}/>;
+    if(w.type==='timer')  return <WbTimer  w={w} update={p=>updateWidget(w.id,p)}/>;
+    if(w.type==='clock')  return <WbClock/>;
+    if(w.type==='tirage') return <WbTirage classes={classes}/>;
+    if(w.type==='qr')     return <WbQR     w={w} update={p=>updateWidget(w.id,p)}/>;
+    if(w.type==='feu')    return <WbFeu/>;
+    return null;
   };
 
-  const download=()=>{const a=document.createElement('a');a.download=`tableau-${Date.now()}.png`;a.href=cvRef.current.toDataURL();a.click()};
+  const exportPng=()=>{
+    const stage=stageRef.current;
+    if(!stage)return;
+    // Masquer temporairement la toolbar et le picker pour l'export
+    const bar=stage.querySelector('.wb2-bar');
+    const picker=stage.querySelector('.wb2-bg-picker');
+    const handles=stage.querySelectorAll('.wb2-resize');
+    [bar,picker,...handles].forEach(el=>{if(el)el.style.visibility='hidden';});
+    html2canvas(stage,{backgroundColor:null,scale:2,useCORS:true,logging:false}).then(canvas=>{
+      [bar,picker,...handles].forEach(el=>{if(el)el.style.visibility='';});
+      const a=document.createElement('a');
+      a.href=canvas.toDataURL('image/png');
+      a.download=`tableau-blanc-${new Date().toISOString().slice(0,10)}.png`;
+      a.click();
+    }).catch(()=>{[bar,picker,...handles].forEach(el=>{if(el)el.style.visibility='';});});
+  };
 
-  return(<>
-    <div className="page-hd">
-      <div><div className="phd-badge">🖊️ Tableau blanc</div><div className="phd-title">Espace de travail libre</div><div className="phd-sub">Dessin, annotations, textes — comme en classe</div></div>
-      <div className="phd-actions">
-        <button onClick={undo} className="btn btn-ghost">↩ Annuler</button>
-        <button onClick={clear} className="btn btn-ghost">🗑️ Effacer tout</button>
-        <button onClick={download} className="btn btn-ghost">💾 Sauvegarder PNG</button>
+  return(
+    <>
+      <div className="page-hd">
+        <div><div className="phd-badge">🖊️ Tableau blanc</div><div className="phd-title">Tableau interactif</div>
+          <div className="phd-sub">{widgets.length} widget{widgets.length>1?'s':''} · cliquez les boutons ci-dessous pour ajouter</div>
+        </div>
+        <div className="phd-actions">
+          <button className="btn btn-ghost" onClick={exportPng}>🖼️ Exporter PNG</button>
+          <button className="btn btn-ghost" onClick={()=>setWidgets([])}>🗑️ Tout effacer</button>
+        </div>
       </div>
-    </div>
-    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
-      <div className="wb-bar">
-        {[{v:'pen',l:'✏️ Stylo'},{v:'eraser',l:'🧹 Gomme'},{v:'text',l:'T Texte'}].map(({v,l})=>(
-          <button key={v} className={`wb-tool ${tool===v?'on':''}`} onClick={()=>setTool(v)}>{l}</button>
-        ))}
-        <div className="wb-sep"/>
-        {WB_COLORS.map(c=>(
-          <div key={c} className={`wb-dot ${color===c?'on':''}`}
-            style={{background:c,boxShadow:c==='#ffffff'?'inset 0 0 0 1px #ccc':undefined}}
-            onClick={()=>setColor(c)}/>
-        ))}
-        <div className="wb-sep"/>
-        <span style={{fontSize:'.72rem',color:'var(--text2)',fontWeight:500}}>Taille</span>
-        <input type="range" min={1} max={20} value={size} onChange={e=>setSize(+e.target.value)} style={{width:'70px',accentColor:'var(--accent)'}}/>
-        <span style={{fontSize:'.78rem',fontWeight:700,color:'var(--text2)',minWidth:'18px'}}>{size}</span>
+      <div className="wb2-root">
+        <div ref={stageRef} className="wb2-stage" onClick={()=>setSelId(null)}>
+          {/* Fond */}
+          <div className="wb2-bg" style={bg.style}/>
+          {/* Picker fond */}
+          <div className="wb2-bg-picker">
+            <span style={{fontSize:'.6rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.07em',marginRight:2}}>Fond</span>
+            {WB_BACKGROUNDS.map(b=>(
+              <div key={b.id} className={`wb2-bg-swatch${bgId===b.id?' on':''}`}
+                style={{...b.style,border:'2px solid '+(bgId===b.id?'var(--accent)':'rgba(0,0,0,.18)'),boxShadow:bgId===b.id?'0 0 0 1px var(--accent)':undefined}}
+                title={b.label} onClick={()=>setBgId(b.id)}/>
+            ))}
+          </div>
+          {/* Widgets */}
+          {widgets.map(w=>(
+            <WbWidget key={w.id} w={w} selected={selId===w.id}
+              onClick={()=>setSelId(w.id)}
+              onClose={closeWidget}
+              onMouseDownDrag={onDragStart}
+              onMouseDownResize={onResizeStart}>
+              {renderBody(w)}
+            </WbWidget>
+          ))}
+          {widgets.length===0&&(
+            <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}>
+              <div style={{textAlign:'center',color:'rgba(150,150,170,.5)'}}>
+                <div style={{fontSize:'3rem',marginBottom:'.5rem'}}>🖊️</div>
+                <div style={{fontSize:'1rem',fontWeight:700}}>Tableau vide</div>
+                <div style={{fontSize:'.82rem',marginTop:'.3rem'}}>Ajoutez des widgets depuis la barre ci-dessous</div>
+              </div>
+            </div>
+          )}
+          {/* Toolbar bas */}
+          <div className="wb2-bar">
+            {BTNS.map(({type,icon,label})=>(
+              <button key={type} className="wb2-bar-btn" onClick={()=>addWidget(type)}>
+                <span className="wb2-bar-btn-icon">{icon}</span>
+                <span className="wb2-bar-btn-label">{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-      <div className="wb-wrap" style={{cursor:tool==='eraser'?'cell':tool==='text'?'text':'crosshair'}}>
-        <canvas ref={cvRef}
-          onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
-          onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp}
-          style={{display:'block',width:'100%',height:'100%'}}
-        />
-        {editTxt&&(
-          <textarea autoFocus
-            style={{position:'absolute',left:editTxt.x,top:editTxt.y-editTxt.size,background:'rgba(255,255,255,.92)',border:'2px dashed var(--accent)',borderRadius:'4px',padding:'.22rem .45rem',font:`bold ${editTxt.size}px Roboto`,color:editTxt.color,resize:'none',minWidth:'120px',minHeight:'36px',outline:'none',zIndex:10}}
-            value={editTxt.text} onChange={e=>setEditTxt(t=>({...t,text:e.target.value}))}
-            onBlur={saveText} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();saveText()}}}
-            placeholder="Tapez…"
-          />
-        )}
-      </div>
-    </div>
-  </>);
+    </>
+  );
 }
 
 /* ══ MODULE 3 — ÉTUDE DE DOCUMENT ═══════════════════════════════════════ */
@@ -1325,13 +1675,33 @@ function EtudeDocument(){
   const[pageNum,setPageNum]=useState(1);
   const[numPages,setNumPages]=useState(0);
   const[scale,setScale]=useState(1.4);
-  const[activeTool,setActiveTool]=useState(null);
+  const[activeTool,setActiveTool]=useState(null); // null | 'highlight' | 'text' | 'pen' | 'arrow' | 'rect'
+  const[activeColor,setActiveColor]=useState('#fde047');
   const[annotations,setAnnotations]=useState([]);
   const[pendingText,setPendingText]=useState(null);
+  const[panelOpen,setPanelOpen]=useState(true);
   const cvRef=useRef(null);
   const acRef=useRef(null);
   const pdfRef=useRef(null);
   const dragRef=useRef(null);
+  const fileKeyRef=useRef(null); // clé localStorage pour persister les annotations
+
+  const COLORS=['#fde047','#fb923c','#f87171','#86efac','#67e8f9','#c4b5fd'];
+  const TOOLS=[
+    {id:'highlight', icon:'🖌️', label:'Surligner'},
+    {id:'pen',       icon:'✏️', label:'Crayon'},
+    {id:'arrow',     icon:'↗️', label:'Flèche'},
+    {id:'rect',      icon:'⬜', label:'Rectangle'},
+    {id:'text',      icon:'T',  label:'Texte'},
+  ];
+
+  // Persistance : charger les annotations au changement de fichier
+  const loadAnnotations=(key)=>{
+    try{const s=localStorage.getItem('doc-annot-'+key);return s?JSON.parse(s):[];}catch{return[];}
+  };
+  const saveAnnotations=(key,annots)=>{
+    try{localStorage.setItem('doc-annot-'+key,JSON.stringify(annots));}catch{}
+  };
 
   const renderPage=useCallback(async(pdf,num,sc)=>{
     if(!pdf)return;
@@ -1340,132 +1710,289 @@ function EtudeDocument(){
     const c=cvRef.current;if(!c)return;
     c.width=vp.width;c.height=vp.height;
     await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
-    const ac=acRef.current;
-    if(ac){ac.width=vp.width;ac.height=vp.height;}
+    const ac=acRef.current;if(ac){ac.width=vp.width;ac.height=vp.height;}
   },[]);
 
-  const redraw=useCallback(()=>{
+  const redraw=useCallback((annots,page)=>{
     const ac=acRef.current;if(!ac)return;
     const ctx=ac.getContext('2d');ctx.clearRect(0,0,ac.width,ac.height);
-    annotations.filter(a=>a.page===pageNum).forEach(a=>{
-      if(a.type==='highlight'){ctx.save();ctx.globalAlpha=.42;ctx.fillStyle=a.color||'#fde047';ctx.fillRect(a.x,a.y,a.w,a.h||20);ctx.restore();}
-      else if(a.type==='text'){ctx.font=`bold 16px Roboto`;ctx.fillStyle=a.color||'#dc2626';ctx.fillText(a.text,a.x,a.y);}
+    (annots||[]).filter(a=>a.page===page).forEach(a=>{
+      ctx.save();
+      if(a.type==='highlight'){
+        ctx.globalAlpha=.42;ctx.fillStyle=a.color;
+        ctx.fillRect(a.x,a.y,a.w,a.h);
+      } else if(a.type==='rect'){
+        ctx.strokeStyle=a.color;ctx.lineWidth=2.5;ctx.globalAlpha=.85;
+        ctx.strokeRect(a.x,a.y,a.w,a.h);
+      } else if(a.type==='pen'&&a.pts?.length>1){
+        ctx.strokeStyle=a.color;ctx.lineWidth=2.5;ctx.lineJoin='round';ctx.lineCap='round';ctx.globalAlpha=.9;
+        ctx.beginPath();ctx.moveTo(a.pts[0].x,a.pts[0].y);
+        a.pts.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.stroke();
+      } else if(a.type==='arrow'){
+        ctx.strokeStyle=a.color;ctx.fillStyle=a.color;ctx.lineWidth=2.5;ctx.globalAlpha=.9;
+        const dx=a.x2-a.x1,dy=a.y2-a.y1,len=Math.sqrt(dx*dx+dy*dy);
+        if(len<4){ctx.restore();return;}
+        const ux=dx/len,uy=dy/len,hw=10,hh=6;
+        ctx.beginPath();ctx.moveTo(a.x1,a.y1);ctx.lineTo(a.x2-ux*hw,a.y2-uy*hw);ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(a.x2,a.y2);
+        ctx.lineTo(a.x2-ux*hw-uy*hh,a.y2-uy*hw+ux*hh);
+        ctx.lineTo(a.x2-ux*hw+uy*hh,a.y2-uy*hw-ux*hh);
+        ctx.closePath();ctx.fill();
+      } else if(a.type==='text'){
+        ctx.font=`bold 15px Roboto,sans-serif`;ctx.fillStyle=a.color;ctx.globalAlpha=.95;
+        ctx.fillText(a.text,a.x,a.y);
+      }
+      ctx.restore();
     });
-  },[annotations,pageNum]);
+  },[]);
 
-  useEffect(()=>{if(pdfRef.current)renderPage(pdfRef.current,pageNum,scale).then(redraw)},[pageNum,scale]);
-  useEffect(()=>redraw(),[annotations,pageNum]);
+  useEffect(()=>{
+    if(pdfRef.current) renderPage(pdfRef.current,pageNum,scale).then(()=>redraw(annotations,pageNum));
+  },[pageNum,scale]);
+  useEffect(()=>redraw(annotations,pageNum),[annotations,pageNum]);
 
   const loadFile=async f=>{
-    setFile(f);setAnnotations([]);
+    const key=f.name+'_'+f.size;
+    fileKeyRef.current=key;
+    setFile(f);
+    const loaded=loadAnnotations(key);
+    setAnnotations(loaded);
     if(f.type==='application/pdf'){
       const buf=await f.arrayBuffer();
       const pdf=await pdfjsLib.getDocument(buf).promise;
       pdfRef.current=pdf;setNumPages(pdf.numPages);setPageNum(1);
       await renderPage(pdf,1,scale);
+      setTimeout(()=>redraw(loaded,1),50);
     }else{
       pdfRef.current=null;setNumPages(1);setPageNum(1);
-      const img=new Image();img.onload=()=>{const c=cvRef.current;if(!c)return;c.width=img.width;c.height=img.height;c.getContext('2d').drawImage(img,0,0);const ac=acRef.current;if(ac){ac.width=img.width;ac.height=img.height;}};
+      const img=new Image();
+      img.onload=()=>{
+        const c=cvRef.current;if(!c)return;
+        c.width=img.width;c.height=img.height;
+        c.getContext('2d').drawImage(img,0,0);
+        const ac=acRef.current;if(ac){ac.width=img.width;ac.height=img.height;}
+        setTimeout(()=>redraw(loaded,1),50);
+      };
       img.src=URL.createObjectURL(f);
     }
   };
 
-  const getAPos=e=>{const ac=acRef.current;if(!ac)return{x:0,y:0};const r=ac.getBoundingClientRect();const sx=ac.width/r.width,sy=ac.height/r.height;return{x:(e.clientX-r.left)*sx,y:(e.clientY-r.top)*sy}};
+  const addAnnot=(a)=>{
+    const next=[...annotations,{...a,id:Date.now().toString(),page:pageNum,color:activeColor}];
+    setAnnotations(next);
+    if(fileKeyRef.current) saveAnnotations(fileKeyRef.current,next);
+  };
+  const delAnnot=(id)=>{
+    const next=annotations.filter(a=>a.id!==id);
+    setAnnotations(next);
+    if(fileKeyRef.current) saveAnnotations(fileKeyRef.current,next);
+  };
+  const clearPage=()=>{
+    const next=annotations.filter(a=>a.page!==pageNum);
+    setAnnotations(next);
+    if(fileKeyRef.current) saveAnnotations(fileKeyRef.current,next);
+  };
+
+  const getAPos=e=>{
+    const ac=acRef.current;if(!ac)return{x:0,y:0};
+    const r=ac.getBoundingClientRect();
+    return{x:(e.clientX-r.left)*(ac.width/r.width),y:(e.clientY-r.top)*(ac.height/r.height)};
+  };
 
   const onDown=e=>{
-    if(!activeTool)return;const pos=getAPos(e);
-    if(activeTool==='highlight'){dragRef.current={sx:pos.x,sy:pos.y,x:pos.x,y:pos.y};}
-    if(activeTool==='text'){setPendingText({x:pos.x,y:pos.y,text:''});}
+    if(!activeTool)return;
+    const pos=getAPos(e);
+    if(activeTool==='text'){setPendingText({x:pos.x,y:pos.y,text:''});return;}
+    if(activeTool==='highlight'||activeTool==='rect')  dragRef.current={sx:pos.x,sy:pos.y,x:pos.x,y:pos.y};
+    if(activeTool==='pen')   dragRef.current={pts:[pos]};
+    if(activeTool==='arrow') dragRef.current={x1:pos.x,y1:pos.y,x2:pos.x,y2:pos.y};
   };
   const onMove=e=>{
-    if(!dragRef.current||activeTool!=='highlight')return;
-    const pos=getAPos(e);const d=dragRef.current;dragRef.current={...d,x:pos.x,y:pos.y};
-    const ac=acRef.current;if(!ac)return;const ctx=ac.getContext('2d');ctx.clearRect(0,0,ac.width,ac.height);redraw();
-    ctx.save();ctx.globalAlpha=.35;ctx.fillStyle='#fde047';
-    ctx.fillRect(Math.min(d.sx,pos.x),Math.min(d.sy,pos.y),Math.abs(pos.x-d.sx),Math.abs(pos.y-d.sy));ctx.restore();
+    if(!dragRef.current)return;
+    const pos=getAPos(e);
+    const ac=acRef.current;if(!ac)return;
+    const ctx=ac.getContext('2d');
+    if(activeTool==='highlight'||activeTool==='rect'){
+      const d=dragRef.current;dragRef.current={...d,x:pos.x,y:pos.y};
+      redraw(annotations,pageNum);
+      ctx.save();ctx.globalAlpha=activeTool==='highlight'?.35:.7;
+      ctx.strokeStyle=activeColor;ctx.fillStyle=activeColor;ctx.lineWidth=2;
+      if(activeTool==='highlight') ctx.fillRect(Math.min(d.sx,pos.x),Math.min(d.sy,pos.y),Math.abs(pos.x-d.sx),Math.abs(pos.y-d.sy));
+      else ctx.strokeRect(Math.min(d.sx,pos.x),Math.min(d.sy,pos.y),Math.abs(pos.x-d.sx),Math.abs(pos.y-d.sy));
+      ctx.restore();
+    } else if(activeTool==='pen'){
+      dragRef.current={pts:[...dragRef.current.pts,pos]};
+      ctx.save();ctx.strokeStyle=activeColor;ctx.lineWidth=2.5;ctx.lineCap='round';ctx.globalAlpha=.9;
+      const pts=dragRef.current.pts;const l=pts.length;
+      if(l>=2){ctx.beginPath();ctx.moveTo(pts[l-2].x,pts[l-2].y);ctx.lineTo(pos.x,pos.y);ctx.stroke();}
+      ctx.restore();
+    } else if(activeTool==='arrow'){
+      dragRef.current={...dragRef.current,x2:pos.x,y2:pos.y};
+      redraw(annotations,pageNum);
+      // Preview flèche
+      const d=dragRef.current;
+      const dx=d.x2-d.x1,dy=d.y2-d.y1,len=Math.sqrt(dx*dx+dy*dy);
+      if(len>4){
+        const ux=dx/len,uy=dy/len,hw=10,hh=6;
+        ctx.save();ctx.strokeStyle=activeColor;ctx.fillStyle=activeColor;ctx.lineWidth=2.5;ctx.globalAlpha=.8;
+        ctx.beginPath();ctx.moveTo(d.x1,d.y1);ctx.lineTo(d.x2-ux*hw,d.y2-uy*hw);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(d.x2,d.y2);ctx.lineTo(d.x2-ux*hw-uy*hh,d.y2-uy*hw+ux*hh);ctx.lineTo(d.x2-ux*hw+uy*hh,d.y2-uy*hw-ux*hh);ctx.closePath();ctx.fill();
+        ctx.restore();
+      }
+    }
   };
   const onUp=()=>{
-    if(!dragRef.current||activeTool!=='highlight'){dragRef.current=null;return;}
+    if(!dragRef.current)return;
     const d=dragRef.current;dragRef.current=null;
-    const rw=Math.abs(d.x-d.sx),rh=Math.abs(d.y-d.sy);
-    if(rw>5&&rh>5)setAnnotations(prev=>[...prev,{id:Date.now().toString(),type:'highlight',x:Math.min(d.sx,d.x),y:Math.min(d.sy,d.y),w:rw,h:rh,color:'#fde047',page:pageNum}]);
+    if(activeTool==='highlight'){
+      const rw=Math.abs(d.x-d.sx),rh=Math.abs(d.y-d.sy);
+      if(rw>5&&rh>5) addAnnot({type:'highlight',x:Math.min(d.sx,d.x),y:Math.min(d.sy,d.y),w:rw,h:rh});
+    } else if(activeTool==='rect'){
+      const rw=Math.abs(d.x-d.sx),rh=Math.abs(d.y-d.sy);
+      if(rw>5&&rh>5) addAnnot({type:'rect',x:Math.min(d.sx,d.x),y:Math.min(d.sy,d.y),w:rw,h:rh});
+    } else if(activeTool==='pen'){
+      if(d.pts?.length>2) addAnnot({type:'pen',pts:d.pts});
+    } else if(activeTool==='arrow'){
+      const len=Math.sqrt((d.x2-d.x1)**2+(d.y2-d.y1)**2);
+      if(len>10) addAnnot({type:'arrow',x1:d.x1,y1:d.y1,x2:d.x2,y2:d.y2});
+    }
   };
   const saveText=()=>{
     if(!pendingText||!pendingText.text.trim()){setPendingText(null);return;}
-    setAnnotations(prev=>[...prev,{id:Date.now().toString(),type:'text',x:pendingText.x,y:pendingText.y,text:pendingText.text,color:'#dc2626',page:pageNum}]);
+    addAnnot({type:'text',x:pendingText.x,y:pendingText.y,text:pendingText.text});
     setPendingText(null);
   };
-  const delAnnot=id=>setAnnotations(prev=>prev.filter(a=>a.id!==id));
+
   const exportPng=()=>{
     const c=cvRef.current,ac=acRef.current;if(!c||!ac)return;
     const out=document.createElement('canvas');out.width=c.width;out.height=c.height;
     const ctx=out.getContext('2d');ctx.drawImage(c,0,0);ctx.drawImage(ac,0,0);
-    const a=document.createElement('a');a.href=out.toDataURL('image/png');a.download=`doc-annote-p${pageNum}.png`;a.click();
+    const a=document.createElement('a');a.href=out.toDataURL('image/png');
+    a.download=`doc-annote-p${pageNum}.png`;a.click();
   };
+
   const pa=annotations.filter(a=>a.page===pageNum);
+
+  const toolIcon={highlight:'🖌️',pen:'✏️',arrow:'↗️',rect:'⬜',text:'T'};
 
   return(<>
     <div className="page-hd">
-      <div><div className="phd-badge">📖 Étude de document</div><div className="phd-title">Annotation de document</div><div className="phd-sub">PDF et images · Surlignage, textes, export PNG</div></div>
+      <div>
+        <div className="phd-badge">📖 Étude de document</div>
+        <div className="phd-title">Annotation de document</div>
+        <div className="phd-sub">{file?file.name+' · p.'+pageNum+(numPages>1?'/'+numPages:''):'PDF et images · Surlignage, crayon, flèche, rectangle, texte'}</div>
+      </div>
       <div className="phd-actions">
-        <label htmlFor="doc-up" className="btn btn-white">📄 Ouvrir document</label>
-        <input id="doc-up" type="file" accept="application/pdf,image/*" onChange={e=>{const f=e.target.files[0];if(f)loadFile(f)}}/>
-        {file&&<><button onClick={exportPng} className="btn btn-ghost">💾 Exporter page</button><button onClick={()=>setAnnotations([])} className="btn btn-ghost">🗑️ Effacer annot.</button></>}
-        {numPages>1&&<div style={{display:'flex',alignItems:'center',gap:'.35rem'}}>
+        <label htmlFor="doc-up" className="btn btn-white">📄 Ouvrir</label>
+        <input id="doc-up" type="file" accept="application/pdf,image/*" onChange={e=>{const f=e.target.files[0];if(f)loadFile(f);e.target.value='';}}/>
+        {file&&<>
+          <button onClick={exportPng} className="btn btn-ghost">💾 Exporter PNG</button>
+          <button onClick={clearPage} className="btn btn-ghost">🗑️ Effacer page</button>
+        </>}
+        {numPages>1&&<div style={{display:'flex',alignItems:'center',gap:'.3rem'}}>
           <button onClick={()=>setPageNum(p=>Math.max(1,p-1))} className="btn btn-ghost" disabled={pageNum===1}>◀</button>
-          <span style={{color:'rgba(255,255,255,.8)',fontSize:'.78rem',fontWeight:600,minWidth:'50px',textAlign:'center'}}>{pageNum}/{numPages}</span>
+          <span style={{color:'rgba(255,255,255,.8)',fontSize:'.78rem',fontWeight:600,minWidth:'46px',textAlign:'center'}}>{pageNum}/{numPages}</span>
           <button onClick={()=>setPageNum(p=>Math.min(numPages,p+1))} className="btn btn-ghost" disabled={pageNum===numPages}>▶</button>
         </div>}
       </div>
     </div>
     {!file?(
       <div className="page-content" style={{display:'flex',alignItems:'center',justifyContent:'center',flex:1}}>
-        <div style={{textAlign:'center',color:'var(--text2)'}}>
-          <div style={{fontSize:'2.75rem',marginBottom:'.875rem',opacity:.4}}>📖</div>
+        <label htmlFor="doc-up" style={{textAlign:'center',color:'var(--text2)',cursor:'pointer',padding:'3rem',border:'2px dashed var(--border)',borderRadius:16,transition:'all .15s'}}
+          onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.background='rgba(59,91,219,.04)';}}
+          onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.background='transparent';}}>
+          <div style={{fontSize:'3rem',marginBottom:'.875rem',opacity:.4}}>📖</div>
           <div style={{fontSize:'.95rem',fontWeight:700,marginBottom:'.4rem'}}>Ouvrir un document</div>
-          <div style={{fontSize:'.8rem'}}>Cliquez sur "Ouvrir document" pour charger un PDF ou une image</div>
-        </div>
+          <div style={{fontSize:'.8rem',color:'var(--text3)'}}>PDF ou image (PNG, JPG…)</div>
+        </label>
       </div>
     ):(
-      <div className="doc-shell" style={{flex:1}}>
-        <div className="doc-viewer-area">
-          <div style={{position:'relative',display:'inline-block',userSelect:'none'}}>
-            <canvas ref={cvRef} style={{display:'block',boxShadow:'0 4px 20px rgba(0,0,0,.4)'}}/>
-            <canvas ref={acRef} style={{position:'absolute',top:0,left:0,cursor:activeTool?'crosshair':'default'}}
-              onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp}/>
-            {pendingText&&(
-              <textarea autoFocus
-                style={{position:'absolute',left:pendingText.x,top:pendingText.y-18,background:'rgba(255,255,255,.95)',border:'2px dashed #dc2626',borderRadius:'4px',padding:'.22rem .45rem',font:'bold 15px Roboto',color:'#dc2626',resize:'none',minWidth:'140px',outline:'none',zIndex:10}}
-                value={pendingText.text} onChange={e=>setPendingText(t=>({...t,text:e.target.value}))}
-                onBlur={saveText} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();saveText()}}}
-                placeholder="Annotation…"
-              />
-            )}
-          </div>
+      <div className="doc-shell">
+        {/* ── Barre d'outils ── */}
+        <div className="doc-toolbar">
+          {/* Outils */}
+          {TOOLS.map(t=>(
+            <button key={t.id} className={`doc-tbtn${activeTool===t.id?' on':''}`}
+              onClick={()=>setActiveTool(v=>v===t.id?null:t.id)}
+              title={t.label}>
+              <span style={{fontSize:'.85rem'}}>{t.icon}</span> {t.label}
+            </button>
+          ))}
+          <div className="doc-toolbar-sep"/>
+          {/* Couleurs */}
+          {COLORS.map(c=>(
+            <div key={c} className={`doc-color-sw${activeColor===c?' on':''}`}
+              style={{background:c}} onClick={()=>setActiveColor(c)} title={c}/>
+          ))}
+          <div className="doc-toolbar-sep"/>
+          {/* Zoom */}
+          <button className="doc-tbtn" onClick={()=>setScale(s=>Math.min(s+.2,3))} title="Zoom +">🔍+</button>
+          <button className="doc-tbtn" onClick={()=>setScale(s=>Math.max(s-.2,.4))} title="Zoom −">🔍−</button>
+          <div className="doc-toolbar-sep"/>
+          {/* Panel toggle */}
+          <button className="doc-tbtn" onClick={()=>setPanelOpen(o=>!o)} title="Panneau annotations">
+            {panelOpen?'◀ Masquer':'▶ Annotations'} ({pa.length})
+          </button>
         </div>
-        <div className="doc-panel">
-          <div className="doc-panel-hd">Outils</div>
-          <div className="doc-tools-list">
-            <button className={`doc-tbtn ${activeTool==='highlight'?'on':''}`} onClick={()=>setActiveTool(t=>t==='highlight'?null:'highlight')}>🖌️ Surligner (glisser)</button>
-            <button className={`doc-tbtn ${activeTool==='text'?'on':''}`} onClick={()=>setActiveTool(t=>t==='text'?null:'text')}>T Ajouter du texte</button>
-          </div>
-          <div className="doc-zoom-row">
-            <button className="btn" style={{flex:1,justifyContent:'center'}} onClick={()=>setScale(s=>Math.min(s+.2,3))}>🔍 Zoom +</button>
-            <button className="btn" style={{flex:1,justifyContent:'center'}} onClick={()=>setScale(s=>Math.max(s-.2,.5))}>🔍 Zoom −</button>
-          </div>
-          <div style={{padding:'.5rem .9rem',borderBottom:'1px solid var(--border)',fontSize:'.65rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.07em'}}>Annotations ({pa.length})</div>
-          <div className="annot-list-area">
-            {pa.length===0?<div style={{color:'var(--text3)',fontSize:'.76rem',textAlign:'center',padding:'.875rem'}}>Aucune annotation</div>:
-              pa.map(a=>(
-                <div key={a.id} className="annot-item">
-                  <div style={{flex:1,fontSize:'.73rem',color:'var(--text)',lineHeight:1.4}}>
-                    {a.type==='highlight'?<><span style={{display:'inline-block',width:10,height:10,borderRadius:2,background:a.color,marginRight:'.28rem',verticalAlign:'middle'}}/>Surlignage</>:<><span style={{color:a.color,fontWeight:700,marginRight:'.28rem'}}>T</span>{a.text}</>}
+        {/* ── Viewer + Panel ── */}
+        <div className="doc-viewer-wrap">
+          <div className="doc-viewer-area">
+            <div style={{position:'relative',display:'inline-block',userSelect:'none'}}>
+              <canvas ref={cvRef} style={{display:'block',boxShadow:'0 4px 24px rgba(0,0,0,.5)'}}/>
+              <canvas ref={acRef}
+                style={{position:'absolute',top:0,left:0,
+                  cursor:activeTool==='text'?'text':activeTool?'crosshair':'default'}}
+                onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp}/>
+              {pendingText&&(
+                <div style={{position:'absolute',left:pendingText.x,top:pendingText.y-18,zIndex:20,display:'flex',flexDirection:'column',gap:4}}>
+                  <textarea autoFocus
+                    style={{background:'rgba(255,255,255,.97)',border:`2px solid ${activeColor}`,
+                      borderRadius:'6px',padding:'.3rem .5rem',font:`bold ${14}px Roboto,sans-serif`,
+                      color:activeColor,resize:'both',minWidth:'160px',minHeight:'36px',
+                      outline:'none',boxShadow:'0 2px 12px rgba(0,0,0,.25)'}}
+                    value={pendingText.text}
+                    onMouseDown={e=>e.stopPropagation()}
+                    onChange={e=>setPendingText(t=>({...t,text:e.target.value}))}
+                    onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();saveText();}if(e.key==='Escape'){setPendingText(null);}}}
+                    placeholder="Tapez votre texte… (Entrée pour valider)"/>
+                  <div style={{display:'flex',gap:4}}>
+                    <button onMouseDown={e=>e.stopPropagation()} onClick={saveText}
+                      style={{flex:1,padding:'2px 8px',border:'none',borderRadius:4,background:activeColor,color:'#fff',cursor:'pointer',fontSize:'.72rem',fontWeight:700}}>
+                      ✓ Valider
+                    </button>
+                    <button onMouseDown={e=>e.stopPropagation()} onClick={()=>setPendingText(null)}
+                      style={{padding:'2px 8px',border:'none',borderRadius:4,background:'rgba(0,0,0,.15)',color:'var(--text)',cursor:'pointer',fontSize:'.72rem',fontWeight:700}}>
+                      ✕
+                    </button>
                   </div>
-                  <button className="annot-del" onClick={()=>delAnnot(a.id)}>✕</button>
                 </div>
-              ))
-            }
+              )}
+            </div>
           </div>
+          {/* Panel annotations */}
+          {panelOpen&&(
+            <div className="doc-panel">
+              <div className="doc-panel-hd">
+                <span>Annotations — p.{pageNum}</span>
+                <span style={{fontWeight:400,color:'var(--text3)'}}>{pa.length}</span>
+              </div>
+              <div className="annot-list-area">
+                {pa.length===0
+                  ?<div style={{color:'var(--text3)',fontSize:'.74rem',textAlign:'center',padding:'.875rem',fontStyle:'italic'}}>Aucune annotation sur cette page</div>
+                  :pa.map(a=>(
+                    <div key={a.id} className="annot-item">
+                      <div style={{width:10,height:10,borderRadius:2,background:a.color,flexShrink:0}}/>
+                      <span style={{color:'var(--text2)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                        {toolIcon[a.type]||'?'} {a.type==='text'?a.text:a.type==='pen'?'Tracé libre':a.type==='arrow'?'Flèche':a.type==='rect'?'Rectangle':'Surlignage'}
+                      </span>
+                      <button className="annot-del" onClick={()=>delAnnot(a.id)}>✕</button>
+                    </div>
+                  ))
+                }
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )}
@@ -3386,6 +3913,9 @@ function Dashboard({profile,onNav}){
   // Compteur alertes = comportement + travaux (tout géré via SuiviClasse)
   const alertes=alertesComportementData.map(a=>a.eleve.nom);
 
+  // Alertes rencontres parents actives
+  const alertesRencontres=(()=>{try{return JSON.parse(localStorage.getItem('cdc-rencontres')||'[]').filter(r=>r.alerte&&!r.alerteVue);}catch{return[];}})();
+
   const saveTaches=t=>{setTaches(t);localStorage.setItem('dash-taches',JSON.stringify(t));};
   const saveTravailRapide=t=>{setTravailRapide(t);localStorage.setItem('dash-travail-rapide',JSON.stringify(t));};
   const saveNotes=n=>{setNotes(n);localStorage.setItem('dash-notes',JSON.stringify(n));};
@@ -3459,6 +3989,13 @@ function Dashboard({profile,onNav}){
           <div className="dash-stat-chip-lbl">Alertes élèves{alertes.length>0&&' ↗'}</div>
         </div>
         <div className="dash-stat-chip"><div className="dash-stat-chip-val">{taches.filter(t=>!t.done).length}</div><div className="dash-stat-chip-lbl">Tâches en cours</div></div>
+        {alertesRencontres.length>0&&(
+          <div className="dash-stat-chip" style={{cursor:'pointer',borderColor:'#fca5a5',background:'#fef2f2'}}
+            onClick={()=>onNav('rencontres')}>
+            <div className="dash-stat-chip-val red">{alertesRencontres.length}</div>
+            <div className="dash-stat-chip-lbl" style={{color:'#991b1b'}}>Rencontres ⚠️</div>
+          </div>
+        )}
         {nextVac&&daysToNextVac!==null&&daysToNextVac>=0&&(
           <div className="dash-stat-chip" title={`${nextVac.label} : ${nextVac.debut} → ${nextVac.fin}`}>
             <div className="dash-stat-chip-val" style={{color:'var(--warning)',fontSize:daysToNextVac===0?'.85rem':'1.1rem'}}>
@@ -3880,6 +4417,109 @@ function TravNonRendus(){
 }
 
 /* ══ MODULE 7 — CAHIER DE SÉANCE ════════════════════════════════════════ */
+
+// Mini éditeur rich text pour les champs de fiche
+function RichField({value, onChange, placeholder, minHeight=70}){
+  const ref=useRef(null);
+  const savedSel=useRef(null);
+  const isEditing=useRef(false);
+
+  useEffect(()=>{
+    if(ref.current && !isEditing.current){
+      ref.current.innerHTML = value||'';
+    }
+  },[value]);
+
+  const saveSelection=()=>{
+    const sel=window.getSelection();
+    if(sel&&sel.rangeCount>0) savedSel.current=sel.getRangeAt(0).cloneRange();
+  };
+  const restoreSelection=()=>{
+    if(!savedSel.current) return;
+    const sel=window.getSelection();
+    if(sel){sel.removeAllRanges();sel.addRange(savedSel.current);}
+  };
+  const exec=(cmd,val=null)=>{
+    restoreSelection();
+    document.execCommand(cmd,false,val);
+    ref.current?.focus();
+    onChange(ref.current?.innerHTML||'');
+  };
+
+  const FONTS_RF=[
+    {v:'Roboto,sans-serif',     label:'Roboto'},
+    {v:'Roboto Slab,serif',     label:'Slab'},
+    {v:'Georgia,serif',         label:'Georgia'},
+    {v:'Arial,sans-serif',      label:'Arial'},
+    {v:'Courier New,monospace', label:'Mono'},
+    {v:'Comic Sans MS,cursive', label:'Comic'},
+  ];
+
+  const Btn=({cmd,val=null,title,children})=>(
+    <button type="button" title={title}
+      onMouseDown={e=>{e.preventDefault();saveSelection();}}
+      onClick={()=>exec(cmd,val)}
+      style={{height:22,minWidth:22,padding:'0 4px',border:'1px solid var(--border)',borderRadius:3,
+        background:'var(--surface)',color:'var(--text)',cursor:'pointer',fontSize:'.72rem',
+        fontWeight:700,display:'inline-flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+      {children}
+    </button>
+  );
+
+  return(
+    <div style={{border:'1.5px solid var(--border)',borderRadius:'var(--r-xs)',background:'var(--surface2)',overflow:'hidden',transition:'border-color .15s'}}
+      onFocusCapture={e=>{e.currentTarget.style.borderColor='var(--accent)';}}
+      onBlurCapture={e=>{
+        // Ne pas déclencher le blur si le focus reste dans ce composant
+        if(e.currentTarget.contains(e.relatedTarget)) return;
+        e.currentTarget.style.borderColor='var(--border)';
+        isEditing.current=false;
+      }}>
+      {/* Barre outils ligne 1 : formatage + alignement */}
+      <div onMouseDown={e=>e.preventDefault()}
+        style={{display:'flex',gap:3,padding:'4px 6px 2px',borderBottom:'1px solid var(--border)',background:'var(--surface)',flexWrap:'wrap',alignItems:'center'}}>
+        <Btn cmd="bold"              title="Gras"><b>B</b></Btn>
+        <Btn cmd="italic"            title="Italique"><i>I</i></Btn>
+        <Btn cmd="underline"         title="Souligné"><u>U</u></Btn>
+        <div style={{width:1,background:'var(--border)',margin:'0 2px',alignSelf:'stretch'}}/>
+        <Btn cmd="justifyLeft"       title="Aligner à gauche">⬅</Btn>
+        <Btn cmd="justifyCenter"     title="Centrer">≡</Btn>
+        <Btn cmd="justifyRight"      title="Aligner à droite">➡</Btn>
+        <div style={{width:1,background:'var(--border)',margin:'0 2px',alignSelf:'stretch'}}/>
+        <Btn cmd="insertUnorderedList" title="Liste à puces">•≡</Btn>
+        <Btn cmd="insertOrderedList"   title="Liste numérotée">①</Btn>
+        <div style={{width:1,background:'var(--border)',margin:'0 2px',alignSelf:'stretch'}}/>
+        <Btn cmd="removeFormat"      title="Effacer formatage">✕</Btn>
+      </div>
+      {/* Barre outils ligne 2 : police */}
+      <div onMouseDown={e=>e.preventDefault()}
+        style={{display:'flex',gap:3,padding:'3px 6px',borderBottom:'1px solid var(--border)',background:'var(--surface)',alignItems:'center'}}>
+        <span style={{fontSize:'.6rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.05em',flexShrink:0,marginRight:2}}>Police :</span>
+        {FONTS_RF.map(f=>(
+          <button key={f.v} type="button"
+            onMouseDown={e=>{e.preventDefault();saveSelection();}}
+            onClick={()=>exec('fontName',f.v)}
+            style={{height:20,padding:'0 5px',borderRadius:3,border:'1px solid var(--border)',
+              background:'var(--surface2)',color:'var(--text)',cursor:'pointer',
+              fontSize:'.62rem',fontWeight:600,fontFamily:f.v,flexShrink:0}}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+      {/* Zone de saisie */}
+      <div ref={ref} contentEditable suppressContentEditableWarning
+        onFocus={()=>{isEditing.current=true;}}
+        onBlur={()=>{isEditing.current=false;onChange(ref.current?.innerHTML||'');}}
+        onInput={()=>onChange(ref.current?.innerHTML||'')}
+        onKeyUp={saveSelection} onMouseUp={saveSelection}
+        data-ph={placeholder}
+        style={{minHeight,padding:'.55rem .75rem',outline:'none',fontFamily:'Roboto,sans-serif',
+          fontSize:'.8rem',lineHeight:1.55,color:'var(--text)',
+          whiteSpace:'pre-wrap',wordBreak:'break-word'}}/>
+    </div>
+  );
+}
+
 function CahierSeance(){
   const[classes]=useState(()=>{try{return JSON.parse(localStorage.getItem('sc-classes')||'[]')}catch{return[]}});
   const[fiches,setFiches]=useState(()=>{try{return JSON.parse(localStorage.getItem('cdc-fiches')||'{}')}catch{return{}}});
@@ -4076,27 +4716,27 @@ function CahierSeance(){
             </div>
             <div className="cs-section">
               <div className="cs-sec-label">🎯 Objectif du cours</div>
-              <textarea className="cs-sec-ta" value={draft?.objectif||''} onChange={e=>updateDraft('objectif',e.target.value)} placeholder="Objectif pédagogique visé…"/>
+              <RichField value={draft?.objectif||''} onChange={v=>updateDraft('objectif',v)} placeholder="Objectif pédagogique visé…"/>
             </div>
             <div className="cs-section">
               <div className="cs-sec-label">📚 Activité réalisée</div>
-              <textarea className="cs-sec-ta" value={draft?.activite||''} onChange={e=>updateDraft('activite',e.target.value)} placeholder="Ce qui a été fait pendant le cours…"/>
+              <RichField value={draft?.activite||''} onChange={v=>updateDraft('activite',v)} placeholder="Ce qui a été fait pendant le cours…"/>
             </div>
             <div className="cs-section">
               <div className="cs-sec-label">📝 Devoirs donnés</div>
-              <textarea className="cs-sec-ta" value={draft?.devoirs||''} onChange={e=>updateDraft('devoirs',e.target.value)} placeholder="Travail à faire à la maison…"/>
+              <RichField value={draft?.devoirs||''} onChange={v=>updateDraft('devoirs',v)} placeholder="Travail à faire à la maison…"/>
             </div>
             <div className="cs-section">
               <div className="cs-sec-label">📎 Documents utilisés</div>
-              <textarea className="cs-sec-ta" value={draft?.documents||''} onChange={e=>updateDraft('documents',e.target.value)} placeholder="Documents, ressources, support…"/>
+              <RichField value={draft?.documents||''} onChange={v=>updateDraft('documents',v)} placeholder="Documents, ressources, support…"/>
             </div>
             <div className="cs-section">
               <div className="cs-sec-label">🔁 Ce qui reste à revoir</div>
-              <textarea className="cs-sec-ta" value={draft?.aRevoir||''} onChange={e=>updateDraft('aRevoir',e.target.value)} placeholder="Points non traités, à reprendre…"/>
+              <RichField value={draft?.aRevoir||''} onChange={v=>updateDraft('aRevoir',v)} placeholder="Points non traités, à reprendre…"/>
             </div>
             <div className="cs-section">
               <div className="cs-sec-label">⚡ Incidents / Points de vigilance</div>
-              <textarea className="cs-sec-ta" value={draft?.incidents||''} onChange={e=>updateDraft('incidents',e.target.value)} placeholder="Perturbations, comportements à noter…"/>
+              <RichField value={draft?.incidents||''} onChange={v=>updateDraft('incidents',v)} placeholder="Perturbations, comportements à noter…"/>
             </div>
             {cls&&cls.eleves.length>0&&<>
               <div className="cs-section cs-fiche-full">
@@ -4142,7 +4782,12 @@ function CahierSeance(){
       </div>
     </div>
     {sidebarPopup&&(
-      <div className="moverlay" onClick={e=>e.target===e.currentTarget&&setSidebarPopup(null)}>
+      <div className="moverlay" onClick={e=>{
+        if(e.target!==e.currentTarget) return;
+        // En mode édition : bloquer la fermeture — l'utilisateur doit sauvegarder ou annuler
+        if(popupEditMode) return;
+        setSidebarPopup(null);
+      }}>
         <div className="modal" style={{maxWidth:560,maxHeight:'85vh',display:'flex',flexDirection:'column'}}>
           <div className="modal-hd">
             <div>
@@ -4154,7 +4799,18 @@ function CahierSeance(){
                 style={{width:32,height:32,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'var(--r-xs)',border:'1.5px solid var(--border)',background:popupEditMode?'var(--accent)':'var(--surface2)',color:popupEditMode?'#fff':'var(--text2)',cursor:'pointer',fontSize:'.9rem',transition:'all .15s',flexShrink:0}}>
                 ✏️
               </button>
-              <button className="close-btn" onClick={()=>setSidebarPopup(null)}>×</button>
+              {/* En mode édition : bouton Annuler visible + ✕ verrouillé */}
+              {popupEditMode&&(
+                <button onClick={()=>{setPopupEditMode(false);}}
+                  style={{padding:'.25rem .6rem',border:'1.5px solid var(--border)',borderRadius:'var(--r-xs)',background:'var(--surface2)',color:'var(--text2)',cursor:'pointer',fontSize:'.72rem',fontWeight:600,whiteSpace:'nowrap'}}>
+                  Annuler
+                </button>
+              )}
+              <button className="close-btn"
+                disabled={popupEditMode}
+                title={popupEditMode?'Sauvegardez d\'abord ou cliquez Annuler':'Fermer'}
+                onClick={()=>{ if(!popupEditMode) setSidebarPopup(null); }}
+                style={{opacity:popupEditMode?0.3:1,cursor:popupEditMode?'not-allowed':'pointer'}}>×</button>
             </div>
           </div>
           <div className="modal-body" style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:popupEditMode?'.75rem':'.55rem'}}>
@@ -4175,15 +4831,15 @@ function CahierSeance(){
                   <div style={{fontSize:'.66rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:popupEditMode?'.28rem':'.18rem'}}>{label}</div>
                   {popupEditMode?(
                     type==='ta'?(
-                      <textarea rows={3} value={val} onChange={e=>setSidebarPopup(p=>({...p,[key]:e.target.value}))} placeholder="—"
-                        style={{width:'100%',padding:'.42rem .65rem',border:'1.5px solid var(--border)',borderRadius:'var(--r-xs)',background:'var(--surface2)',color:'var(--text)',fontFamily:'Roboto,sans-serif',fontSize:'.82rem',resize:'vertical',lineHeight:1.55,boxSizing:'border-box'}}/>
+                      <RichField value={val} onChange={v=>setSidebarPopup(p=>({...p,[key]:v}))} placeholder="—" minHeight={80}/>
                     ):(
                       <input type={type==='date'?'date':'text'} value={val} onChange={e=>setSidebarPopup(p=>({...p,[key]:e.target.value}))}
                         style={{width:'100%',padding:'.42rem .65rem',border:'1.5px solid var(--border)',borderRadius:'var(--r-xs)',background:'var(--surface2)',color:'var(--text)',fontFamily:'Roboto,sans-serif',fontSize:'.85rem',boxSizing:'border-box'}}/>
                     )
                   ):(
-                    <div style={{fontSize:key==='titre'?'1rem':'.84rem',fontWeight:key==='titre'?700:400,color:val?'var(--text)':'var(--text3)',lineHeight:1.6,padding:key==='titre'?0:'.38rem .65rem',background:key==='titre'?'transparent':'var(--surface2)',borderLeft:key==='titre'?'none':'3px solid var(--border)',borderRadius:key==='titre'?0:'0 var(--r-xs) var(--r-xs) 0'}}>
-                      {key==='date'&&val?new Date(val+'T12:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):(val||'—')}
+                    <div style={{fontSize:key==='titre'?'1rem':'.84rem',fontWeight:key==='titre'?700:400,color:val?'var(--text)':'var(--text3)',lineHeight:1.6,padding:key==='titre'?0:'.38rem .65rem',background:key==='titre'?'transparent':'var(--surface2)',borderLeft:key==='titre'?'none':'3px solid var(--border)',borderRadius:key==='titre'?0:'0 var(--r-xs) var(--r-xs) 0'}}
+                      dangerouslySetInnerHTML={type==='ta'&&val?{__html:val}:undefined}>
+                      {!(type==='ta'&&val)&&(key==='date'&&val?new Date(val+'T12:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):(val||'—'))}
                     </div>
                   )}
                 </div>
@@ -4250,7 +4906,7 @@ function PalPreview({type}){
   return null;
 }
 
-function TableSeats({item, eleves, flags, selEleve, onSeatClick, mode}){
+function TableSeats({item, eleves, flags, selEleve, onSeatClick, mode, seanceObs, onSeanceClick}){
   const def = PALETTE_ITEMS.flatMap(s=>s.items).find(i=>i.type===item.type);
   if(!def?.seats) return null;
   const seatLayouts = {
@@ -4270,31 +4926,44 @@ function TableSeats({item, eleves, flags, selEleve, onSeatClick, mode}){
             const eleve=eleveId?eleves?.find(e=>e.id===eleveId):null;
             const flag=eleve&&flags?.[eleve.id];
             const isSelTarget=selEleve&&!eleve;
+            // En mode séance : montrer si l'élève a des obs
+            const hasObs=eleve&&seanceObs&&OBS.some(o=>seanceObs[`${eleve.id}_${o.id}`]);
             return(
               <div key={i}
-                onClick={mode==='placement'?e=>{e.stopPropagation();onSeatClick(item.id,i);}:undefined}
+                onClick={
+                  mode==='placement'?e=>{e.stopPropagation();onSeatClick(item.id,i);}:
+                  mode==='seance'&&eleve?e=>{e.stopPropagation();onSeanceClick&&onSeanceClick(eleve);}:
+                  undefined
+                }
                 style={{
                   flex:1,borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',
                   minWidth:0,overflow:'hidden',transition:'all .13s',position:'relative',
                   background: eleve
-                    ? (flag==='eviter'?'rgba(220,38,38,.1)':flag==='rapprocher'?'rgba(15,155,110,.1)':'rgba(59,91,219,.1)')
+                    ? (mode==='seance'&&hasObs?'rgba(124,58,237,.12)':flag==='eviter'?'rgba(220,38,38,.1)':flag==='rapprocher'?'rgba(15,155,110,.1)':'rgba(59,91,219,.1)')
                     : (isSelTarget?'rgba(59,91,219,.06)':'rgba(0,0,0,.03)'),
                   border: eleve
-                    ? `2px solid ${flag==='eviter'?'var(--danger)':flag==='rapprocher'?'var(--success)':'rgba(59,91,219,.28)'}`
+                    ? `2px solid ${mode==='seance'&&hasObs?'rgba(124,58,237,.5)':flag==='eviter'?'var(--danger)':flag==='rapprocher'?'var(--success)':'rgba(59,91,219,.28)'}`
                     : `1.5px dashed ${isSelTarget?'var(--accent)':'rgba(0,0,0,.13)'}`,
-                  cursor:mode==='placement'?'pointer':'default',
+                  cursor:mode==='placement'||(mode==='seance'&&eleve)?'pointer':'default',
                 }}>
                 {eleve?(
                   <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:1,padding:'2px 3px'}}>
-                    <div style={{width:18,height:18,borderRadius:'50%',background:flag==='eviter'?'var(--danger)':flag==='rapprocher'?'var(--success)':'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    <div style={{width:18,height:18,borderRadius:'50%',background:mode==='seance'&&hasObs?'#7c3aed':flag==='eviter'?'var(--danger)':flag==='rapprocher'?'var(--success)':'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                       <span style={{fontSize:'.42rem',fontWeight:800,color:'#fff',lineHeight:1}}>{initiales(eleve.nom)}</span>
                     </div>
                     <span style={{fontSize:'.46rem',fontWeight:700,color:'var(--text)',lineHeight:1,textAlign:'center',wordBreak:'break-word',maxWidth:'100%'}}>{eleve.nom.split(' ').pop()}</span>
+                    {mode==='seance'&&hasObs&&(
+                      <div style={{display:'flex',gap:1,flexWrap:'wrap',justifyContent:'center'}}>
+                        {OBS.filter(o=>seanceObs[`${eleve.id}_${o.id}`]).map(o=>(
+                          <span key={o.id} style={{fontSize:'.38rem'}}>{o.emoji}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ):(
                   <span style={{fontSize:'.65rem',color:'var(--text3)',opacity:isSelTarget?.7:.35}}>+</span>
                 )}
-                {flag&&<span style={{position:'absolute',top:1,right:2,fontSize:'.45rem'}}>{flag==='eviter'?'⛔':'✅'}</span>}
+                {flag&&mode!=='seance'&&<span style={{position:'absolute',top:1,right:2,fontSize:'.45rem'}}>{flag==='eviter'?'⛔':'✅'}</span>}
               </div>
             );
           })}
@@ -4322,7 +4991,7 @@ function GridBg({w,h,cell}){
   );
 }
 
-function PlanClasse(){
+function PlanClasse({onNav}){
   const[classes]=useState(()=>{try{return JSON.parse(localStorage.getItem('sc-classes')||'[]')}catch{return[]}});
   const[plans,setPlans]=useState(()=>{try{return JSON.parse(localStorage.getItem('cdc-plans')||'{}')}catch{return{}}});
   const[selCls,setSelCls]=useState(null);
@@ -4331,10 +5000,22 @@ function PlanClasse(){
   const[selectedId,setSelectedId]=useState(null);
   const[marqueMode,setMarqueMode]=useState(null);
   const[selEleve,setSelEleve]=useState(null);
+  const[pdcBilanEl,setPdcBilanEl]=useState(null);
+  const[canvasCols,setCanvasCols]=useState(18);
+  const[canvasRows,setCanvasRows]=useState(12);
+  const[seanceSelId,setSeanceSelId]=useState(null);
+  const[seanceObs,setSeanceObs]=useState({});
+  const[seanceSaved,setSeanceSaved]=useState(false);
+  const[seanceEleve,setSeanceEleve]=useState(null); // élève cliqué sur le canvas en mode séance
   const dragRef=React.useRef(null);
   const canvasRef=React.useRef(null);
 
   useEffect(()=>{localStorage.setItem('cdc-plans',JSON.stringify(plans))},[plans]);
+
+  // Toujours lire sc-sessions depuis localStorage pour éviter les doublons
+  // (SuiviClasse et PlanClasse partagent la même clé)
+  const getRawSessions=()=>{try{return JSON.parse(localStorage.getItem('sc-sessions')||'{}')}catch{return{}}};
+  const clsSessions=selCls?(getRawSessions()[selCls]||[]):[];
 
   const cls=classes.find(c=>c.id===selCls);
   const plan=selCls?(plans[selCls]||{elements:[],flags:{},nomSalle:''}):{elements:[],flags:{},nomSalle:''};
@@ -4344,6 +5025,43 @@ function PlanClasse(){
 
   const updatePlan=np=>setPlans(p=>({...p,[selCls]:np}));
   const updateElements=ne=>updatePlan({...plan,elements:ne});
+
+  const loadSeance=(sid)=>{
+    setSeanceSelId(sid);
+    setSeanceSaved(false);
+    const raw=getRawSessions();
+    const s=(raw[selCls]||[]).find(x=>x.id===sid);
+    setSeanceObs(s?{...s.obs}:{});
+  };
+
+  const toggleSeanceObs=(eid,oid)=>{
+    const k=`${eid}_${oid}`;
+    setSeanceObs(o=>({...o,[k]:!o[k]}));
+    setSeanceSaved(false);
+  };
+
+  const saveSeance=()=>{
+    if(!selCls||!seanceSelId) return;
+    const raw=getRawSessions();
+    const arr=(raw[selCls]||[]).map(s=>s.id===seanceSelId?{...s,obs:{...seanceObs}}:s);
+    const updated={...raw,[selCls]:arr};
+    localStorage.setItem('sc-sessions',JSON.stringify(updated));
+    setSeanceSaved(true);
+    setTimeout(()=>setSeanceSaved(false),2000);
+  };
+
+  const createAndLoadSeance=()=>{
+    if(!selCls) return;
+    const raw=getRawSessions();
+    const today=isoDate(new Date());
+    const s={id:'s'+Date.now(),date:today,label:'Cours',obs:{}};
+    const arr=[...(raw[selCls]||[]),s];
+    const updated={...raw,[selCls]:arr};
+    localStorage.setItem('sc-sessions',JSON.stringify(updated));
+    setSeanceSelId(s.id);
+    setSeanceObs({});
+    setSeanceSaved(false);
+  };
   // ── Système de coordonnées propre ──
   // Les éléments stockent leur position/taille en UNITÉS DE GRILLE (entiers).
   // Pour afficher : px = unités * CELL  où CELL = GRID * scale
@@ -4484,12 +5202,28 @@ function PlanClasse(){
   const placedIds=new Set(); elements.forEach(el=>Object.values(el.seatEleves||{}).forEach(id=>{ if(id)placedIds.add(id); }));
   const unplaced=cls?cls.eleves.filter(e=>!placedIds.has(e.id)):[];
 
-  const canvasW = elements.length
-    ? (Math.max(...elements.map(el=>el.x+el.w)) + 3) * CELL
-    : 14 * CELL;
-  const canvasH = elements.length
-    ? (Math.max(...elements.map(el=>el.y+el.h)) + 3) * CELL
-    : 10 * CELL;
+  // Canvas size : contrôlé par l'utilisateur via la poignée, avec minimum basé sur les éléments
+  const minCols = elements.length ? Math.max(...elements.map(el=>el.x+el.w)) + 2 : 14;
+  const minRows = elements.length ? Math.max(...elements.map(el=>el.y+el.h)) + 2 : 10;
+  const effectiveCols = Math.max(canvasCols, minCols);
+  const effectiveRows = Math.max(canvasRows, minRows);
+  const canvasW = effectiveCols * CELL;
+  const canvasH = effectiveRows * CELL;
+
+  // Poignée de resize du canvas
+  const onCanvasResizeStart=(e)=>{
+    e.stopPropagation(); e.preventDefault();
+    const startX=e.clientX, startY=e.clientY;
+    const startCols=effectiveCols, startRows=effectiveRows;
+    const move=ev=>{
+      const dx=ev.clientX-startX, dy=ev.clientY-startY;
+      setCanvasCols(Math.max(10, startCols + Math.round(dx/CELL)));
+      setCanvasRows(Math.max(6,  startRows + Math.round(dy/CELL)));
+    };
+    const up=()=>{window.removeEventListener('mousemove',move);window.removeEventListener('mouseup',up);};
+    window.addEventListener('mousemove',move);
+    window.addEventListener('mouseup',up);
+  };
 
   const renderElem=elem=>{
     const def=PALETTE_ITEMS.flatMap(s=>s.items).find(i=>i.type===elem.type); if(!def)return null;
@@ -4498,7 +5232,7 @@ function PlanClasse(){
     const px=elem.x*CELL, py=elem.y*CELL;
     const pw=elem.w*CELL, ph=elem.h*CELL;
     const inner=()=>{
-      if(def.isTable) return <TableSeats item={elem} eleves={cls?.eleves} flags={flags} selEleve={selEleve} onSeatClick={onSeatClick} mode={mode}/>;
+      if(def.isTable) return <TableSeats item={elem} eleves={cls?.eleves} flags={flags} selEleve={selEleve} onSeatClick={onSeatClick} mode={mode} seanceObs={seanceObs} onSeanceClick={e=>setSeanceEleve(e)}/>;
       if(elem.type==='tableau') return <span style={{fontSize:`${Math.max(9,Math.round(CELL*0.45))}px`,fontWeight:800,letterSpacing:'.12em',textShadow:'0 1px 0 rgba(0,0,0,.2)'}}>TABLEAU</span>;
       if(elem.type==='bureau-prof') return <div style={{textAlign:'center',lineHeight:1.3}}><div style={{fontSize:`${Math.max(10,Math.round(CELL*0.5))}px`,marginBottom:2}}>👨‍🏫</div><span style={{fontSize:`${Math.max(8,Math.round(CELL*0.35))}px`,fontWeight:700}}>Bureau<br/>prof</span></div>;
       if(elem.type==='paillasse') return <span style={{fontSize:`${Math.max(8,Math.round(CELL*0.38))}px`,fontWeight:700,letterSpacing:'.04em'}}>Paillasse</span>;
@@ -4509,7 +5243,15 @@ function PlanClasse(){
       <div key={elem.id}
         className={`pdc-elem ${def.cls}${mode==='layout'?' layout-mode':''}${isSel?' selected-elem':''}`}
         style={{left:px,top:py,width:pw,height:ph,cursor:mode==='layout'?'move':'default',zIndex:isSel?20:elem.type==='passage'?0:1}}
-        onMouseDown={e=>mode==='layout'&&onElemMouseDown(e,elem)}>
+        onMouseDown={e=>{
+          if(mode==='layout') onElemMouseDown(e,elem);
+          // En mode séance : ne pas bloquer les clics sur les places
+        }}
+        onClick={e=>{
+          // En mode séance, laisser le clic se propager vers TableSeats
+          if(mode==='seance') return;
+          e.stopPropagation();
+        }}>
         {inner()}
         {isSel&&<>
           {/* Toolbar flottante */}
@@ -4537,7 +5279,14 @@ function PlanClasse(){
         <div className="phd-sub">{cls?`${cls.name} · ${occupiedSeats}/${totalSeats} places occupées`:'Sélectionnez une classe'}</div>
       </div>
       <div className="phd-actions">
-        {selCls&&<>
+        {selCls&&mode==='seance'&&<>
+          <button className={`btn ${seanceSaved?'btn-success':'btn-primary'}`}
+            onClick={saveSeance} disabled={!seanceSelId}
+            style={{background:seanceSaved?'var(--success)':'',borderColor:seanceSaved?'var(--success)':''}}>
+            {seanceSaved?'✅ Enregistré !':'💾 Enregistrer la séance'}
+          </button>
+        </>}
+        {selCls&&mode!=='seance'&&<>
           <button className="btn btn-ghost" onClick={tirage}>🎲 Placement aléatoire</button>
           <button className="btn btn-ghost" onClick={()=>{if(confirm('Vider tous les placements ?'))updateElements(elements.map(el=>({...el,seatEleves:{}})));setSelEleve(null);}}>🗑 Vider placements</button>
           <button className="btn btn-ghost" onClick={()=>{if(confirm('Réinitialiser toute la salle ?'))updatePlan({elements:[],flags:{},nomSalle});setSelectedId(null);setSelEleve(null);}}>↺ Réinitialiser</button>
@@ -4550,7 +5299,7 @@ function PlanClasse(){
         <span style={{fontSize:'.73rem',fontWeight:600,color:'var(--text2)',flexShrink:0}}>Classe :</span>
         <div className="seg">
           {classes.map(c=>(
-            <button key={c.id} className={selCls===c.id?'on':''} onClick={()=>{setSelCls(c.id);setSelectedId(null);setSelEleve(null);setMarqueMode(null);}}>
+            <button key={c.id} className={selCls===c.id?'on':''} onClick={()=>{setSelCls(c.id);setSelectedId(null);setSelEleve(null);setMarqueMode(null);setMode('layout');}}>
               {c.name}
             </button>
           ))}
@@ -4563,6 +5312,7 @@ function PlanClasse(){
           <div className="pdc-mode-seg" style={{marginLeft:'auto'}}>
             <button className={`pdc-mode-btn${mode==='layout'?' on':''}`} onClick={()=>{setMode('layout');setSelEleve(null);setMarqueMode(null);}}>🎨 Disposition</button>
             <button className={`pdc-mode-btn${mode==='placement'?' on':''}`} onClick={()=>{setMode('placement');setSelectedId(null);}}>👥 Placement</button>
+            <button className={`pdc-mode-btn${mode==='seance'?' on':''}`} style={mode==='seance'?{background:'#7c3aed'}:{}} onClick={()=>{setMode('seance');setSelectedId(null);setSelEleve(null);}}>📋 Séance</button>
           </div>
           {mode==='placement'&&<>
             <button className={`pdc-marque-btn${marqueMode==='eviter'?' on':''}`} style={{color:marqueMode==='eviter'?'#fff':'var(--danger)'}} onClick={()=>setMarqueMode(m=>m==='eviter'?null:'eviter')}>⛔ À éviter</button>
@@ -4614,7 +5364,7 @@ function PlanClasse(){
             onClick={e=>{ if(e.target===e.currentTarget||e.target.classList.contains('pdc-canvas')) setSelectedId(null); }}
             style={{padding:20}}>
             <div ref={canvasRef} className="pdc-canvas"
-              style={{width:'100%',height:'100%',position:'relative',overflow:'hidden'}}>
+              style={{width:canvasW,height:canvasH,position:'relative',flexShrink:0}}>
                 <GridBg w={canvasW} h={canvasH} cell={CELL}/>
                 {elements.map(renderElem)}
                 {elements.length===0&&(
@@ -4626,6 +5376,13 @@ function PlanClasse(){
                     </div>
                   </div>
                 )}
+                {/* Poignée resize canvas */}
+                <div onMouseDown={onCanvasResizeStart}
+                  style={{position:'absolute',bottom:0,right:0,width:20,height:20,cursor:'se-resize',zIndex:50,
+                    display:'flex',alignItems:'center',justifyContent:'center',opacity:.4}}
+                  title="Redimensionner le canvas">
+                  <svg width="12" height="12" viewBox="0 0 12 12"><path d="M11 1L1 11M11 5L5 11M11 9L9 11" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"/></svg>
+                </div>
             </div>
           </div>
 
@@ -4652,19 +5409,31 @@ function PlanClasse(){
                   <div style={{padding:'1rem .5rem',textAlign:'center',color:'var(--success)',fontSize:'.78rem',fontWeight:700}}>🎉 Tous les élèves sont placés</div>
                 )}
                 {unplaced.map(e=>(
-                  <div key={e.id} className={`pdc-eleve-pill${selEleve===e.id?' on':''}`} onClick={()=>setSelEleve(e.id)}>
-                    <div className="pdc-eleve-avatar">{initiales(e.nom)}</div>
-                    <span style={{fontWeight:500}}>{e.nom}</span>
+                  <div key={e.id} className={`pdc-eleve-pill${selEleve===e.id?' on':''}`} style={{justifyContent:'space-between'}} onClick={()=>setSelEleve(e.id)}>
+                    <div style={{display:'flex',alignItems:'center',gap:'.4rem',minWidth:0}}>
+                      <div className="pdc-eleve-avatar">{initiales(e.nom)}</div>
+                      <span style={{fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{e.nom}</span>
+                    </div>
+                    {onNav&&<button onClick={ev=>{ev.stopPropagation();setPdcBilanEl(e);}}
+                      style={{border:'none',background:'rgba(59,91,219,.1)',color:'var(--accent)',borderRadius:4,fontSize:'.58rem',fontWeight:700,padding:'2px 5px',cursor:'pointer',flexShrink:0,whiteSpace:'nowrap'}}>
+                      📊 Bilan
+                    </button>}
                   </div>
                 ))}
                 {placedIds.size>0&&!selEleve&&(
                   <div style={{marginTop:'.5rem',paddingTop:'.5rem',borderTop:'1px solid var(--border)'}}>
                     <div style={{fontSize:'.6rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:'.3rem'}}>Déjà placés</div>
                     {[...placedIds].map(id=>{ const e=cls?.eleves.find(el=>el.id===id); if(!e)return null; return(
-                      <div key={id} className="pdc-eleve-pill" style={{opacity:.75}} onClick={()=>setSelEleve(id)}>
-                        <div className="pdc-eleve-avatar" style={{background:'var(--success)'}}>{initiales(e.nom)}</div>
-                        <span style={{fontWeight:500}}>{e.nom}</span>
-                        <span style={{marginLeft:'auto',fontSize:'.65rem',color:'var(--success)'}}>✓</span>
+                      <div key={id} className="pdc-eleve-pill" style={{opacity:.75,justifyContent:'space-between'}} onClick={()=>setSelEleve(id)}>
+                        <div style={{display:'flex',alignItems:'center',gap:'.4rem',minWidth:0}}>
+                          <div className="pdc-eleve-avatar" style={{background:'var(--success)'}}>{initiales(e.nom)}</div>
+                          <span style={{fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{e.nom}</span>
+                          <span style={{marginLeft:'auto',fontSize:'.65rem',color:'var(--success)'}}>✓</span>
+                        </div>
+                        {onNav&&<button onClick={ev=>{ev.stopPropagation();setPdcBilanEl(e);}}
+                          style={{border:'none',background:'rgba(59,91,219,.1)',color:'var(--accent)',borderRadius:4,fontSize:'.58rem',fontWeight:700,padding:'2px 5px',cursor:'pointer',flexShrink:0,whiteSpace:'nowrap'}}>
+                          📊 Bilan
+                        </button>}
                       </div>
                     ); })}
                   </div>
@@ -4677,9 +5446,151 @@ function PlanClasse(){
               </div>
             </div>
           )}
+
+          {/* ── Panneau mode SÉANCE ── */}
+          {mode==='seance'&&cls&&(
+            <div className="pdc-panel" style={{width:260,flexShrink:0}}>
+              <div className="pdc-panel-hd" style={{flexDirection:'column',alignItems:'flex-start',gap:'.35rem',padding:'.65rem .875rem'}}>
+                <div style={{fontWeight:700,fontSize:'.75rem',display:'flex',alignItems:'center',gap:'.4rem',width:'100%'}}>
+                  <span>📋</span> Suivi de séance
+                </div>
+                {/* Sélecteur de séance */}
+                <select value={seanceSelId||''} onChange={e=>loadSeance(e.target.value)}
+                  style={{width:'100%',padding:'.3rem .5rem',border:'1px solid var(--border)',borderRadius:6,background:'var(--surface)',color:'var(--text)',fontFamily:'Roboto,sans-serif',fontSize:'.73rem',boxSizing:'border-box'}}>
+                  <option value="">— Choisir une séance —</option>
+                  {clsSessions.slice().reverse().map(s=>(
+                    <option key={s.id} value={s.id}>
+                      {s.date?new Date(s.date+'T12:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}):''} · {s.label}
+                    </option>
+                  ))}
+                </select>
+                <button onClick={createAndLoadSeance}
+                  style={{width:'100%',padding:'.28rem .5rem',border:'1.5px dashed var(--border)',borderRadius:6,background:'transparent',color:'var(--accent)',fontFamily:'Roboto,sans-serif',fontSize:'.72rem',fontWeight:600,cursor:'pointer',textAlign:'center'}}>
+                  + Nouvelle séance aujourd'hui
+                </button>
+              </div>
+
+              {/* Liste élèves + obs */}
+              <div style={{flex:1,overflowY:'auto',padding:'.4rem .5rem',display:'flex',flexDirection:'column',gap:'.22rem'}}>
+                {!seanceSelId&&(
+                  <div style={{padding:'.75rem .5rem',textAlign:'center',color:'var(--text3)',fontSize:'.75rem'}}>
+                    {seanceEleve
+                      ? <><div style={{fontWeight:700,color:'var(--text)',fontSize:'.8rem',marginBottom:'.3rem'}}>{seanceEleve.nom}</div>
+                          <div style={{fontStyle:'italic'}}>Choisissez d'abord une séance ci-dessus pour noter les observations</div></>
+                      : <div style={{fontStyle:'italic'}}>Choisissez ou créez une séance</div>
+                    }
+                  </div>
+                )}
+                {seanceSelId&&cls.eleves.map(e=>{
+                  const obsE=OBS.map(o=>({...o,on:!!seanceObs[`${e.id}_${o.id}`]}));
+                  const hasAny=obsE.some(o=>o.on);
+                  const isHighlighted=seanceEleve?.id===e.id;
+                  return(
+                    <div key={e.id}
+                      ref={isHighlighted?el=>{el?.scrollIntoView({block:'nearest',behavior:'smooth'})}:null}
+                      style={{background:isHighlighted?'rgba(124,58,237,.07)':'var(--surface)',
+                        border:`1.5px solid ${isHighlighted?'#7c3aed':hasAny?'var(--accent)':'var(--border)'}`,
+                        borderRadius:8,padding:'.38rem .5rem',transition:'all .15s',
+                        boxShadow:isHighlighted?'0 0 0 2px rgba(124,58,237,.2)':'none'}}>
+                      {/* Nom */}
+                      <div style={{fontWeight:600,fontSize:'.75rem',marginBottom:'.28rem',color:'var(--text)',display:'flex',alignItems:'center',gap:'.4rem'}}>
+                        <div style={{width:22,height:22,borderRadius:'50%',background:isHighlighted?'#7c3aed':'linear-gradient(135deg,var(--accent),#7c3aed)',color:'#fff',fontSize:'.55rem',fontWeight:800,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{initiales(e.nom)}</div>
+                        <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{e.nom}</span>
+                        {isHighlighted&&<span style={{fontSize:'.6rem',color:'#7c3aed',fontWeight:700,flexShrink:0}}>◀</span>}
+                      </div>
+                      {/* Boutons OBS */}
+                      <div style={{display:'flex',gap:3,flexWrap:'wrap'}}>
+                        {OBS.map(o=>{
+                          const isOn=!!seanceObs[`${e.id}_${o.id}`];
+                          const bg=isOn?(o.k==='neg'?'#fee2e2':o.k==='pos'?'#dcfce7':'#fef9c3'):'var(--surface2)';
+                          const border=isOn?(o.k==='neg'?'#fca5a5':o.k==='pos'?'#86efac':'#fde68a'):'var(--border)';
+                          const col=isOn?(o.k==='neg'?'#991b1b':o.k==='pos'?'#166534':'#854d0e'):'var(--text3)';
+                          return(
+                            <button key={o.id} onClick={()=>toggleSeanceObs(e.id,o.id)}
+                              title={o.label}
+                              style={{padding:'2px 6px',border:`1.5px solid ${border}`,borderRadius:99,background:bg,
+                                color:col,cursor:'pointer',fontSize:'.7rem',fontWeight:isOn?700:400,
+                                display:'inline-flex',alignItems:'center',gap:2,transition:'all .13s',whiteSpace:'nowrap'}}>
+                              {o.emoji} {isOn&&<span>{o.label}</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
+    {/* Mini-bilan élève depuis PDC */}
+    {pdcBilanEl&&(()=>{
+      const savedSessions=(() => { try{ return JSON.parse(localStorage.getItem('sc-sessions')||'{}'); }catch{return{};} })();
+      const sess=selCls?(savedSessions[selCls]||[]):[];
+      return(
+        <div className="moverlay" onClick={e=>e.target===e.currentTarget&&setPdcBilanEl(null)}>
+          <div className="modal" style={{maxWidth:520}}>
+            <div className="modal-hd">
+              <div>
+                <h2>{pdcBilanEl.nom}</h2>
+                <div className="modal-hd-sub">{cls?.name} · {sess.length} séance{sess.length!==1?'s':''} enregistrée{sess.length!==1?'s':''}</div>
+              </div>
+              <button className="close-btn" onClick={()=>setPdcBilanEl(null)}>×</button>
+            </div>
+            <div className="modal-body" style={{padding:'1rem 1.25rem'}}>
+              <div style={{fontSize:'.63rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:'.55rem'}}>Récapitulatif des observations</div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:'.42rem',marginBottom:'1rem'}}>
+                {OBS.map(o=>{
+                  const cnt=sess.reduce((acc,s)=>acc+(s.obs&&s.obs[pdcBilanEl.id+'_'+o.id]?1:0),0);
+                  const col=o.k==='neg'?'var(--danger)':o.k==='pos'?'var(--success)':'var(--warning)';
+                  return(
+                    <div key={o.id} style={{display:'flex',alignItems:'center',gap:'.5rem',padding:'.5rem .7rem',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--r-xs)',opacity:cnt===0?.4:1}}>
+                      <span style={{fontSize:'1rem'}}>{o.emoji}</span>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:700,fontSize:'.72rem'}}>{o.label}</div>
+                        <div style={{fontSize:'.78rem',fontWeight:800,color:cnt>0?col:'var(--text3)'}}>{cnt===0?'—':cnt+' fois'}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {sess.length>0&&<>
+                <div style={{fontSize:'.63rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:'.38rem'}}>Détail par séance</div>
+                <div style={{display:'flex',flexDirection:'column',gap:'.25rem',maxHeight:240,overflowY:'auto'}}>
+                  {sess.map(s=>{
+                    const obsActifs=OBS.filter(o=>s.obs&&s.obs[pdcBilanEl.id+'_'+o.id]);
+                    return(
+                      <div key={s.id} style={{display:'flex',alignItems:'center',gap:'.6rem',padding:'.38rem .6rem',background:'var(--surface2)',borderRadius:'var(--r-xs)',border:'1px solid var(--border)'}}>
+                        <div style={{minWidth:72,flexShrink:0}}>
+                          <div style={{fontSize:'.68rem',fontWeight:700}}>{s.date&&new Date(s.date+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</div>
+                          <div style={{fontSize:'.6rem',color:'var(--text3)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:68}}>{s.label}</div>
+                        </div>
+                        {obsActifs.length===0
+                          ?<span style={{fontSize:'.7rem',color:'var(--text3)',fontStyle:'italic'}}>Rien de noté</span>
+                          :<div style={{display:'flex',gap:'.18rem',flexWrap:'wrap'}}>
+                            {obsActifs.map(o=>{
+                              const bg=o.k==='neg'?'#fee2e2':o.k==='pos'?'#dcfce7':'#fef9c3';
+                              const cl=o.k==='neg'?'#991b1b':o.k==='pos'?'#166534':'#854d0e';
+                              return <span key={o.id} style={{display:'inline-flex',alignItems:'center',gap:'.15rem',padding:'.1rem .38rem',borderRadius:99,background:bg,color:cl,fontSize:'.68rem',fontWeight:600}}>{o.emoji} {o.label}</span>;
+                            })}
+                          </div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>}
+              {onNav&&<div style={{marginTop:'1rem',paddingTop:'.75rem',borderTop:'1px solid var(--border)',textAlign:'right'}}>
+                <button className="btn btn-ghost" style={{fontSize:'.75rem'}} onClick={()=>{setPdcBilanEl(null);onNav('suivi');}}>
+                  👥 Ouvrir le suivi complet de la classe →
+                </button>
+              </div>}
+            </div>
+          </div>
+        </div>
+      );
+    })()}
   </>);
 }
 
@@ -5694,11 +6605,250 @@ function ReunionsModule(){
   );
 }
 
+/* ══ MODULE — RENCONTRES PARENTS-PROFS ══════════════════════════════════ */
+// Field helper — défini HORS du composant pour éviter le démontage à chaque render
+function RencField({label,children}){
+  return(
+    <div style={{marginBottom:'.75rem'}}>
+      <label style={{fontSize:'.68rem',fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:'.07em',display:'block',marginBottom:'.25rem'}}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function RencontreParents({onNav}){
+  const[classes]=useState(()=>{try{return JSON.parse(localStorage.getItem('sc-classes')||'[]')}catch{return[]}});
+  const load=()=>{try{return JSON.parse(localStorage.getItem('cdc-rencontres')||'[]')}catch{return[]}};
+  const[rencontres,setRencontres]=useState(load);
+  const[vue,setVue]=useState('liste');
+  const[draft,setDraft]=useState(null);
+  const[selId,setSelId]=useState(null);
+  const[filtreCls,setFiltreCls]=useState('');
+
+  useEffect(()=>{localStorage.setItem('cdc-rencontres',JSON.stringify(rencontres));},[rencontres]);
+
+  // Tous les élèves de toutes les classes pour l'autocomplete
+  const tousLesEleves=classes.flatMap(c=>c.eleves.map(e=>({nom:e.nom,classeId:c.id,classeNom:c.name})));
+
+  const fmtD=iso=>{if(!iso)return'—';return new Date(iso+'T12:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long',year:'numeric'});};
+
+  const newRencontre=()=>{
+    const d={id:'renc-'+Date.now(),
+      eleveNom:'',classeId:'',date:isoDate(new Date()),heure:'',lieu:'',
+      motif:'',resume:'',decisions:'',suivi:'',
+      alerte:false,alerteVue:false,
+      createdAt:new Date().toISOString()};
+    setDraft(d);setVue('edit');
+  };
+
+  const save=()=>{
+    if(!draft.eleveNom.trim()){alert('Le nom de l\'élève est obligatoire.');return;}
+    const exists=rencontres.find(r=>r.id===draft.id);
+    setRencontres(exists?rencontres.map(r=>r.id===draft.id?draft:r):[...rencontres,draft]);
+    setSelId(draft.id);setVue('detail');
+  };
+
+  const del=id=>{setRencontres(rencontres.filter(r=>r.id!==id));setVue('liste');setSelId(null);};
+  const dismissAlerte=id=>setRencontres(rencontres.map(r=>r.id===id?{...r,alerteVue:true}:r));
+
+  // Quand on choisit un élève depuis la datalist, auto-remplir la classe
+  const onEleveChange=e=>{
+    const nom=e.target.value;
+    const found=tousLesEleves.find(el=>el.nom===nom);
+    setDraft(d=>({...d,eleveNom:nom,...(found&&!d.classeId?{classeId:found.classeId}:{})}));
+  };
+
+  const is={padding:'.55rem .75rem',border:'1.5px solid var(--border)',borderRadius:'var(--r-s)',background:'var(--surface2)',color:'var(--text)',fontFamily:'Roboto,sans-serif',fontSize:'.85rem',outline:'none',width:'100%',boxSizing:'border-box',transition:'border-color .15s'};
+  const ta={...is,resize:'vertical',minHeight:72,lineHeight:1.6};
+
+  const rencontre=rencontres.find(r=>r.id===selId)||null;
+  const listeFiltered=filtreCls?rencontres.filter(r=>r.classeId===filtreCls):rencontres;
+  const alertesActives=rencontres.filter(r=>r.alerte&&!r.alerteVue);
+
+  // ── Vue EDIT ──
+  if(vue==='edit'&&draft) return(<>
+    <div className="page-hd">
+      <div>
+        <div className="phd-badge">👨‍👩‍👧 Rencontres parents</div>
+        <div className="phd-title">{rencontres.find(r=>r.id===draft.id)?'Modifier la rencontre':'Nouvelle rencontre'}</div>
+      </div>
+      <div className="phd-actions">
+        <button className="btn" onClick={()=>setVue(rencontres.find(r=>r.id===draft.id)?'detail':'liste')}>Annuler</button>
+        <button className="btn btn-primary" onClick={save}>💾 Sauvegarder</button>
+      </div>
+    </div>
+    <div className="page-content"><div style={{maxWidth:640}}>
+      {/* Datalist élèves pour l'autocomplete */}
+      <datalist id="renc-eleves-list">
+        {tousLesEleves.map((e,i)=><option key={i} value={e.nom}>{e.nom} ({e.classeNom})</option>)}
+      </datalist>
+
+      {/* Infos élève */}
+      <div style={{padding:'.875rem 1rem',background:'rgba(59,91,219,.05)',border:'1px solid rgba(59,91,219,.15)',borderRadius:10,marginBottom:'1rem'}}>
+        <div style={{fontSize:'.65rem',fontWeight:700,color:'var(--accent)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:'.75rem'}}>👤 Élève concerné</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0 1rem'}}>
+          <RencField label="Nom de l'élève *">
+            <input
+              value={draft.eleveNom}
+              onChange={onEleveChange}
+              list="renc-eleves-list"
+              placeholder="Tapez un nom…"
+              style={is}
+              autoComplete="off"/>
+          </RencField>
+          <RencField label="Classe">
+            <select value={draft.classeId} onChange={e=>setDraft(d=>({...d,classeId:e.target.value}))} style={is}>
+              <option value="">— Choisir —</option>
+              {classes.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </RencField>
+        </div>
+      </div>
+      {/* Infos pratiques */}
+      <div style={{padding:'.875rem 1rem',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,marginBottom:'1rem'}}>
+        <div style={{fontSize:'.65rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:'.75rem'}}>📅 Informations pratiques</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0 1rem'}}>
+          <RencField label="Date"><input type="date" value={draft.date} onChange={e=>setDraft(d=>({...d,date:e.target.value}))} style={is}/></RencField>
+          <RencField label="Heure"><input type="time" value={draft.heure} onChange={e=>setDraft(d=>({...d,heure:e.target.value}))} style={is}/></RencField>
+          <RencField label="Lieu"><input value={draft.lieu} onChange={e=>setDraft(d=>({...d,lieu:e.target.value}))} placeholder="Salle des profs…" style={is}/></RencField>
+        </div>
+        <RencField label="Motif de la rencontre">
+          <input value={draft.motif} onChange={e=>setDraft(d=>({...d,motif:e.target.value}))} placeholder="Résultats, comportement, orientation…" style={is}/>
+        </RencField>
+      </div>
+      {/* Contenu */}
+      <div style={{padding:'.875rem 1rem',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,marginBottom:'1rem'}}>
+        <div style={{fontSize:'.65rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:'.75rem'}}>📝 Compte-rendu</div>
+        <RencField label="Résumé de l'échange"><textarea value={draft.resume} onChange={e=>setDraft(d=>({...d,resume:e.target.value}))} rows={4} placeholder="Points abordés, éléments de contexte…" style={ta}/></RencField>
+        <RencField label="Décisions prises"><textarea value={draft.decisions} onChange={e=>setDraft(d=>({...d,decisions:e.target.value}))} rows={3} placeholder="Actions convenues, engagements…" style={ta}/></RencField>
+        <RencField label="Suivi prévu"><textarea value={draft.suivi} onChange={e=>setDraft(d=>({...d,suivi:e.target.value}))} rows={2} placeholder="Prochaine étape, date de bilan…" style={ta}/></RencField>
+      </div>
+      {/* Alerte dashboard */}
+      <div style={{padding:'.875rem 1rem',background:draft.alerte?'rgba(220,38,38,.06)':'var(--surface)',border:`1.5px solid ${draft.alerte?'rgba(220,38,38,.3)':'var(--border)'}`,borderRadius:10,transition:'all .2s'}}>
+        <label style={{display:'flex',alignItems:'center',gap:'.75rem',cursor:'pointer',userSelect:'none'}}>
+          <div onClick={()=>setDraft(d=>({...d,alerte:!d.alerte}))}
+            style={{width:40,height:22,borderRadius:99,background:draft.alerte?'var(--danger)':'var(--border)',position:'relative',transition:'background .2s',flexShrink:0}}>
+            <div style={{position:'absolute',top:2,left:draft.alerte?20:2,width:18,height:18,borderRadius:'50%',background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.2)'}}/>
+          </div>
+          <div>
+            <div style={{fontWeight:700,fontSize:'.85rem',color:draft.alerte?'var(--danger)':'var(--text)'}}>🔔 Déclencher une alerte sur le tableau de bord</div>
+            <div style={{fontSize:'.73rem',color:'var(--text2)',marginTop:'.1rem'}}>Visible jusqu'à ce que vous la marquiez comme vue</div>
+          </div>
+        </label>
+      </div>
+    </div></div>
+  </>);
+
+  // ── Vue DETAIL ──
+  if(vue==='detail'&&rencontre) return(<>
+    <div className="page-hd">
+      <div>
+        <div className="phd-badge">👨‍👩‍👧 Rencontre parents</div>
+        <div className="phd-title">{rencontre.eleveNom||'Rencontre'}</div>
+        <div className="phd-sub">{fmtD(rencontre.date)}{rencontre.heure?' à '+rencontre.heure:''}{rencontre.lieu?' · '+rencontre.lieu:''}</div>
+      </div>
+      <div className="phd-actions">
+        <button className="btn" onClick={()=>setVue('liste')}>← Retour</button>
+        <button className="btn btn-ghost" onClick={()=>{setDraft({...rencontre});setVue('edit');}}>✏️ Modifier</button>
+        <button className="btn btn-danger" style={{opacity:.8}} onClick={()=>del(rencontre.id)}>🗑️</button>
+      </div>
+    </div>
+    <div className="page-content"><div style={{maxWidth:640}}>
+      {rencontre.alerte&&!rencontre.alerteVue&&(
+        <div style={{display:'flex',alignItems:'center',gap:'.75rem',padding:'.75rem 1rem',background:'#fef2f2',border:'1.5px solid #fca5a5',borderRadius:10,marginBottom:'1rem'}}>
+          <span style={{fontSize:'1.2rem'}}>🔔</span>
+          <div style={{flex:1,fontWeight:600,fontSize:'.85rem',color:'#991b1b'}}>Alerte active sur le tableau de bord</div>
+          <button onClick={()=>dismissAlerte(rencontre.id)} style={{border:'none',background:'#fca5a5',color:'#991b1b',borderRadius:6,padding:'.25rem .6rem',fontSize:'.72rem',fontWeight:700,cursor:'pointer'}}>Marquer comme vue</button>
+        </div>
+      )}
+      {/* Recap card */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'.5rem',marginBottom:'1.25rem'}}>
+        {[['👤 Élève',rencontre.eleveNom||'—'],['🏫 Classe',classes.find(c=>c.id===rencontre.classeId)?.name||'—'],['📋 Motif',rencontre.motif||'—']].map(([l,v])=>(
+          <div key={l} style={{padding:'.55rem .75rem',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:10}}>
+            <div style={{fontSize:'.6rem',fontWeight:700,color:'var(--text3)',marginBottom:'.2rem'}}>{l}</div>
+            <div style={{fontSize:'.82rem',fontWeight:600,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{v}</div>
+          </div>
+        ))}
+      </div>
+      {[['📝 Résumé de l\'échange',rencontre.resume],['✅ Décisions prises',rencontre.decisions],['🔁 Suivi prévu',rencontre.suivi]].map(([l,v])=>{
+        if(!v?.trim())return null;
+        return(
+          <div key={l} style={{marginBottom:'.875rem'}}>
+            <div style={{fontSize:'.65rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:'.3rem'}}>{l}</div>
+            <div style={{fontSize:'.87rem',color:'var(--text)',lineHeight:1.7,whiteSpace:'pre-wrap',padding:'.6rem .875rem',background:'var(--surface2)',borderRadius:8,border:'1px solid var(--border)'}}>{v}</div>
+          </div>
+        );
+      })}
+    </div></div>
+  </>);
+
+  // ── Vue LISTE ──
+  return(<>
+    <div className="page-hd">
+      <div>
+        <div className="phd-badge">👨‍👩‍👧 Rencontres parents</div>
+        <div className="phd-title">Rencontres parents-profs</div>
+        <div className="phd-sub">{rencontres.length} rencontre{rencontres.length!==1?'s':''}{alertesActives.length>0&&` · ${alertesActives.length} alerte${alertesActives.length>1?'s':''} active${alertesActives.length>1?'s':''}`}</div>
+      </div>
+      <div className="phd-actions">
+        <button className="btn btn-primary" onClick={newRencontre}>+ Nouvelle rencontre</button>
+      </div>
+    </div>
+    <div className="page-content">
+      {alertesActives.length>0&&(
+        <div style={{display:'flex',alignItems:'center',gap:'.75rem',padding:'.75rem 1rem',background:'#fef2f2',border:'1.5px solid #fca5a5',borderRadius:10,marginBottom:'1rem'}}>
+          <span style={{fontSize:'1.2rem'}}>🔔</span>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,fontSize:'.85rem',color:'#991b1b'}}>{alertesActives.length} alerte{alertesActives.length>1?'s':''} active{alertesActives.length>1?'s':''}</div>
+            <div style={{fontSize:'.75rem',color:'#b91c1c',marginTop:'.1rem'}}>{alertesActives.map(r=>r.eleveNom).join(', ')}</div>
+          </div>
+        </div>
+      )}
+      {listeFiltered.length===0?(
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'4rem',gap:'1rem',color:'var(--text3)'}}>
+          <div style={{fontSize:'3rem',opacity:.15}}>👨‍👩‍👧</div>
+          <div style={{fontWeight:700,color:'var(--text2)'}}>Aucune rencontre enregistrée</div>
+          <div style={{fontSize:'.83rem'}}>Cliquez sur "Nouvelle rencontre" pour commencer.</div>
+        </div>
+      ):(
+        <div style={{display:'flex',flexDirection:'column',gap:'.5rem'}}>
+          {listeFiltered.slice().sort((a,b)=>(b.date||b.createdAt)>(a.date||a.createdAt)?1:-1).map(r=>{
+            const clsName=classes.find(c=>c.id===r.classeId)?.name;
+            return(
+              <div key={r.id} onClick={()=>{setSelId(r.id);setVue('detail');}}
+                style={{display:'flex',alignItems:'center',gap:'1rem',padding:'.875rem 1.25rem',background:'var(--surface)',border:`1.5px solid ${r.alerte&&!r.alerteVue?'#fca5a5':'var(--border)'}`,borderRadius:12,cursor:'pointer',transition:'all .15s',borderLeft:`4px solid ${r.alerte&&!r.alerteVue?'var(--danger)':'var(--accent)'}`}}
+                onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
+                onMouseLeave={e=>e.currentTarget.style.background='var(--surface)'}>
+                <div style={{width:42,height:42,borderRadius:10,background:r.alerte&&!r.alerteVue?'#fef2f2':'rgba(59,91,219,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.3rem',flexShrink:0}}>
+                  {r.alerte&&!r.alerteVue?'🔔':'👤'}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'.5rem'}}>
+                    <span style={{fontWeight:700,fontSize:'.9rem',color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.eleveNom||'—'}</span>
+                    {clsName&&<span style={{fontSize:'.7rem',fontWeight:600,color:'var(--accent)',background:'rgba(59,91,219,.1)',padding:'1px 7px',borderRadius:99,flexShrink:0}}>{clsName}</span>}
+                    {r.alerte&&!r.alerteVue&&<span style={{fontSize:'.7rem',fontWeight:700,color:'#991b1b',background:'#fee2e2',padding:'1px 7px',borderRadius:99,flexShrink:0}}>⚠️ Alerte</span>}
+                  </div>
+                  <div style={{fontSize:'.73rem',color:'var(--text3)',marginTop:'.15rem',display:'flex',gap:'.5rem',flexWrap:'wrap'}}>
+                    {r.date&&<span>📅 {fmtD(r.date)}</span>}
+                    {r.motif&&<span>· {r.motif}</span>}
+                  </div>
+                </div>
+                <span style={{color:'var(--text3)',fontSize:'.8rem',flexShrink:0}}>→</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  </>);
+}
+
 const NAV=[
   {id:'dashboard',   icon:'🏠', label:'Accueil',             section:"Vue d'ensemble"},
   {id:'suivi',       icon:'👥', label:'Suivi de classe',     section:'Gestion de classe'},
   {id:'cahier',      icon:'📓', label:'Carnet de bord',    section:'Gestion de classe'},
   {id:'plan',        icon:'🪑', label:'Plan de classe',      section:'Gestion de classe'},
+  {id:'rencontres',  icon:'👨‍👩‍👧', label:'Rencontres parents',  section:'Gestion de classe'},
   {id:'conseil',     icon:'🎓', label:'Conseil de classe',   section:'Gestion de classe'},
   {id:'progression', icon:'📆', label:'Progression annuelle',section:'Outils pédagogiques'},
   {id:'edt',         icon:'📅', label:'Emploi du temps',     section:'Outils pédagogiques'},
@@ -6289,7 +7439,8 @@ function Shell(){
         {module==='conseil'     &&<ConseilModule profile={profile}/>}
         {module==='suivi'       &&<SuiviClasse/>}
         {module==='cahier'      &&<CahierSeance/>}
-        {module==='plan'        &&<PlanClasse/>}
+        {module==='rencontres'  &&<RencontreParents onNav={setModule}/>}
+        {module==='plan'        &&<PlanClasse onNav={setModule}/>}
         {module==='progression' &&<ProgressionAnnuelle profile={profile}/>}
         {module==='whiteboard'  &&<TableauBlanc/>}
         {module==='doc'         &&<EtudeDocument/>}

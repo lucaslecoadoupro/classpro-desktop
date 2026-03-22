@@ -6,74 +6,113 @@ const COURS_SECTIONS_DEFAULT = [
   { id: 'devoirs',    label: 'Devoirs',               icon: '📝', placeholder: 'Travail à faire à la maison...' },
 ];
 
-// Mini toolbar de mise en forme
-function FormatToolbar({ onFormat }) {
-  const btn = (label, action, title) => (
-    <button onClick={() => onFormat(action)} title={title}
-      style={{ background:'none', border:'1px solid var(--border)', borderRadius:4, padding:'.2rem .45rem', cursor:'pointer', fontSize:'.78rem', color:'var(--text2)', fontFamily:'Roboto,sans-serif', transition:'all .1s' }}
-      onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
-      onMouseLeave={e => e.currentTarget.style.background='none'}>
-      {label}
-    </button>
-  );
-  return (
-    <div style={{ display:'flex', gap:'.25rem', padding:'.35rem .5rem', background:'var(--surface2)', borderBottom:'1px solid var(--border)', flexWrap:'wrap' }}>
-      {btn('G', 'bold', 'Gras')}
-      {btn('I', 'italic', 'Italique')}
-      {btn('S', 'underline', 'Souligner')}
-      <div style={{ width:1, background:'var(--border)', margin:'0 .15rem' }} />
-      {btn('• Liste', 'ul', 'Liste à puces')}
-      {btn('1. Liste', 'ol', 'Liste numérotée')}
-      <div style={{ width:1, background:'var(--border)', margin:'0 .15rem' }} />
-      {btn('Titre', 'h2', 'Titre de section')}
-      {btn('Sous-titre', 'h3', 'Sous-titre')}
-    </div>
-  );
+// ── Éditeur rich text — contentEditable + execCommand ───────────────────────
+
+// Injecter le CSS placeholder une seule fois
+if (!document.getElementById('rich-editor-css')) {
+  const s = document.createElement('style');
+  s.id = 'rich-editor-css';
+  s.textContent = '[contenteditable][data-ph]:empty::before{content:attr(data-ph);color:var(--text3);pointer-events:none;font-style:italic}';
+  document.head.appendChild(s);
 }
+const RICH_FONTS = [
+  { v: 'Roboto, sans-serif',          l: 'Roboto' },
+  { v: 'Roboto Slab, serif',          l: 'Slab' },
+  { v: 'Georgia, serif',              l: 'Georgia' },
+  { v: 'Arial, sans-serif',           l: 'Arial' },
+  { v: 'Courier New, monospace',      l: 'Mono' },
+  { v: 'Comic Sans MS, cursive',      l: 'Comic' },
+];
 
-function RichTextarea({ value, onChange, placeholder, onRef }) {
-  const ref = React.useRef(null);
+function RichTextarea({ value, onChange, placeholder }) {
+  const ref      = React.useRef(null);
+  const savedSel = React.useRef(null);
+  const isEdit   = React.useRef(false);
 
+  // Sync depuis l'extérieur uniquement si pas en train d'éditer
   React.useEffect(() => {
-    if (onRef) onRef(ref);
-  }, []);
-
-  const applyFormat = (action) => {
-    const el = ref.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const end   = el.selectionEnd;
-    const sel   = value.slice(start, end);
-    let insert  = '';
-    let cursor  = 0;
-
-    switch (action) {
-      case 'bold':      insert = `**${sel || 'texte'}**`; cursor = sel ? insert.length : 2; break;
-      case 'italic':    insert = `_${sel || 'texte'}_`;   cursor = sel ? insert.length : 1; break;
-      case 'underline': insert = `__${sel || 'texte'}__`; cursor = sel ? insert.length : 2; break;
-      case 'ul':        insert = `\n• ${sel || 'élément'}`; cursor = insert.length; break;
-      case 'ol':        insert = `\n1. ${sel || 'élément'}`; cursor = insert.length; break;
-      case 'h2':        insert = `\n## ${sel || 'Titre'}\n`; cursor = insert.length - 1; break;
-      case 'h3':        insert = `\n### ${sel || 'Sous-titre'}\n`; cursor = insert.length - 1; break;
-      default: return;
+    if (ref.current && !isEdit.current) {
+      ref.current.innerHTML = value || '';
     }
+  }, [value]);
 
-    const newVal = value.slice(0, start) + insert + value.slice(end);
-    onChange(newVal);
-    setTimeout(() => {
-      el.focus();
-      el.setSelectionRange(start + cursor, start + cursor);
-    }, 10);
+  const saveSel = () => {
+    const s = window.getSelection();
+    if (s && s.rangeCount > 0) savedSel.current = s.getRangeAt(0).cloneRange();
+  };
+  const restoreSel = () => {
+    if (!savedSel.current) return;
+    const s = window.getSelection();
+    if (s) { s.removeAllRanges(); s.addRange(savedSel.current); }
+  };
+  const exec = (cmd, val = null) => {
+    restoreSel();
+    document.execCommand(cmd, false, val);
+    ref.current?.focus();
+    onChange(ref.current?.innerHTML || '');
   };
 
+  const btnStyle = {
+    height: 24, minWidth: 24, padding: '0 5px',
+    border: '1px solid var(--border)', borderRadius: 3,
+    background: 'var(--surface)', color: 'var(--text2)',
+    cursor: 'pointer', fontSize: '.72rem', fontWeight: 700,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0, fontFamily: 'Roboto,sans-serif',
+  };
+  const sep = <div style={{ width:1, background:'var(--border)', margin:'0 3px', alignSelf:'stretch' }} />;
+
   return (
-    <div style={{ border:'1.5px solid var(--border)', borderRadius:'var(--r-s)', overflow:'hidden', background:'var(--surface)' }}
-      onFocus={() => ref.current?.parentElement?.style && (ref.current.parentElement.style.borderColor='var(--accent)')}
-      onBlur={() => ref.current?.parentElement?.style && (ref.current.parentElement.style.borderColor='var(--border)')}>
-      <FormatToolbar onFormat={applyFormat} />
-      <textarea ref={ref} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        rows={5}
-        style={{ width:'100%', padding:'.75rem', border:'none', background:'transparent', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.88rem', outline:'none', resize:'vertical', boxSizing:'border-box', lineHeight:1.7 }} />
+    <div style={{ border: '1.5px solid var(--border)', borderRadius: 'var(--r-s)', overflow: 'hidden', background: 'var(--surface)' }}
+      onFocusCapture={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+      onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget)) { e.currentTarget.style.borderColor = 'var(--border)'; isEdit.current = false; } }}>
+
+      {/* Barre 1 : formatage + alignement */}
+      <div onMouseDown={e => e.preventDefault()}
+        style={{ display:'flex', gap:3, padding:'4px 7px 3px', borderBottom:'1px solid var(--border)', background:'var(--surface2)', flexWrap:'wrap', alignItems:'center' }}>
+        <button style={btnStyle} onMouseDown={e=>{e.preventDefault();saveSel();}} onClick={()=>exec('bold')}     title="Gras"><b>B</b></button>
+        <button style={btnStyle} onMouseDown={e=>{e.preventDefault();saveSel();}} onClick={()=>exec('italic')}   title="Italique"><i>I</i></button>
+        <button style={btnStyle} onMouseDown={e=>{e.preventDefault();saveSel();}} onClick={()=>exec('underline')} title="Souligné"><u>U</u></button>
+        {sep}
+        <button style={btnStyle} onMouseDown={e=>{e.preventDefault();saveSel();}} onClick={()=>exec('justifyLeft')}   title="Gauche">⬅</button>
+        <button style={btnStyle} onMouseDown={e=>{e.preventDefault();saveSel();}} onClick={()=>exec('justifyCenter')} title="Centrer">≡</button>
+        <button style={btnStyle} onMouseDown={e=>{e.preventDefault();saveSel();}} onClick={()=>exec('justifyRight')}  title="Droite">➡</button>
+        {sep}
+        <button style={btnStyle} onMouseDown={e=>{e.preventDefault();saveSel();}} onClick={()=>exec('insertUnorderedList')} title="Liste à puces">•≡</button>
+        <button style={btnStyle} onMouseDown={e=>{e.preventDefault();saveSel();}} onClick={()=>exec('insertOrderedList')}   title="Liste numérotée">①</button>
+        {sep}
+        <button style={btnStyle} onMouseDown={e=>{e.preventDefault();saveSel();}} onClick={()=>exec('removeFormat')} title="Effacer formatage">✕</button>
+      </div>
+
+      {/* Barre 2 : police + couleur */}
+      <div onMouseDown={e => e.preventDefault()}
+        style={{ display:'flex', gap:3, padding:'3px 7px', borderBottom:'1px solid var(--border)', background:'var(--surface2)', alignItems:'center', flexWrap:'wrap' }}>
+        <span style={{ fontSize:'.6rem', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.05em', flexShrink:0, marginRight:2 }}>Police :</span>
+        {RICH_FONTS.map(f => (
+          <button key={f.v}
+            style={{ ...btnStyle, fontFamily: f.v, fontSize: '.65rem', padding: '0 6px' }}
+            onMouseDown={e => { e.preventDefault(); saveSel(); }}
+            onClick={() => exec('fontName', f.v)}>
+            {f.l}
+          </button>
+        ))}
+        {sep}
+        <span style={{ fontSize:'.6rem', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.05em', flexShrink:0 }}>Couleur :</span>
+        <input type="color" defaultValue="#1a2236"
+          onMouseDown={e => saveSel()}
+          onChange={e => exec('foreColor', e.target.value)}
+          style={{ width:22, height:22, padding:1, border:'1px solid var(--border)', borderRadius:3, cursor:'pointer', background:'none', flexShrink:0 }}
+          title="Couleur du texte" />
+      </div>
+
+      {/* Zone de saisie */}
+      <div ref={ref} contentEditable suppressContentEditableWarning
+        onFocus={() => { isEdit.current = true; }}
+        onBlur={() => { isEdit.current = false; onChange(ref.current?.innerHTML || ''); }}
+        onInput={() => onChange(ref.current?.innerHTML || '')}
+        onKeyUp={saveSel} onMouseUp={saveSel}
+        data-ph={placeholder}
+        style={{ minHeight: 120, padding: '.75rem', outline: 'none', fontFamily: 'Roboto,sans-serif', fontSize: '.88rem', lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }} />
     </div>
   );
 }
@@ -525,9 +564,8 @@ function ModuleCours({ cpData, onDataChange }) {
                     <span>{sec.icon}</span>
                     <h2 style={{ margin:0, fontSize:'1rem', fontWeight:800, color:'var(--text)', fontFamily:'Roboto Slab,serif' }}>{sec.label}</h2>
                   </div>
-                  <div style={{ fontSize:'.88rem', color:'var(--text)', lineHeight:1.75, paddingLeft:'.25rem' }}>
-                    {renderMarkdown(sec.contenu)}
-                  </div>
+                  <div style={{ fontSize:'.88rem', color:'var(--text)', lineHeight:1.75, paddingLeft:'.25rem' }}
+                    dangerouslySetInnerHTML={{ __html: sec.contenu }} />
                 </div>
               ))}
 

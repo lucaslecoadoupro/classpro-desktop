@@ -179,16 +179,23 @@ function Shell() {
 
   // Mise à jour d'une clé dans le JSON brut (depuis les modules éditeurs)
   const KEY_MAP = {
-    'cdc-fiches':   'fiches',
-    'cdc-devoirs':  'devoirs',
-    'cdc-progs':    'progs',
-    'sc-classes':   'classes',
-    'sc-sessions':  'sessions',
-    'cdc-edt':      'edt',
-    'cdc-edt-refA': 'edtRefA',
-    'cdc-cours':    'cours',
-    'cdc-plans':    'plans',   // ← Plan de classe
-    'cdc-reunions': 'reunions', // ← Réunions
+    'cdc-fiches':      'fiches',
+    'cdc-devoirs':     'devoirs',
+    'cdc-progs':       'progs',
+    'sc-classes':      'classes',
+    'sc-sessions':     'sessions',
+    'sc-alert-config': 'alertConfig',
+    'cdc-edt':         'edt',
+    'cdc-edt-refA':    'edtRefA',
+    'cdc-cours':       'cours',
+    'cdc-plans':       'plans',
+    'cdc-reunions':    'reunions',
+    'cdc-rencontres':  'rencontres',
+    'cdc-vacances':    'vacances',
+    'cdc-liens':       'liens',
+    'dash-notes':      'dashNotes',
+    'dash-taches':     'dashTaches',
+    'dash-travail-rapide': 'dashTravailRapide',
   };
   const handleDataChange = (key, value) => {
     setCpData(prev => {
