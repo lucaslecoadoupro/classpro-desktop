@@ -195,7 +195,7 @@ function ModulePdfCarnet({ cpData }) {
       const defaultName = 'Carnet_' + nomClasse + '_' + dateStr + '.pdf';
       const pdfBase64 = doc.output('datauristring').split(',')[1];
       const result = await window.cpd.savePdf(pdfBase64, defaultName);
-      if (result?.ok) { setDone(true); setTimeout(() => setDone(false), 3000); }
+      if (result?.ok) { setDone(true); setTimeout(() => setDone(false), 3000); cpdUnlockBadge('first_pdf'); cpdTrackPdf('carnet'); }
 
     } catch (err) {
       console.error('Erreur PDF:', err);

@@ -35,9 +35,11 @@ function ModuleCarnet({ cpData, onDataChange }) {
 
   const saveFiche = () => {
     if (!draft || !selCls || !selFiche) return;
+    const hasContent = draft.objectif?.trim() || draft.activite?.trim() || draft.devoirs?.trim();
     setFiches(p => ({ ...p, [selCls]: (p[selCls] || []).map(f => f.id === selFiche ? { ...draft } : f) }));
     setSavedOk(true);
     setTimeout(() => setSavedOk(false), 2200);
+    if (hasContent) cpdUnlockBadge('first_fiche');
   };
 
   const createFiche = () => {

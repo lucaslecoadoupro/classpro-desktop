@@ -103,3 +103,16 @@ function ToastStack({ toasts }) {
     </div>
   );
 }
+
+// ── ModulePlaceholder ────────────────────────────────────────────────────────
+// Composant partagé — affiché quand un module n'a pas de données ou est indispo
+function ModulePlaceholder({ icon = '📦', title = 'Module', sub = '', soon = false }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '1rem', color: 'var(--text3)', padding: '2rem' }}>
+      <div style={{ fontSize: '3rem', opacity: .15 }}>{icon}</div>
+      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text2)' }}>{title}</div>
+      {sub && <div style={{ fontSize: '.83rem', color: 'var(--text3)', textAlign: 'center', lineHeight: 1.6, maxWidth: 340 }}>{sub}</div>}
+      {soon && <div style={{ fontSize: '.72rem', padding: '.28rem .75rem', borderRadius: 99, background: 'rgba(59,91,219,.08)', border: '1px solid rgba(59,91,219,.2)', color: 'var(--accent)', fontWeight: 600 }}>Bientôt disponible</div>}
+    </div>
+  );
+}

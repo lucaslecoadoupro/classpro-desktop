@@ -55,6 +55,7 @@ function ModuleProgression({ cpData, onDataChange }) {
     const newCols = COLS_DEFAULT.map(c => ({ ...c }));
     setProgsAndEdit(p => ({ ...p, [selCls]: { cols: newCols, rows: [makeRow(newCols)] } }));
     setHasEdited(true);
+    cpdUnlockBadge('first_prog');
   };
 
   if (!cpData) return <ModulePlaceholder icon="📆" title="Progression annuelle" sub="Ouvrez d'abord un fichier ClassPro." />;

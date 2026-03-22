@@ -304,7 +304,7 @@ function ModulePdfBulletins({ cpData }) {
       const defaultName = 'Bulletins_' + nomClasse + '_T' + (bulletins[0]?.trimester || '?') + '_' + dateStr + '.pdf';
       const pdfBase64 = doc.output('datauristring').split(',')[1];
       const result = await window.cpd.savePdf(pdfBase64, defaultName);
-      if (result?.ok) { setDone(true); setTimeout(() => setDone(false), 3000); }
+      if (result?.ok) { setDone(true); setTimeout(() => setDone(false), 3000); cpdUnlockBadge('first_pdf'); cpdTrackPdf('bulletins'); }
 
     } catch (err) {
       console.error('Erreur PDF Bulletins:', err);

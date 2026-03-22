@@ -41,10 +41,14 @@ function ModuleClasses({ cpData, onDataChange, pushToast }) {
   const addClasse = () => {
     if (!newClsName.trim()) return;
     const nc = { id: 'cls-' + Date.now(), name: newClsName.trim(), eleves: [] };
-    save([...classes, nc]);
+    const newClasses = [...classes, nc];
+    save(newClasses);
     setSelCls(nc.id);
     setNewClsName('');
     setShowNewCls(false);
+    // Badges gamification
+    if (newClasses.length === 1) cpdUnlockBadge('first_class');
+    if (newClasses.length >= 5) cpdUnlockBadge('classes_5');
     // Enchaîner directement sur l'import de liste
     setImportText('');
     setShowImportEleves(true);

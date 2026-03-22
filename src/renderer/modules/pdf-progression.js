@@ -208,7 +208,19 @@ function ModulePdfProgression({ cpData }) {
       const defaultName = 'Progression_' + suffixe + '_' + dateStr + '.pdf';
       const pdfBase64 = doc.output('datauristring').split(',')[1];
       const result = await window.cpd.savePdf(pdfBase64, defaultName);
-      if (result?.ok) { setDone(true); setTimeout(() => setDone(false), 3000); }
+      if (result?.ok) {
+        setDone(true); setTimeout(() => setDone(false), 3000);
+        cpdUnlockBadge('first_pdf');
+        cpdTrackPdf('progression');
+        // Badge perfectionniste — toutes les cellules de toutes les progressions exportées remplies
+        const toutesRemplies = classesExportees.every(cls => {
+          const prog = progs[cls.id];
+          return (prog?.rows || []).every(row =>
+            (prog?.cols || []).every(col => (row[col.id] || '').trim().length > 0)
+          );
+        });
+        if (toutesRemplies && classesExportees.length > 0) cpdUnlockBadge('perfectionniste');
+      }
 
     } catch (err) {
       console.error('Erreur PDF Progression:', err);

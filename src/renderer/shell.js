@@ -74,6 +74,8 @@ function Shell() {
     window.cpd?.getInfo().then(info => {
       if (info?.version) setAppVersion(info.version);
     });
+    // Tracker streak jours consécutifs
+    cpdTrackStreak();
   }, []);
 
   // Écouter les récompenses gamification
@@ -90,26 +92,6 @@ function Shell() {
     if (theme === 'dark') cpdUnlockBadge('dark_mode');
   }, [theme]);
 
-  // Écoute des événements menu natif
-  useEffect(() => {
-    window.cpd?.onMenuOpenJson(handleOpenJson);
-    window.cpd?.onMenuSaveJson(handleSaveJson);
-    window.cpd?.onMenuAbout(() => setModule('accueil'));
-    return () => {
-      window.cpd?.removeAllListeners('menu:open-json');
-      window.cpd?.removeAllListeners('menu:save-json');
-      window.cpd?.removeAllListeners('menu:about');
-    };
-  }, [cpData]); // eslint-disable-line
-
-  // Ouvrir un fichier JSON
-  const handleOpenJson = async () => {
-    const result = await window.cpd?.openJson();
-    if (!result) return;
-    if (!result.ok) { pushToast('Impossible de lire le fichier : ' + result.error, 'error'); return; }
-    handleOpenResult(result);
-  };
-
   const handleOpenResult = (result) => {
     const parsed = parseClassProJson(result.data);
     if (!parsed) { pushToast('Format de fichier ClassPro invalide.', 'error'); return; }
@@ -119,6 +101,34 @@ function Shell() {
     pushToast(`Fichier chargé avec succès !`, 'success');
     cpdUnlockBadge('first_json');
     cpdCountOpen();
+    // Badge fidèle — 50+ séances dans le JSON
+    const totalSeancesJson = Object.values(result.data?.entries?.['sc-sessions']
+      ? (() => { try { return JSON.parse(result.data.entries['sc-sessions']); } catch { return {}; } })()
+      : {}).reduce((s, arr) => s + (Array.isArray(arr) ? arr.length : 0), 0);
+    if (totalSeancesJson >= 50) cpdUnlockBadge('fidele');
+    // Badge nomade — pas d'EDT configuré
+    const edtJson = (() => { try { return JSON.parse(result.data?.entries?.['cdc-edt'] || '[]'); } catch { return []; } })();
+    if (edtJson.length === 0) cpdUnlockBadge('nomade');
+    // Badge vétéran — JSON créé il y a plus de 6 mois
+    if (result.data?.date) {
+      const mois = (Date.now() - new Date(result.data.date).getTime()) / (1000 * 60 * 60 * 24 * 30);
+      if (mois >= 6) cpdUnlockBadge('veteran');
+    }
+    // Badge marathon — 10+ séances dans une même semaine lundi-vendredi
+    const sessionsJson = (() => { try { return JSON.parse(result.data?.entries?.['sc-sessions'] || '{}'); } catch { return {}; } })();
+    const weekCounts = {};
+    Object.values(sessionsJson).forEach(arr => {
+      (Array.isArray(arr) ? arr : []).forEach(s => {
+        if (!s.date) return;
+        const d = new Date(s.date + 'T12:00');
+        const day = d.getDay();
+        if (day === 0 || day === 6) return;
+        const monday = new Date(d); monday.setDate(d.getDate() - (day - 1));
+        const key = monday.toISOString().slice(0, 10);
+        weekCounts[key] = (weekCounts[key] || 0) + 1;
+      });
+    });
+    if (Object.values(weekCounts).some(c => c >= 10)) cpdUnlockBadge('marathon');
 
     // Historique récent
     const recent = JSON.parse(localStorage.getItem('cpd-recent') || '[]');
@@ -131,8 +141,16 @@ function Shell() {
     localStorage.setItem('cpd-recent', JSON.stringify(updated));
   };
 
-  // Sauvegarder le JSON (re-export)
-  const handleSaveJson = async () => {
+  // Ouvrir un fichier JSON — déclaré avant le useEffect qui l'utilise
+  const handleOpenJson = useCallback(async () => {
+    const result = await window.cpd?.openJson();
+    if (!result) return;
+    if (!result.ok) { pushToast('Impossible de lire le fichier : ' + result.error, 'error'); return; }
+    handleOpenResult(result);
+  }, [pushToast, cpData]); // eslint-disable-line
+
+  // Sauvegarder le JSON (re-export) — déclaré avant le useEffect qui l'utilise
+  const handleSaveJson = useCallback(async () => {
     if (!cpData) { pushToast('Aucun fichier chargé.', 'error'); return; }
     const p = cpData.profile || {};
     const nom = `${p.prenom || ''}${p.nom || ''}`.replace(/\s+/g, '_').toUpperCase() || 'export';
@@ -145,7 +163,19 @@ function Shell() {
     } else if (result && !result.ok) {
       pushToast('Erreur lors de la sauvegarde.', 'error');
     }
-  };
+  }, [cpData, pushToast]);
+
+  // Écoute des événements menu natif — après les déclarations des handlers
+  useEffect(() => {
+    window.cpd?.onMenuOpenJson((_event) => handleOpenJson());
+    window.cpd?.onMenuSaveJson((_event) => handleSaveJson());
+    window.cpd?.onMenuAbout(() => setModule('accueil'));
+    return () => {
+      window.cpd?.removeAllListeners('menu:open-json');
+      window.cpd?.removeAllListeners('menu:save-json');
+      window.cpd?.removeAllListeners('menu:about');
+    };
+  }, [handleOpenJson, handleSaveJson]);
 
   // Mise à jour d'une clé dans le JSON brut (depuis les modules éditeurs)
   const KEY_MAP = {
@@ -215,7 +245,7 @@ function Shell() {
       case 'pdf-bulletins':
         return <ModulePdfBulletins cpData={cpData} />;
       case 'classes':
-        return <ModuleClasses cpData={cpData} onDataChange={handleDataChange} />;
+        return <ModuleClasses cpData={cpData} onDataChange={handleDataChange} pushToast={pushToast} />;
       case 'edt':
         return <ModuleEDT cpData={cpData} onDataChange={handleDataChange} />;
       case 'cours':
@@ -331,7 +361,7 @@ function Shell() {
                 ))}
               </div>
               <a href="mailto:lucas.le-coadou@ac-montpellier.fr?subject=Feedback ClassPro Desktop"
-                onClick={() => setShowFeedback(false)}
+                onClick={() => { setShowFeedback(false); cpdUnlockBadge('ambassadeur'); }}
                 style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'.6rem', padding:'.875rem', background:'var(--accent)', color:'#fff', borderRadius:'var(--r-s)', textDecoration:'none', fontWeight:700, fontSize:'.88rem', fontFamily:'Roboto,sans-serif', transition:'opacity .15s' }}
                 onMouseEnter={e => e.currentTarget.style.opacity='.88'}
                 onMouseLeave={e => e.currentTarget.style.opacity='1'}>

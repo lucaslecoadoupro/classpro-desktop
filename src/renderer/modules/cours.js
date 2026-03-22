@@ -289,6 +289,7 @@ function ModuleCours({ cpData, onDataChange }) {
     setNewCoursForm({ titre:'', date:'', classeId:'', sequenceId:'' });
     setShowNewCours(false);
     setVue('edit');
+    cpdUnlockBadge('first_cours');
   };
 
   const deleteCours = (id) => {

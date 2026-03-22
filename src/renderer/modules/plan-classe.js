@@ -205,9 +205,11 @@ function ModulePlanClasse({ cpData, onDataChange }) {
     const nx = Math.max(0, Math.round(gx - pi.defaultW / 2));
     const ny = Math.max(0, Math.round(gy - pi.defaultH / 2));
     const ne = { id: 'el' + Date.now() + Math.random().toString(36).slice(2, 5), type: pi.type, x: nx, y: ny, w: pi.defaultW, h: pi.defaultH, seatEleves: {} };
-    updateElements([...elements, ne]);
+    const newElements = [...elements, ne];
+    updateElements(newElements);
     setSelectedId(ne.id);
     dragRef.current = null;
+    if (newElements.length === 1) cpdUnlockBadge('first_plan');
   };
 
   const onResizeMouseDown = (e, elem, dir) => {
