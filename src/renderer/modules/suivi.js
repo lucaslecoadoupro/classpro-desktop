@@ -28,12 +28,44 @@ function ModuleSuivi({ cpData, onDataChange }) {
   const [texteImport, setTexteImport] = useState('');
   const [seanceDate, setSeanceDate] = useState(isoDate(new Date()));
   const [seanceLabel, setSeanceLabel] = useState('');
+  const [showAlertConfig, setShowAlertConfig] = useState(false);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertSeuils, setAlertSeuils] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('cpd-suivi-seuils') || 'null') || { bav: 3, trav: 3, disp: 3, part: '', bon: '', top: '' }; }
+    catch { return { bav: 3, trav: 3, disp: 3, part: '', bon: '', top: '' }; }
+  });
+  const [alertSeuilsForm, setAlertSeuilsForm] = useState(alertSeuils);
 
   const cur = classes.find(c => c.id === selId) || null;
   const curSess = useMemo(() =>
     (sessions[selId] || []).slice().sort((a, b) => a.date > b.date ? 1 : -1),
     [sessions, selId]
   );
+
+  // Calcul des alertes — élèves dépassant les seuils sur la classe active
+  const alertes = useMemo(() => {
+    if (!cur) return [];
+    const result = [];
+    cur.eleves.forEach(el => {
+      const counts = {};
+      OBS.forEach(o => { counts[o.id] = 0; });
+      (sessions[selId] || []).forEach(s => {
+        OBS.forEach(o => { if (s.obs?.[el.id + '_' + o.id]) counts[o.id]++; });
+      });
+      const triggered = OBS.filter(o => {
+        const seuil = alertSeuils[o.id];
+        return seuil !== '' && seuil !== null && seuil !== undefined && counts[o.id] >= Number(seuil);
+      }).map(o => ({ obs: o, count: counts[o.id] }));
+      if (triggered.length > 0) result.push({ el, triggered });
+    });
+    return result;
+  }, [sessions, selId, cur, alertSeuils]);
+
+  const saveAlertSeuils = () => {
+    setAlertSeuils(alertSeuilsForm);
+    localStorage.setItem('cpd-suivi-seuils', JSON.stringify(alertSeuilsForm));
+    setShowAlertConfig(false);
+  };
 
   useEffect(() => { if (!selId && classes.length > 0) setSelId(classes[0].id); }, [classes]);
   useEffect(() => { if (onDataChange) onDataChange('sc-classes', classes); }, [classes]);
@@ -138,6 +170,18 @@ function ModuleSuivi({ cpData, onDataChange }) {
         </div>
         <div className="phd-actions">
           {selId && <button className="btn btn-ghost" onClick={() => setShowNewSeance(true)}>+ Séance</button>}
+          {selId && alertes.length > 0 && (
+            <button onClick={() => setShowAlertModal(true)}
+              style={{ display:'flex', alignItems:'center', gap:'.4rem', padding:'.38rem .875rem', borderRadius:'var(--r-s)', border:'none', background:'var(--danger)', color:'#fff', fontFamily:'Roboto,sans-serif', fontSize:'.8rem', fontWeight:700, cursor:'pointer' }}>
+              ⚠️ {alertes.length} alerte{alertes.length > 1 ? 's' : ''}
+            </button>
+          )}
+          {selId && (
+            <button onClick={() => { setAlertSeuilsForm(alertSeuils); setShowAlertConfig(true); }} title="Configurer les seuils d'alerte"
+              style={{ padding:'.38rem .5rem', borderRadius:'var(--r-s)', border:'1px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontSize:'.85rem' }}>
+              ⚙️
+            </button>
+          )}
 
           <button className="btn btn-white" onClick={() => { setNewNom(''); setShowNewClasse(true); }}>+ Classe</button>
           {selId && <>
@@ -190,42 +234,55 @@ function ModuleSuivi({ cpData, onDataChange }) {
                     Aucun élève · <button onClick={() => setVueSuivi('eleves')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontWeight: 700 }}>Gérer les élèves →</button>
                   </div>
                 ) : (
-                  <table style={{ borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: '.75rem' }}>
+                  <table style={{ borderCollapse: 'collapse', fontSize: '.8rem' }}>
                     <thead>
                       <tr style={{ background: 'var(--surface2)', position: 'sticky', top: 0, zIndex: 10 }}>
-                        <th style={{ padding: '.55rem .875rem', textAlign: 'left', fontWeight: 700, color: 'var(--text2)', borderBottom: '1px solid var(--border)', width: 160, minWidth: 160 }}>Élève</th>
+                        <th style={{ padding: '.6rem 1rem', textAlign: 'left', fontWeight: 700, color: 'var(--text2)', borderBottom: '2px solid var(--border)', minWidth: 180, position: 'sticky', left: 0, background: 'var(--surface2)', zIndex: 11 }}>Élève</th>
                         {curSess.map(s => (
-                          <th key={s.id} style={{ width: 108, minWidth: 108, padding: '.35rem .3rem', textAlign: 'center', fontWeight: 600, color: 'var(--text2)', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border)', position: 'relative' }}>
-                            <div style={{ fontSize: '.65rem', fontWeight: 700, color: 'var(--accent)' }}>{s.date ? new Date(s.date + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '—'}</div>
-                            <div style={{ fontSize: '.58rem', color: 'var(--text3)', fontWeight: 400 }}>{s.label}</div>
-                            <button onClick={() => delSeance(s.id)} style={{ position: 'absolute', top: 2, right: 2, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: '.55rem', opacity: .4 }} title="Supprimer">×</button>
+                          <th key={s.id} style={{ minWidth: 56, padding: '.35rem .4rem', textAlign: 'center', fontWeight: 600, color: 'var(--text2)', borderBottom: '2px solid var(--border)', borderLeft: '1px solid var(--border)', position: 'relative' }}>
+                            <div style={{ fontSize: '.65rem', fontWeight: 700, color: 'var(--accent)', writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap', margin: '0 auto' }}>
+                              {s.date ? new Date(s.date + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '—'}
+                            </div>
+                            <div style={{ fontSize: '.55rem', color: 'var(--text3)', writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap', margin: '0 auto', marginTop: '.2rem' }}>{s.label}</div>
+                            <button onClick={() => delSeance(s.id)} style={{ position: 'absolute', top: 2, right: 2, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: '.6rem', opacity: .4 }} title="Supprimer">×</button>
                           </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {cur.eleves.map((el, i) => (
-                        <tr key={el.id} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)' }}>
-                          <td style={{ padding: '.38rem .875rem', fontWeight: 600, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', width: 160 }}>
-                            <button onClick={() => setBilanEl(el)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', fontWeight: 600, fontSize: '.78rem', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>{el.nom}</button>
-                          </td>
-                          {curSess.map(s => (
-                            <td key={s.id} style={{ padding: '.28rem .25rem', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border)', textAlign: 'center', width: 108 }}>
-                              <div style={{ display: 'flex', gap: '1px', justifyContent: 'center', flexWrap: 'nowrap' }}>
-                                {OBS.map(o => {
-                                  const active = hasObs(s.id, el.id, o.id);
-                                  return (
-                                    <button key={o.id} onClick={() => toggleObs(s.id, el.id, o.id)} title={o.label}
-                                      style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${active ? obsColor(o.k) : 'var(--border)'}`, background: active ? obsBg(o.k) : 'transparent', cursor: 'pointer', fontSize: '.56rem', opacity: active ? 1 : .2, transition: 'all .12s', flexShrink: 0, padding: 0, lineHeight: 1 }}>
-                                      {o.emoji}
-                                    </button>
-                                  );
-                                })}
+                      {cur.eleves.map((el, i) => {
+                        const enAlerte = alertes.some(a => a.el.id === el.id);
+                        return (
+                          <tr key={el.id} style={{ background: enAlerte ? 'rgba(220,38,38,.04)' : i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)' }}>
+                            <td style={{ padding: '.45rem 1rem', fontWeight: 600, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', position: 'sticky', left: 0, background: enAlerte ? 'rgba(220,38,38,.06)' : i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)', zIndex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+                                {enAlerte && <span style={{ color: 'var(--danger)', fontSize: '.75rem', flexShrink: 0 }} title="Élève en alerte">⚠️</span>}
+                                <button onClick={() => setBilanEl(el)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: enAlerte ? 'var(--danger)' : 'var(--text)', fontWeight: 700, fontSize: '.82rem', textDecoration: 'underline dotted', textUnderlineOffset: 3, padding: 0 }}>{el.nom}</button>
                               </div>
                             </td>
-                          ))}
-                        </tr>
-                      ))}
+                            {curSess.map(s => (
+                              <td key={s.id} style={{ padding: '.3rem .25rem', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border)', textAlign: 'center', verticalAlign: 'middle' }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', justifyContent: 'center', alignItems: 'center', minHeight: 28 }}>
+                                  {OBS.map(o => {
+                                    const active = hasObs(s.id, el.id, o.id);
+                                    return active ? (
+                                      <button key={o.id} onClick={() => toggleObs(s.id, el.id, o.id)} title={o.label}
+                                        style={{ width: 10, height: 10, borderRadius: '50%', border: 'none', background: obsColor(o.k), cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'transform .1s' }}
+                                        onMouseEnter={e => e.currentTarget.style.transform='scale(1.4)'}
+                                        onMouseLeave={e => e.currentTarget.style.transform='scale(1)'} />
+                                    ) : (
+                                      <button key={o.id} onClick={() => toggleObs(s.id, el.id, o.id)} title={o.label}
+                                        style={{ width: 10, height: 10, borderRadius: '50%', border: '1.5px solid var(--border)', background: 'transparent', cursor: 'pointer', padding: 0, flexShrink: 0, opacity: .25, transition: 'opacity .1s' }}
+                                        onMouseEnter={e => e.currentTarget.style.opacity='0.7'}
+                                        onMouseLeave={e => e.currentTarget.style.opacity='0.25'} />
+                                    );
+                                  })}
+                                </div>
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
@@ -287,6 +344,88 @@ function ModuleSuivi({ cpData, onDataChange }) {
                   </div>
                 ); })}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Légende */}
+      {vueSuivi === 'obs' && cur && curSess.length > 0 && cur.eleves.length > 0 && (
+        <div style={{ padding: '.38rem 1rem', borderTop: '1px solid var(--border)', background: 'var(--surface2)', display: 'flex', gap: '1rem', flexShrink: 0, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: '.65rem', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Légende</span>
+          {OBS.map(o => (
+            <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.72rem', color: 'var(--text2)' }}>
+              <div style={{ width: 9, height: 9, borderRadius: '50%', background: obsColor(o.k), flexShrink: 0 }} />
+              {o.label}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modale alertes élèves */}
+      {showAlertModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          onClick={e => e.target === e.currentTarget && setShowAlertModal(false)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 16, width: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,.3)', overflow: 'hidden' }}>
+            <div style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)', padding: '1.25rem 1.5rem', flexShrink: 0 }}>
+              <div style={{ fontFamily: 'Roboto Slab,serif', fontWeight: 800, fontSize: '1.05rem', color: '#fff', marginBottom: '.2rem' }}>⚠️ Alertes élèves</div>
+              <div style={{ fontSize: '.78rem', color: 'rgba(255,255,255,.8)' }}>{alertes.length} élève{alertes.length > 1 ? 's' : ''} · {cur?.name}</div>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
+              {alertes.map(({ el, triggered }) => (
+                <div key={el.id} style={{ padding: '.875rem 1rem', background: 'var(--surface2)', border: '1px solid rgba(220,38,38,.2)', borderRadius: 12, borderLeft: '4px solid var(--danger)' }}>
+                  <div style={{ fontWeight: 700, fontSize: '.9rem', marginBottom: '.5rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+                    👤 {el.nom}
+                  </div>
+                  {triggered.map(({ obs: o, count }) => (
+                    <div key={o.id} style={{ fontSize: '.8rem', color: 'var(--text2)', padding: '.35rem .5rem', background: 'rgba(220,38,38,.06)', borderRadius: 6, marginBottom: '.3rem' }}>
+                      <div style={{ marginBottom: '.2rem' }}>
+                        ⚠️ <strong>{el.nom.split(' ')[0]}</strong> a été {o.label.toLowerCase()} <strong>{count} fois</strong>. Cela mériterait peut-être une <strong>observation Pronote</strong> ?
+                      </div>
+                      <div style={{ fontSize: '.72rem', color: 'var(--text3)' }}>{o.emoji} {o.label} : {count}x</div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: '.875rem 1.25rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', background: 'var(--surface2)' }}>
+              <button className="btn btn-primary" onClick={() => setShowAlertModal(false)}>Fermer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modale config seuils d'alerte */}
+      {showAlertConfig && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          onClick={e => e.target === e.currentTarget && setShowAlertConfig(false)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 16, width: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,.3)', overflow: 'hidden' }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
+              <div style={{ fontFamily: 'Roboto Slab,serif', fontWeight: 800, fontSize: '1rem' }}>⚙️ Seuils d'alerte</div>
+              <div style={{ fontSize: '.78rem', color: 'var(--text3)', marginTop: '.2rem' }}>Déclencher une alerte après X observations</div>
+            </div>
+            <div style={{ padding: '.75rem 1.25rem', background: 'rgba(59,91,219,.05)', borderBottom: '1px solid var(--border)', fontSize: '.75rem', color: 'var(--text2)', lineHeight: 1.6 }}>
+              💡 Laisser vide = pas d'alerte pour cette observation. L'alerte se déclenche sur le total cumulé de toutes les séances.
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+              {OBS.map(o => (
+                <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: '.75rem', padding: '.55rem .75rem', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10 }}>
+                  <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{o.emoji}</span>
+                  <span style={{ flex: 1, fontWeight: 600, fontSize: '.85rem', color: obsColor(o.k) }}>{o.label}</span>
+                  <span style={{ fontSize: '.78rem', color: 'var(--text3)' }}>Alerte après</span>
+                  <input type="number" min="1" max="99"
+                    value={alertSeuilsForm[o.id] ?? ''}
+                    onChange={e => setAlertSeuilsForm(f => ({ ...f, [o.id]: e.target.value === '' ? '' : Number(e.target.value) }))}
+                    placeholder="—"
+                    style={{ width: 52, padding: '.38rem .5rem', border: '1.5px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontFamily: 'Roboto,sans-serif', fontSize: '.88rem', textAlign: 'center', outline: 'none' }}
+                    onFocus={e => e.target.style.borderColor='var(--accent)'} onBlur={e => e.target.style.borderColor='var(--border)'} />
+                  <span style={{ fontSize: '.78rem', color: 'var(--text3)' }}>fois</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: '.875rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '.5rem', justifyContent: 'flex-end', background: 'var(--surface2)' }}>
+              <button className="btn" onClick={() => setShowAlertConfig(false)}>Annuler</button>
+              <button className="btn btn-primary" onClick={saveAlertSeuils}>Enregistrer</button>
             </div>
           </div>
         </div>
