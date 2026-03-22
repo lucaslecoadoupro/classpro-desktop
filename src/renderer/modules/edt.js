@@ -218,6 +218,13 @@ function ModuleEDT({ cpData, onDataChange }) {
   const [showImport,    setShowImport]    = useState(false);
   const [importStatus,  setImportStatus]  = useState(null); // null | 'loading' | {blocks, error}
   const [importPreview, setImportPreview] = useState(false);
+  const [importDraft,   setImportDraft]   = useState([]); // blocs éditables avant import
+  const [showWeekBar,   setShowWeekBar]   = useState(true);
+  const [weekBarStart,  setWeekBarStart]  = useState(() => {
+    try { return localStorage.getItem('cpd-edt-weekstart') || ''; } catch { return ''; }
+  });
+  const [showWeekConfig, setShowWeekConfig] = useState(false);
+  const [weekConfigVal,  setWeekConfigVal]  = useState('');
 
   // ── Vacances ──────────────────────────────────────────────────────────────
   const [vacances,     setVacances]     = useState(() => { try { return JSON.parse(localStorage.getItem('cdc-vacances') || '[]'); } catch { return []; } });
@@ -232,6 +239,27 @@ function ModuleEDT({ cpData, onDataChange }) {
   const [motifForm,    setMotifForm]    = useState({ motif:'malade', label:'' });
 
   const weekType = edtGetWeekType(viewMonday, refWeekA);
+
+  // Barre de semaines — génère toutes les semaines depuis weekBarStart
+  const schoolWeeks = useMemo(() => {
+    const start = weekBarStart ? edtGetMonday(new Date(weekBarStart + 'T12:00')) : null;
+    if (!start || isNaN(start.getTime())) return [];
+    const weeks = [];
+    const cursor = new Date(start);
+    for (let i = 0; i < 50; i++) {
+      const mon = new Date(cursor);
+      const fri = new Date(cursor); fri.setDate(fri.getDate() + 4);
+      // Stopper si on dépasse juin de l'année suivante
+      const maxDate = new Date(start); maxDate.setMonth(maxDate.getMonth() + 11);
+      if (mon > maxDate) break;
+      weeks.push({ num: i + 1, monday: new Date(mon), isoKey: mon.toISOString().slice(0,10) });
+      cursor.setDate(cursor.getDate() + 7);
+    }
+    return weeks;
+  }, [weekBarStart]);
+
+  const activeWeekIso = viewMonday.toISOString().slice(0,10);
+  const todayWeekIso  = edtGetMonday(new Date()).toISOString().slice(0,10);
   const todayStr = edtIso(new Date());
   const isCurrentWeek = edtIso(viewMonday) === edtIso(edtGetMonday(new Date()));
 
@@ -279,6 +307,19 @@ function ModuleEDT({ cpData, onDataChange }) {
     try {
       const result = await parseEdtPDF(file);
       if (result) {
+        // Auto-matcher les classes par titre de bloc
+        if (result.blocks?.length) {
+          const classList = cpData?.classes || [];
+          result.blocks = result.blocks.map(b => {
+            const titleLow = b.title.toLowerCase();
+            const matched = classList.find(c =>
+              titleLow.includes(c.name.toLowerCase()) ||
+              c.name.toLowerCase().includes(titleLow.split(' ')[0])
+            );
+            return matched ? { ...b, classId: matched.id } : b;
+          });
+          setImportDraft(result.blocks.map(b => ({ ...b })));
+        }
         setImportStatus(result);
         setImportPreview(true);
       } else {
@@ -293,12 +334,19 @@ function ModuleEDT({ cpData, onDataChange }) {
   const confirmImport = () => {
     if (!importStatus || importStatus === 'loading' || !importStatus.blocks) return;
     const existing = edtData;
-    const toAdd = importStatus.blocks.filter(nb => {
+    const source = importDraft.length ? importDraft : importStatus.blocks;
+    const toAdd = source.filter(nb => {
       return !existing.find(b => b.day===nb.day && b.startH===nb.startH && b.startM===nb.startM && b.title===nb.title);
     });
     saveBlocks([...existing, ...toAdd]);
     setImportPreview(false);
     setImportStatus(null);
+    if (toAdd.length > 0) {
+      cpdUnlockBadge('edt_import');
+      const allBlocks = [...existing, ...toAdd];
+      const classIds = new Set(allBlocks.map(b => b.classId).filter(Boolean));
+      if (classIds.size >= 3) cpdUnlockBadge('polyglotte');
+    }
   };
   const saveRefA   = (d) => onDataChange('cdc-edt-refA', d.toISOString());
 
@@ -312,7 +360,12 @@ function ModuleEDT({ cpData, onDataChange }) {
       saveBlocks(edtData.map(b => b.id === editId ? { ...b, ...form } : b));
       setEditId(null);
     } else {
-      saveBlocks([...edtData, { ...form, id: 'edt-' + Date.now() }]);
+      const newBlocks = [...edtData, { ...form, id: 'edt-' + Date.now() }];
+      saveBlocks(newBlocks);
+      cpdUnlockBadge('edt_manual');
+      // Badge polyglotte — 3 classes distinctes dans l'EDT
+      const classIds = new Set(newBlocks.map(b => b.classId).filter(Boolean));
+      if (classIds.size >= 3) cpdUnlockBadge('polyglotte');
     }
     setShowAdd(false);
     setForm(EMPTY_FORM);
@@ -383,6 +436,7 @@ function ModuleEDT({ cpData, onDataChange }) {
 
     const className = classes.find(c => c.id === autoClassId)?.name || autoClassId;
     setAutoResult({ sessionsCreated: newSess.length, fichesCreated: newFich.length, skipped: skipped.length, className, dates: newSess.map(s => s.date) });
+    if (newSess.length > 0) cpdUnlockBadge('edt_auto');
   };
 
   if (!cpData) return <ModulePlaceholder icon="📅" title="Emploi du temps" sub="Ouvrez d'abord un fichier ClassPro." />;
@@ -446,6 +500,43 @@ function ModuleEDT({ cpData, onDataChange }) {
           )}
         </div>
       </div>
+
+      {/* Barre de navigation semaines */}
+      {schoolWeeks.length > 0 && (
+        <div style={{ borderBottom:'1px solid var(--border)', background:'var(--surface2)', overflowX:'auto', flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'stretch', minWidth:'max-content', padding:'0 .5rem' }}>
+            {schoolWeeks.map(w => {
+              const isActive  = w.isoKey === activeWeekIso;
+              const isToday   = w.isoKey === todayWeekIso;
+              const isVac     = vacances.some(v => w.isoKey >= v.debut && w.isoKey <= v.fin);
+              return (
+                <button key={w.isoKey} onClick={() => setViewMonday(w.monday)}
+                  style={{ minWidth:36, padding:'.3rem .35rem', border:'none', borderBottom: isActive ? '2.5px solid var(--accent)' : '2.5px solid transparent', background: isToday ? 'rgba(59,91,219,.08)' : 'transparent', cursor:'pointer', fontFamily:'Roboto,sans-serif', display:'flex', flexDirection:'column', alignItems:'center', gap:'.08rem', transition:'background .1s', borderRadius:0 }}
+                  title={`Semaine du ${edtFmtShort(w.monday)}`}>
+                  <span style={{ fontSize:'.68rem', fontWeight: isActive ? 800 : isToday ? 700 : 500, color: isActive ? 'var(--accent)' : isToday ? 'var(--accent)' : isVac ? 'var(--text3)' : 'var(--text2)' }}>
+                    S{w.num}
+                  </span>
+                  {isVac && <span style={{ width:4, height:4, borderRadius:'50%', background:'var(--warning)', flexShrink:0 }} title="Vacances" />}
+                </button>
+              );
+            })}
+            {/* Bouton config */}
+            <button onClick={() => { setWeekConfigVal(weekBarStart); setShowWeekConfig(true); }}
+              style={{ minWidth:32, padding:'.3rem .4rem', border:'none', borderLeft:'1px solid var(--border)', background:'transparent', cursor:'pointer', color:'var(--text3)', fontSize:'.75rem', flexShrink:0 }}
+              title="Configurer le début de l'année scolaire">⚙️</button>
+          </div>
+        </div>
+      )}
+      {schoolWeeks.length === 0 && (
+        <div style={{ padding:'.4rem 1rem', background:'rgba(245,158,11,.07)', borderBottom:'1px solid rgba(245,158,11,.2)', fontSize:'.75rem', color:'var(--text2)', display:'flex', alignItems:'center', gap:'.5rem', flexShrink:0 }}>
+          <span>📅</span>
+          <span>Configurez le début de l'année scolaire pour afficher la barre de navigation.</span>
+          <button onClick={() => { setWeekConfigVal(''); setShowWeekConfig(true); }}
+            style={{ background:'none', border:'1px solid var(--warning)', color:'var(--warning)', borderRadius:6, padding:'.2rem .6rem', cursor:'pointer', fontFamily:'Roboto,sans-serif', fontSize:'.73rem', fontWeight:700 }}>
+            Configurer
+          </button>
+        </div>
+      )}
 
       {/* Grille EDT */}
       <div className="page-content" style={{ paddingTop:0, overflow:'hidden', flex:1, display:'flex', flexDirection:'column' }}>
@@ -520,7 +611,12 @@ function ModuleEDT({ cpData, onDataChange }) {
                         onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ block:b, x:e.clientX, y:e.clientY }); }}>
                         <div style={{ display:'flex', alignItems:'center', gap:'.25rem', overflow:'hidden' }}>
                           <div style={{ fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1 }}>{b.title}</div>
-                          {Object.values(cpData && cpData.cours || {}).some(c => c.edtBlockId === b.id) && (
+                          {Object.values(cpData?.cours || {}).some(c => {
+                            if (c.edtBlockId !== b.id) return false;
+                            if (!c.date) return true; // pas de date = toujours visible
+                            const coursMonday = edtGetMonday(new Date(c.date + 'T12:00'));
+                            return coursMonday.toISOString().slice(0,10) === viewMonday.toISOString().slice(0,10);
+                          }) && (
                             <span title="Cours lie" style={{ fontSize:'.6rem', flexShrink:0 }}>📖</span>
                           )}
                         </div>
@@ -545,6 +641,32 @@ function ModuleEDT({ cpData, onDataChange }) {
           )}
         </div>
       </div>
+
+      {/* Modale config début année scolaire */}
+      {showWeekConfig && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999 }}
+          onClick={e => e.target===e.currentTarget && setShowWeekConfig(false)}>
+          <div style={{ background:'var(--surface)', borderRadius:'var(--r)', padding:'1.5rem', width:380, boxShadow:'var(--shadow-l)' }}>
+            <div style={{ fontFamily:'Roboto Slab,serif', fontWeight:800, fontSize:'1rem', marginBottom:'.5rem' }}>📅 Début de l&apos;année scolaire</div>
+            <div style={{ fontSize:'.78rem', color:'var(--text3)', marginBottom:'1rem', lineHeight:1.6 }}>
+              Sélectionnez le premier lundi de la rentrée. Les semaines S1, S2… seront calculées depuis cette date.
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:'.28rem', marginBottom:'1rem' }}>
+              <label style={{ fontSize:'.7rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Premier lundi de rentrée</label>
+              <input type="date" value={weekConfigVal} onChange={e => setWeekConfigVal(e.target.value)}
+                style={{ padding:'.6rem .875rem', border:'1.5px solid var(--accent)', borderRadius:'var(--r-s)', background:'var(--surface2)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.88rem', outline:'none' }} />
+            </div>
+            <div style={{ display:'flex', gap:'.5rem', justifyContent:'flex-end' }}>
+              <button className="btn" onClick={() => setShowWeekConfig(false)}>Annuler</button>
+              <button className="btn btn-primary" disabled={!weekConfigVal} onClick={() => {
+                setWeekBarStart(weekConfigVal);
+                localStorage.setItem('cpd-edt-weekstart', weekConfigVal);
+                setShowWeekConfig(false);
+              }}>Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modale sélection PDF ── */}
       {showImport && (
@@ -609,16 +731,42 @@ function ModuleEDT({ cpData, onDataChange }) {
                     <div style={{ fontSize:'.75rem', color:'rgba(255,255,255,.75)', marginTop:'.12rem' }}>Prévisualisation avant import</div>
                   </div>
                 </div>
-                <div style={{ maxHeight:300, overflowY:'auto', padding:'1rem 1.75rem' }}>
-                  {importStatus.blocks.map((b, i) => {
+                {/* Bloc info config globale */}
+                <div style={{ padding:'.65rem 1.75rem', background:'rgba(59,91,219,.05)', borderBottom:'1px solid var(--border)', fontSize:'.75rem', color:'var(--text2)', lineHeight:1.6 }}>
+                  💡 Configurez la <strong>salle</strong>, la <strong>classe</strong> et la <strong>couleur</strong> de chaque cours avant d&apos;importer. Les classes détectées automatiquement sont pré-remplies.
+                </div>
+                <div style={{ maxHeight:380, overflowY:'auto', padding:'.5rem 1.25rem', display:'flex', flexDirection:'column', gap:'.5rem' }}>
+                  {importDraft.map((b, i) => {
                     const col = EDT_COLORS[b.colorIdx || 0];
+                    const updateDraft = (patch) => setImportDraft(d => d.map((x,j) => j===i ? {...x,...patch} : x));
                     return (
-                      <div key={i} style={{ display:'flex', alignItems:'center', gap:'.75rem', padding:'.38rem .5rem', borderBottom:'1px solid var(--border)', fontSize:'.8rem' }}>
-                        <div style={{ width:10, height:10, borderRadius:'50%', background:col.border, flexShrink:0 }} />
-                        <span style={{ minWidth:70, color:'var(--text3)', fontSize:'.73rem' }}>{EDT_DAYS[b.day]}</span>
-                        <span style={{ flex:1, fontWeight:600 }}>{b.title}</span>
-                        <span style={{ color:'var(--text3)', fontSize:'.73rem' }}>{b.startH}h{String(b.startM).padStart(2,'0')}–{b.endH}h{String(b.endM).padStart(2,'0')}</span>
-                        {b.weeks !== 'AB' && <span style={{ background:col.bg, color:col.text, fontSize:'.65rem', padding:'.1rem .35rem', borderRadius:4, fontWeight:700 }}>Sem.{b.weeks}</span>}
+                      <div key={i} style={{ padding:'.65rem .875rem', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10, borderLeft:`3px solid ${col.border}` }}>
+                        {/* Ligne titre + horaire */}
+                        <div style={{ display:'flex', alignItems:'center', gap:'.5rem', marginBottom:'.5rem' }}>
+                          <span style={{ fontWeight:700, fontSize:'.83rem', flex:1 }}>{b.title}</span>
+                          <span style={{ color:'var(--text3)', fontSize:'.72rem' }}>{EDT_DAYS[b.day]} {b.startH}h{String(b.startM).padStart(2,'0')}–{b.endH}h{String(b.endM).padStart(2,'0')}</span>
+                          {b.weeks !== 'AB' && <span style={{ background:col.bg, color:col.text, fontSize:'.62rem', padding:'.08rem .32rem', borderRadius:4, fontWeight:700 }}>Sem.{b.weeks}</span>}
+                        </div>
+                        {/* Ligne config */}
+                        <div style={{ display:'flex', gap:'.5rem', alignItems:'center', flexWrap:'wrap' }}>
+                          {/* Salle */}
+                          <input value={b.room || ''} onChange={e => updateDraft({ room: e.target.value })}
+                            placeholder="Salle…"
+                            style={{ width:90, padding:'.32rem .5rem', border:'1px solid var(--border)', borderRadius:6, background:'var(--surface)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.75rem', outline:'none' }} />
+                          {/* Classe */}
+                          <select value={b.classId || ''} onChange={e => updateDraft({ classId: e.target.value })}
+                            style={{ flex:1, minWidth:100, padding:'.32rem .5rem', border:'1px solid var(--border)', borderRadius:6, background:'var(--surface)', color:'var(--text)', fontFamily:'Roboto,sans-serif', fontSize:'.75rem', outline:'none' }}>
+                            <option value="">— Classe —</option>
+                            {(cpData?.classes||[]).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                          {/* Couleur */}
+                          <div style={{ display:'flex', gap:'.25rem' }}>
+                            {EDT_COLORS.map((c,ci) => (
+                              <button key={ci} onClick={() => updateDraft({ colorIdx: ci })}
+                                style={{ width:16, height:16, borderRadius:'50%', border: b.colorIdx===ci ? `2px solid ${c.border}` : '2px solid transparent', background:c.border, cursor:'pointer', padding:0, outline: b.colorIdx===ci ? `2px solid ${c.border}` : 'none', outlineOffset:1 }} />
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
@@ -831,7 +979,7 @@ function ModuleEDT({ cpData, onDataChange }) {
                   <button className="btn btn-primary" style={{ padding:'.42rem .9rem', flexShrink:0 }}
                     disabled={!newVac.label.trim() || !newVac.debut || !newVac.fin || newVac.fin < newVac.debut}
                     onClick={() => {
-                      setVacances(v => [...v, { id:'v'+Date.now(), label:newVac.label.trim(), debut:newVac.debut, fin:newVac.fin }].sort((a,b) => a.debut.localeCompare(b.debut)));
+                      setVacances(v => { const nv = [...v, { id:'v'+Date.now(), label:newVac.label.trim(), debut:newVac.debut, fin:newVac.fin }].sort((a,b) => a.debut.localeCompare(b.debut)); cpdUnlockBadge('vacances'); return nv; });
                       setNewVac({ label:'', debut:'', fin:'' });
                     }}>+ Ajouter</button>
                 </div>
