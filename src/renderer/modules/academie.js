@@ -40,6 +40,10 @@ const GUIDES = [
         contenu: `Dans ClassPro (sur votre clé USB ou navigateur) :\n\n1. Allez dans les Paramètres ou le menu principal\n2. Cherchez "Exporter" ou "Sauvegarder"\n3. Téléchargez le fichier JSON sur votre ordinateur\n\nLe nom du fichier ressemble à : ClassPro_NOM_PRENOM_date.json`,
       },
       {
+        titre: 'Où enregistrer votre fichier JSON ?',
+        contenu: `Pour que ClassPro Desktop retrouve automatiquement vos fichiers, enregistrez-les toujours dans le dossier :\n\n📁 Documents/ClassPro\n\nCe dossier est créé automatiquement au premier lancement de l'application. Lorsque vous cliquez sur "Ouvrir un fichier ClassPro", la fenêtre s'ouvrira directement dans ce dossier s'il contient déjà des fichiers JSON.\n\nSi vous venez d'exporter depuis ClassPro (en classe), votre fichier se trouve d'abord dans vos Téléchargements — déplacez-le dans Documents/ClassPro avant de l'ouvrir dans Desktop.`,
+      },
+      {
         titre: 'Importer dans ClassPro Desktop',
         contenu: `Depuis l'écran d'accueil :\n\n1. Cliquez sur "Ouvrir un fichier ClassPro"\n2. Une fenêtre de sélection s'ouvre — naviguez jusqu'à votre fichier JSON\n3. Sélectionnez-le et cliquez sur Ouvrir\n\nAlternativement, utilisez le menu Fichier → Ouvrir un JSON ClassPro… ou le raccourci Cmd+O (Mac) / Ctrl+O (Windows).`,
       },
@@ -81,7 +85,11 @@ const GUIDES = [
       },
       {
         titre: 'Saisir des observations',
-        contenu: `Dans l'onglet Observations, le tableau affiche tous vos élèves en lignes et vos séances en colonnes. Pour chaque cellule, cliquez sur un emoji pour l'activer (il s'illumine) ou le désactiver.\n\nCliquez sur le nom d'un élève pour voir son bilan complet sur toutes les séances.`,
+        contenu: `Dans l'onglet Observations, le tableau affiche tous vos élèves en lignes et vos séances en colonnes.\n\nChaque cellule contient des points colorés :\n\n🔴 Rouge — observation négative (bavardage, manque travail, dispersé)\n🟡 Orange — participation\n🟢 Vert — positif (bon comportement, excellent)\n\nCliquez sur un point pour l'activer ou le désactiver. Survolez-le pour voir son libellé.\n\nCliquez sur le nom d'un élève pour voir son bilan complet sur toutes les séances.`,
+      },
+      {
+        titre: "Système d'alertes",
+        contenu: `ClassPro Desktop peut vous alerter automatiquement quand un élève dépasse un seuil d'observation.\n\nPour configurer les seuils :\n1. Cliquez sur le bouton ⚙️ dans le header du module\n2. Pour chaque type d'observation, saisissez le nombre de fois à partir duquel l'alerte se déclenche\n3. Laissez le champ vide pour désactiver l'alerte pour cette observation\n4. Cliquez sur Enregistrer\n\nQuand un élève dépasse un seuil, un bouton rouge "⚠️ N alerte(s)" apparaît dans le header. Cliquez dessus pour voir la liste des élèves concernés avec une suggestion d'observation Pronote.\n\nLes seuils sont mémorisés entre les sessions.`,
       },
     ],
   },
@@ -204,7 +212,7 @@ const GUIDES = [
     tags: ['classe', 'eleve', 'liste', 'pronote', 'import', 'gestion'],
     sections: [
       {
-        titre: 'À quoi sert ce module ?',
+        titre: "À quoi sert ce module ?",
         contenu: `Le module Classes et élèves (Gestion administrative) vous permet de créer et gérer vos classes indépendamment de ClassPro sur clé USB. C'est le point de départ si vous utilisez ClassPro Desktop en premier, avant d'avoir exporté un JSON.`,
       },
       {
@@ -212,8 +220,8 @@ const GUIDES = [
         contenu: `1. Cliquez sur "+ Nouvelle classe" en haut à droite\n2. Saisissez le nom de la classe (ex : 3A, 5B, Terminale)\n3. Cliquez sur "Créer la classe"\n4. Une fenêtre s'ouvre immédiatement pour importer la liste des élèves`,
       },
       {
-        titre: 'Importer la liste depuis PRONOTE',
-        contenu: `Après la création d'une classe, une fenêtre d'import s'ouvre automatiquement.\n\nComment récupérer la liste depuis PRONOTE :\n1. Allez sur PRONOTE (version web)\n2. Mes données → Liste d'élèves\n3. Sélectionnez la classe souhaitée\n4. Cliquez sur l'icône des carrés entremêlés (en haut à droite) pour copier le CSV\n5. Collez la première colonne (noms) dans le champ de ClassPro Desktop\n6. Cliquez sur Importer\n\nLe compteur d'élèves détectés s'affiche en temps réel pendant la saisie.`,
+        titre: "Importer la liste depuis PRONOTE",
+        contenu: `Deux méthodes sont disponibles dans la modale d'import :\n\n📂 Depuis PRONOTE (CSV) — Méthode recommandée\n1. Connectez-vous sur PRONOTE (version web)\n2. Mes données → Liste d'élèves\n3. Sélectionnez la classe souhaitée\n4. Cliquez sur le bouton Export ou l'icône CSV\n5. Téléchargez le fichier .csv\n6. Dans ClassPro Desktop, cliquez sur "Sélectionner le fichier CSV"\n7. Choisissez votre fichier — les élèves sont importés automatiquement\n\n✏️ Coller une liste texte — Méthode alternative\nCollez directement une liste au format NOM Prénom (un par ligne).\n\nDans les deux cas, les doublons sont ignorés et les guillemets sont supprimés automatiquement.`,
       },
       {
         titre: 'Ajouter des élèves manuellement',
@@ -232,16 +240,20 @@ const GUIDES = [
     tags: ['edt', 'emploi', 'temps', 'pronote', 'pdf', 'semaine', 'AB', 'cours', 'créneau'],
     sections: [
       {
-        titre: 'À quoi sert ce module ?',
+        titre: "À quoi sert ce module ?",
         contenu: `Le module Emploi du temps affiche votre planning hebdomadaire sous forme de grille horaire (lundi → vendredi, 8h → 18h). Il gère les semaines A/B et permet de lier chaque créneau à un cours préparé.`,
       },
       {
         titre: 'Importer depuis un PDF Pronote',
-        contenu: `Cliquez sur "📄 Importer PDF Pronote" dans le header.\n\nComment exporter depuis Pronote :\n• Emploi du temps → Imprimer → Format PDF → Toutes semaines\n\nClassPro Desktop analyse le PDF et détecte automatiquement :\n• Les jours et horaires de chaque cours\n• Les semaines A et B\n• Le nom de chaque matière\n• La couleur assignée automatiquement\n\nUne prévisualisation s'affiche avant l'import. Vous pouvez vérifier tous les cours détectés avant de les ajouter. Les doublons sont automatiquement ignorés.`,
+        contenu: `Cliquez sur "📄 Importer l'EDT" dans le header.\n\nComment exporter depuis Pronote :\n• Emploi du temps → Imprimer → Format PDF → Toutes semaines\n\nClassPro Desktop analyse le PDF et détecte automatiquement les jours, horaires, semaines A/B et matières.\n\nAvant de confirmer l'import, une modale vous permet de configurer chaque cours détecté :\n• Salle — saisissez le numéro ou nom de salle\n• Classe liée — sélectionnez la classe correspondante (pré-remplie automatiquement si le nom de la classe apparaît dans le titre du cours)\n• Couleur — choisissez parmi 6 teintes\n\nLes doublons sont automatiquement ignorés.`,
       },
       {
         titre: 'Ajouter un cours manuellement',
         contenu: `Cliquez sur "+ Ajouter un cours" pour saisir manuellement un créneau.\n\nChamps disponibles :\n• Matière / Titre — nom affiché sur la grille\n• Salle — optionnel, affiché sous le titre\n• Jour — lundi à vendredi\n• Semaine — A, B, ou A et B (toutes)\n• Heure de début et de fin — au pas de 5 minutes\n• Classe liée — pour l'automatisation\n• Couleur — 6 teintes disponibles\n\nCliquez sur un bloc existant pour le modifier.`,
+      },
+      {
+        titre: 'Barre de navigation par semaine',
+        contenu: `Une barre de navigation horizontale sous le header vous permet de passer directement à n'importe quelle semaine de l'année scolaire.\n\nLes semaines sont numérotées S1, S2... depuis le premier lundi de la rentrée.\n\nCodes visuels :\n• Semaine active — soulignée en bleu\n• Semaine courante — fond bleu léger\n• Point orange sous le numéro — semaine de vacances configurée\n\nPour configurer le début de l'année scolaire :\n1. Cliquez sur ⚙️ à droite de la barre\n2. Sélectionnez le premier lundi de la rentrée\n3. Cliquez sur Enregistrer\n\nSi la barre n'est pas encore configurée, un bandeau vous invite à la configurer.`,
       },
       {
         titre: 'Semaines A et B',
@@ -264,7 +276,7 @@ const GUIDES = [
     tags: ['cours', 'préparer', 'fiche', 'objectif', 'déroulement', 'section', 'aperçu', 'pdf'],
     sections: [
       {
-        titre: 'À quoi sert ce module ?',
+        titre: "À quoi sert ce module ?",
         contenu: `Le module Créer un cours (section Préparer) est un éditeur de fiches de préparation de cours. Contrairement au Carnet de bord qui enregistre ce qui s'est passé, ce module sert à préparer en amont ce que vous allez faire.`,
       },
       {
@@ -290,6 +302,79 @@ const GUIDES = [
       {
         titre: 'Lier un cours à un créneau EDT',
         contenu: `Depuis l'Emploi du temps, faites un clic droit sur un bloc de cours → "Créer un cours pour ce créneau".\n\nVous pouvez aussi lier un cours existant à un créneau ou le consulter directement depuis l'EDT. Un icône 📖 apparaît sur les blocs qui ont un cours lié.`,
+      },
+    ],
+  },
+
+  {
+    id: 'plan-classe',
+    icon: '🏫',
+    titre: 'Plan de classe',
+    tags: ['plan', 'classe', 'salle', 'placement', 'eleve', 'siege', 'bureau'],
+    sections: [
+      {
+        titre: "À quoi sert le Plan de classe ?",
+        contenu: `Ce module vous permet de créer un plan de salle virtuel et de placer vos élèves sur les différents sièges. Idéal pour préparer vos cours, gérer les placements et les mémoriser d'une séance à l'autre.`,
+      },
+      {
+        titre: 'Créer un plan',
+        contenu: `1. Sélectionnez une classe dans la sidebar\n2. Glissez des éléments depuis la palette de gauche vers la grille\n• Bureau élève — siège standard\n• Bureau prof — position de l'enseignant\n• Table groupe — pour les travaux en îlots\n\n3. Repositionnez les éléments en les faisant glisser sur la grille\n4. Redimensionnez-les en tirant les poignées de coin`,
+      },
+      {
+        titre: 'Placer les élèves',
+        contenu: `Une fois les bureaux posés :\n1. Cliquez sur un élève dans la liste à droite\n2. Cliquez sur un bureau pour l'y assigner\n\nL'élève apparaît dans le bureau avec ses initiales. Cliquez sur un bureau occupé pour libérer la place.`,
+      },
+      {
+        titre: 'Zoom et navigation',
+        contenu: `Utilisez les boutons + et − pour zoomer sur la grille (de 40% à 200%). Le bouton de réinitialisation remet le zoom à 100%.\n\nLe plan est sauvegardé automatiquement par classe dans votre fichier JSON.`,
+      },
+    ],
+  },
+  {
+    id: 'cours',
+    icon: '📖',
+    titre: 'Créer un cours',
+    tags: ['cours', 'preparation', 'seance', 'section', 'objectif', 'deroulement', 'edt'],
+    sections: [
+      {
+        titre: "À quoi sert ce module ?",
+        contenu: `Le module Créer un cours vous permet de préparer vos cours sous forme de fiches structurées, indépendamment du carnet de bord. Chaque cours peut être lié à un créneau de l'EDT pour s'afficher directement sur votre planning.`,
+      },
+      {
+        titre: 'Créer un nouveau cours',
+        contenu: `1. Cliquez sur "+ Nouveau cours"\n2. Renseignez :\n   • Titre — nom du cours (obligatoire)\n   • Date de la séance — optionnel\n   • Classe liée — pour retrouver le cours facilement\n   • Séquence liée — si la classe a une progression annuelle\n3. Cliquez sur Créer\n\nLe cours est créé avec 3 sections par défaut : Objectifs, Déroulement / Activité, Devoirs.`,
+      },
+      {
+        titre: "Remplir et organiser les sections",
+        contenu: `Chaque cours est composé de sections librement éditables :\n• Cliquez dans une section pour saisir votre contenu\n• Ajoutez des sections avec le bouton "+ Section"\n• Réorganisez-les par glisser-déposer\n• Supprimez une section avec l'icône 🗑️`,
+      },
+      {
+        titre: "Lier un cours à l'EDT",
+        contenu: `Depuis l'EDT, faites un clic droit sur un créneau → "Créer un cours pour ce créneau".\n\nUn icône 📖 apparaît sur le créneau pour la semaine correspondant à la date du cours. Cliquez sur l'icône pour accéder directement au cours lié.\n\nVous pouvez aussi lier un cours existant à un créneau, ou délier un cours via le même menu contextuel.`,
+      },
+    ],
+  },
+  {
+    id: 'gamification',
+    icon: '🏆',
+    titre: 'Profil & badges',
+    tags: ['badge', 'xp', 'niveau', 'gamification', 'profil', 'recompense', 'points'],
+    sections: [
+      {
+        titre: 'Le système de progression',
+        contenu: `ClassPro Desktop intègre un système de gamification pour rendre votre utilisation plus engageante. En utilisant les différents modules, vous gagnez des XP et débloquez des badges.\n\nNiveaux disponibles :\n🌱 Niveau 1 — Stagiaire (0 XP)\n📚 Niveau 2 — Enseignant (50 XP)\n✏️ Niveau 3 — Pédagogue (150 XP)\n🏆 Niveau 4 — Formateur (300 XP)\n⭐ Niveau 5 — Expert ClassPro (600 XP)`,
+      },
+      {
+        titre: 'Accéder à votre profil',
+        contenu: `Cliquez sur votre nom en bas de la sidebar pour ouvrir la modale de profil.\n\nVous y trouverez :\n• Votre niveau et barre de progression XP\n• L'onglet Profil — modifier vos informations personnelles\n• L'onglet Badges — voir tous les badges débloqués et à débloquer\n• L'onglet Mémo — stocker vos codes et identifiants en local\n• L'onglet Feedback — envoyer un retour à l'équipe`,
+      },
+      {
+        titre: 'Débloquer des badges',
+        contenu: `Les badges se débloquent automatiquement en utilisant l'application :\n\n🚀 Bienvenue — premier lancement\n📄 Premier fichier — ouvrir un JSON\n👥 Ma première classe — créer une classe\n📅 EDT importé — importer un PDF Pronote\n📓 Carnet de bord — sauvegarder une fiche\n📄 Générateur PDF — générer un premier PDF\n🌙 Nuit blanche — activer le mode sombre\n🏖 Vacances méritées — configurer les vacances\n📅 Assidu — ouvrir l'app 7 jours de suite\n🤝 Ambassadeur — envoyer un feedback\n... et bien d'autres à découvrir !`,
+      },
+      {
+        titre: "Code de déverrouillage",
+        contenu: `Certains badges spéciaux se débloquent via un code secret.\n\nPour saisir un code :\n1. Ouvrez votre profil (clic sur votre nom en bas de la sidebar)\n2. Allez dans l'onglet Badges\n3. Faites défiler jusqu'en bas — vous trouverez le champ "Code de déverrouillage"\n4. Saisissez votre code et cliquez sur Valider`,
       },
     ],
   },
