@@ -59,7 +59,7 @@ function Shell() {
   const [module, setModule] = useState('accueil');
   const [cpData, setCpData] = useState(null);       // données parsées
   const [filePath, setFilePath] = useState(null);   // chemin du fichier ouvert
-  const [appVersion, setAppVersion] = useState('1.0.0');
+  const [appVersion, setAppVersion] = useState('1.0.1');
   const [theme, setTheme] = useState(() => localStorage.getItem('cpd-theme') || 'light');
   const [showAbout,    setShowAbout]    = useState(false);
   const [showTour,     setShowTour]     = useState(() => !localStorage.getItem('cpd-tour-done'));
@@ -283,7 +283,9 @@ function Shell() {
       />
 
       <div className="main-area">
-        {renderModule()}
+        <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column', minHeight:0 }}>
+          {renderModule()}
+        </div>
 
         <div className="app-footer">
           <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>

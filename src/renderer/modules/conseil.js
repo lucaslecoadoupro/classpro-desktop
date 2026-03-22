@@ -4,8 +4,19 @@ function ModuleConseil({ cpData }) {
   const [selEleve, setSelEleve] = useState(null);
   const [search, setSearch] = useState('');
   const [filtPole, setFiltPole] = useState('');
-  // optionsPdf : options d'affichage du tableau (moyenne classe visible par défaut)
   const optionsPdf = { moyClasse: true };
+
+  const inputStyle = {
+    padding: '.5rem .75rem',
+    border: '1.5px solid var(--border)',
+    borderRadius: 'var(--r-s)',
+    background: 'var(--surface2)',
+    color: 'var(--text)',
+    fontFamily: 'Roboto, sans-serif',
+    fontSize: '.85rem',
+    outline: 'none',
+    boxSizing: 'border-box',
+  };
 
   if (!cpData || bulletins.length === 0) {
     return <ModulePlaceholder icon="🎓" title="Conseil de classe" sub="Aucun bulletin importé dans ce fichier ClassPro." soon={false} />;

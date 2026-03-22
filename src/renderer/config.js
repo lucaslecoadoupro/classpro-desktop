@@ -82,7 +82,19 @@ function basename(path) {
   return path ? path.split(/[\\/]/).pop() : '';
 }
 
-// ── Toast system ─────────────────────────────────────────────────────────────
+// ── ModulePlaceholder ────────────────────────────────────────────────────────
+function ModulePlaceholder({ icon = '🔧', title = 'Module', sub = '', soon = false }) {
+  return (
+    <div className="module-placeholder">
+      <div className="module-placeholder-icon">{icon}</div>
+      <div className="module-placeholder-title">{title}</div>
+      {sub && <div className="module-placeholder-sub">{sub}</div>}
+      {soon && <span className="badge-soon">Bientôt disponible</span>}
+    </div>
+  );
+}
+
+
 let _toastId = 0;
 function useToast() {
   const [toasts, setToasts] = useState([]);
