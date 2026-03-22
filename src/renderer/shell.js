@@ -188,6 +188,7 @@ function Shell() {
     'cdc-edt-refA': 'edtRefA',
     'cdc-cours':    'cours',
     'cdc-plans':    'plans',   // ← Plan de classe
+    'cdc-reunions': 'reunions', // ← Réunions
   };
   const handleDataChange = (key, value) => {
     setCpData(prev => {
@@ -252,6 +253,10 @@ function Shell() {
         return <ModuleCours cpData={cpData} onDataChange={handleDataChange} />;
       case 'plan-classe':
         return <ModulePlanClasse cpData={cpData} onDataChange={handlePlanChange} />;
+      case 'reunions':
+        return <ModuleReunions cpData={cpData} onDataChange={handleDataChange} pushToast={pushToast} />;
+      case 'pdf-reunions':
+        return <ModulePdfReunions cpData={cpData} />;
       case 'academie':
         return <ModuleAcademie onStartTour={() => { localStorage.removeItem('cpd-tour-done'); setShowTour(true); }} />;
       default:

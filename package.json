@@ -32,8 +32,15 @@
     "productName": "ClassPro Desktop",
     "copyright": "© 2026 Lucas Le Coadou",
     "directories": {
+      
       "output": "dist"
     },
+    "extraResources": [
+  {
+    "from": "assets/classpro",
+    "to": "assets/classpro"
+  }
+],
     "files": [
       "src/**/*",
       "assets/**/*",
@@ -70,14 +77,9 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": false,
-      "installerLanguages": [
-        "French"
-      ],
-      "language": "1036",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "ClassPro Desktop",
-      "installerHeader": "assets/nsis-header.bmp",
       "deleteAppDataOnUninstall": false
     },
     "dmg": {

@@ -5491,6 +5491,208 @@ function ManuelPDF(){
   </>);
 }
 
+/* ══ MODULE RÉUNIONS (Web) ══════════════════════════════════════════════ */
+function ReunionsModule(){
+  const TYPES=[
+    {id:'famille',icon:'👨\u200d👩\u200d👧',label:'Réunion famille',color:'#3b82f6'},
+    {id:'pedagogique',icon:'📚',label:'Réunion pédagogique',color:'#8b5cf6'},
+    {id:'equipe',icon:'👥',label:"Réunion d'équipe",color:'#06b6d4'},
+    {id:'conseil-ped',icon:'🏫',label:'Conseil pédagogique',color:'#f59e0b'},
+    {id:'commission',icon:'⚖️',label:'Commission éducative',color:'#f97316'},
+    {id:'discipline',icon:'🔴',label:'Conseil de discipline',color:'#ef4444'},
+    {id:'ca',icon:'🏛️',label:"Conseil d'administration",color:'#10b981'},
+  ];
+  const COMMUNS=[
+    {id:'date',label:'Date',type:'date'},{id:'heure',label:'Heure',type:'time'},
+    {id:'lieu',label:'Lieu / Salle',type:'text'},
+    {id:'ordre_jour',label:"Ordre du jour",type:'textarea'},
+    {id:'participants',label:'Participants',type:'textarea'},
+    {id:'cr',label:'Compte-rendu / Décisions',type:'textarea'},
+    {id:'suivi',label:'Points de suivi / Actions',type:'textarea'},
+    {id:'docs',label:'Documents / Pièces jointes',type:'textarea'},
+  ];
+  const SPEC={
+    famille:[{id:'eleve',label:'Élève concerné(e)',type:'text'},{id:'motif',label:'Motif de convocation',type:'textarea'},{id:'decisions',label:'Décisions prises',type:'textarea'},{id:'suivi_el',label:'Suivi prévu',type:'textarea'}],
+    pedagogique:[{id:'discipline',label:'Discipline(s)',type:'text'},{id:'objectifs',label:'Objectifs',type:'textarea'},{id:'dec_ped',label:'Décisions pédagogiques',type:'textarea'},{id:'repartition',label:'Répartition séquences',type:'textarea'}],
+    equipe:[{id:'niveaux',label:'Niveau(x)',type:'text'},{id:'thematique',label:'Thématique',type:'text'},{id:'actions',label:'Actions / Responsable / Échéance',type:'textarea'}],
+    'conseil-ped':[{id:'odj_chef',label:"Ordre du jour chef d'étal.",type:'textarea'},{id:'discussion',label:'Discussion',type:'textarea'},{id:'votes',label:'Votes',type:'textarea'},{id:'qdiv',label:'Questions diverses',type:'textarea'}],
+    commission:[{id:'eleve',label:'Élève',type:'text'},{id:'mesures',label:'Mesures envisagées',type:'textarea'},{id:'engagement',label:"Engagement élève",type:'textarea'},{id:'decision',label:'Décision',type:'textarea'}],
+    discipline:[{id:'eleve',label:'Élève',type:'text'},{id:'faits',label:'Faits reprochés',type:'textarea'},{id:'sanctions',label:'Sanctions proposées',type:'textarea'},{id:'decision',label:'Décision finale',type:'textarea'}],
+    ca:[{id:'quorum',label:'Quorum',type:'text'},{id:'resolutions',label:'Résolutions adoptées',type:'textarea'},{id:'votes',label:'Résultats des votes',type:'textarea'}],
+  };
+
+  const load=()=>{try{return JSON.parse(localStorage.getItem('cdc-reunions')||'[]')}catch{return[]}};
+  const[reunions,setReunions]=useState(load);
+  const[vue,setVue]=useState('liste');
+  const[draft,setDraft]=useState(null);
+  const[selId,setSelId]=useState(null);
+
+  useEffect(()=>{localStorage.setItem('cdc-reunions',JSON.stringify(reunions));},[reunions]);
+
+  const typeInfo=id=>TYPES.find(t=>t.id===id)||TYPES[0];
+  const fmtD=iso=>{if(!iso)return'—';return new Date(iso+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})};
+
+  const newReunion=typeId=>{
+    const champs={};
+    COMMUNS.forEach(c=>{champs[c.id]='';});
+    (SPEC[typeId]||[]).forEach(c=>{champs[c.id]='';});
+    const r={id:'reun-'+Date.now(),type:typeId,titre:'',createdAt:new Date().toISOString(),champs};
+    setDraft(r);setVue('edit');
+  };
+
+  const saveDraft=()=>{
+    if(!draft||!draft.titre.trim()){alert('Le titre est obligatoire.');return;}
+    const exists=reunions.find(r=>r.id===draft.id);
+    setReunions(exists?reunions.map(r=>r.id===draft.id?draft:r):[...reunions,draft]);
+    setSelId(draft.id);setVue('detail');
+  };
+
+  const del=id=>{if(!confirm('Supprimer ?'))return;setReunions(reunions.filter(r=>r.id!==id));setVue('liste');};
+
+  const is={padding:'.55rem .75rem',border:'1.5px solid var(--border)',borderRadius:'var(--r-s)',background:'var(--surface2)',color:'var(--text)',fontFamily:'Roboto,sans-serif',fontSize:'.85rem',outline:'none',width:'100%',boxSizing:'border-box'};
+  const ta={...is,resize:'vertical',minHeight:72,lineHeight:1.6};
+
+  const reunion=reunions.find(r=>r.id===selId)||null;
+  const type=reunion?typeInfo(reunion.type):null;
+  const draftType=draft?typeInfo(draft.type):null;
+
+  if(vue==='new') return(
+    <>
+      <div className="page-hd"><div><div className="phd-badge">🤝 Réunions</div><div className="phd-title">Nouvelle réunion</div></div><div className="phd-actions"><button className="btn" onClick={()=>setVue('liste')}>← Retour</button></div></div>
+      <div className="page-content"><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:'1rem',maxWidth:800}}>
+        {TYPES.map(t=>(
+          <button key={t.id} onClick={()=>newReunion(t.id)}
+            style={{display:'flex',alignItems:'center',gap:'.875rem',padding:'1.1rem',border:`1.5px solid ${t.color}33`,borderRadius:12,background:`${t.color}08`,cursor:'pointer',textAlign:'left',fontFamily:'Roboto,sans-serif',transition:'all .15s'}}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor=t.color;e.currentTarget.style.background=`${t.color}15`;}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor=`${t.color}33`;e.currentTarget.style.background=`${t.color}08`;}}>
+            <div style={{width:40,height:40,borderRadius:10,background:`${t.color}20`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.2rem',flexShrink:0}}>{t.icon}</div>
+            <div style={{fontWeight:700,fontSize:'.88rem',color:'var(--text)'}}>{t.label}</div>
+          </button>
+        ))}
+      </div></div>
+    </>
+  );
+
+  if(vue==='edit'&&draft) return(
+    <>
+      <div className="page-hd">
+        <div><div className="phd-badge" style={{background:draftType?.color+'22',color:draftType?.color}}>{draftType?.icon} {draftType?.label}</div><div className="phd-title">{reunions.find(r=>r.id===draft.id)?'Modifier':'Nouvelle réunion'}</div></div>
+        <div className="phd-actions"><button className="btn" onClick={()=>setVue(reunions.find(r=>r.id===draft.id)?'detail':'liste')}>Annuler</button><button className="btn btn-primary" onClick={saveDraft}>💾 Sauvegarder</button></div>
+      </div>
+      <div className="page-content"><div style={{maxWidth:680}}>
+        <div style={{marginBottom:'1rem'}}>
+          <label style={{fontSize:'.7rem',fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:'.07em',display:'block',marginBottom:'.28rem'}}>Titre *</label>
+          <input value={draft.titre} onChange={e=>setDraft(d=>({...d,titre:e.target.value}))} placeholder={`${draftType?.label} — `} style={{...is,fontSize:'1rem',fontWeight:600}}/>
+        </div>
+        <div style={{padding:'.75rem 1rem',background:'rgba(59,91,219,.05)',border:'1px solid rgba(59,91,219,.15)',borderRadius:10,marginBottom:'1rem'}}>
+          <div style={{fontSize:'.65rem',fontWeight:700,color:'var(--accent)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:'.75rem'}}>Informations générales</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0 1rem'}}>
+            {COMMUNS.slice(0,3).map(c=>(
+              <div key={c.id} style={{marginBottom:'.65rem'}}>
+                <label style={{fontSize:'.7rem',fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:'.07em',display:'block',marginBottom:'.22rem'}}>{c.label}</label>
+                <input type={c.type} value={draft.champs[c.id]||''} onChange={e=>setDraft(d=>({...d,champs:{...d.champs,[c.id]:e.target.value}}))} style={is}/>
+              </div>
+            ))}
+          </div>
+          {COMMUNS.slice(3).map(c=>(
+            <div key={c.id} style={{marginBottom:'.65rem'}}>
+              <label style={{fontSize:'.7rem',fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:'.07em',display:'block',marginBottom:'.22rem'}}>{c.label}</label>
+              <textarea value={draft.champs[c.id]||''} onChange={e=>setDraft(d=>({...d,champs:{...d.champs,[c.id]:e.target.value}}))} rows={3} style={ta}/>
+            </div>
+          ))}
+        </div>
+        {(SPEC[draft.type]||[]).length>0&&(
+          <div style={{padding:'.75rem 1rem',background:`${draftType?.color}08`,border:`1px solid ${draftType?.color}25`,borderRadius:10}}>
+            <div style={{fontSize:'.65rem',fontWeight:700,color:draftType?.color,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:'.75rem'}}>{draftType?.icon} {draftType?.label}</div>
+            {(SPEC[draft.type]||[]).map(c=>(
+              <div key={c.id} style={{marginBottom:'.65rem'}}>
+                <label style={{fontSize:'.7rem',fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:'.07em',display:'block',marginBottom:'.22rem'}}>{c.label}</label>
+                {c.type==='textarea'
+                  ?<textarea value={draft.champs[c.id]||''} onChange={e=>setDraft(d=>({...d,champs:{...d.champs,[c.id]:e.target.value}}))} rows={3} style={ta}/>
+                  :<input type={c.type} value={draft.champs[c.id]||''} onChange={e=>setDraft(d=>({...d,champs:{...d.champs,[c.id]:e.target.value}}))} style={is}/>
+                }
+              </div>
+            ))}
+          </div>
+        )}
+      </div></div>
+    </>
+  );
+
+  if(vue==='detail'&&reunion) return(
+    <>
+      <div className="page-hd">
+        <div><div className="phd-badge" style={{background:type.color+'22',color:type.color}}>{type.icon} {type.label}</div><div className="phd-title">{reunion.titre||type.label}</div><div className="phd-sub">{fmtD(reunion.champs?.date)}{reunion.champs?.lieu?' · '+reunion.champs.lieu:''}</div></div>
+        <div className="phd-actions">
+          <button className="btn" onClick={()=>setVue('liste')}>← Retour</button>
+          <button className="btn btn-ghost" onClick={()=>{setDraft({...reunion,champs:{...reunion.champs}});setVue('edit');}}>✏️ Modifier</button>
+          <button className="btn btn-danger" style={{opacity:.8}} onClick={()=>del(reunion.id)}>🗑️</button>
+        </div>
+      </div>
+      <div className="page-content"><div style={{maxWidth:680}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'.5rem',marginBottom:'1.25rem'}}>
+          {[['📅 Date',fmtD(reunion.champs?.date)],['🕐 Heure',reunion.champs?.heure||'—'],['📍 Lieu',reunion.champs?.lieu||'—']].map(([l,v])=>(
+            <div key={l} style={{padding:'.55rem .75rem',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:10}}>
+              <div style={{fontSize:'.6rem',fontWeight:700,color:'var(--text3)',marginBottom:'.2rem'}}>{l}</div>
+              <div style={{fontSize:'.85rem',fontWeight:600,color:'var(--text)'}}>{v}</div>
+            </div>
+          ))}
+        </div>
+        {[...COMMUNS.slice(3),...(SPEC[reunion.type]||[])].map(c=>{
+          const v=reunion.champs?.[c.id];
+          if(!v?.trim())return null;
+          return(
+            <div key={c.id} style={{marginBottom:'.875rem'}}>
+              <div style={{fontSize:'.65rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:'.3rem'}}>{c.label}</div>
+              <div style={{fontSize:'.87rem',color:'var(--text)',lineHeight:1.7,whiteSpace:'pre-wrap',padding:'.6rem .875rem',background:'var(--surface2)',borderRadius:8,border:'1px solid var(--border)'}}>{v}</div>
+            </div>
+          );
+        })}
+      </div></div>
+    </>
+  );
+
+  return(
+    <>
+      <div className="page-hd">
+        <div><div className="phd-badge">🤝 Réunions</div><div className="phd-title">Réunions</div><div className="phd-sub">{reunions.length} réunion{reunions.length>1?'s':''}</div></div>
+        <div className="phd-actions"><button className="btn btn-primary" onClick={()=>setVue('new')}>+ Nouvelle réunion</button></div>
+      </div>
+      <div className="page-content">
+        {reunions.length===0?(
+          <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'4rem',gap:'1rem',color:'var(--text3)'}}>
+            <div style={{fontSize:'3rem',opacity:.15}}>🤝</div>
+            <div style={{fontWeight:700,color:'var(--text2)'}}>Aucune réunion</div>
+            <div style={{fontSize:'.83rem'}}>Créez votre première réunion avec le bouton ci-dessus.</div>
+          </div>
+        ):(
+          <div style={{display:'flex',flexDirection:'column',gap:'.5rem'}}>
+            {reunions.slice().sort((a,b)=>(b.champs?.date||b.createdAt)>(a.champs?.date||a.createdAt)?1:-1).map(r=>{
+              const t=typeInfo(r.type);
+              return(
+                <div key={r.id} onClick={()=>{setSelId(r.id);setVue('detail');}}
+                  style={{display:'flex',alignItems:'center',gap:'1rem',padding:'.875rem 1.25rem',background:'var(--surface)',border:`1.5px solid var(--border)`,borderRadius:12,cursor:'pointer',transition:'all .15s',borderLeft:`4px solid ${t.color}`}}
+                  onMouseEnter={e=>e.currentTarget.style.background=`${t.color}06`}
+                  onMouseLeave={e=>e.currentTarget.style.background='var(--surface)'}>
+                  <div style={{width:40,height:40,borderRadius:10,background:`${t.color}18`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',flexShrink:0}}>{t.icon}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:700,fontSize:'.9rem',color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.titre||t.label}</div>
+                    <div style={{fontSize:'.73rem',color:'var(--text3)',display:'flex',gap:'.5rem'}}>
+                      <span style={{color:t.color,fontWeight:600}}>{t.label}</span>
+                      {r.champs?.date&&<span>📅 {fmtD(r.champs.date)}</span>}
+                    </div>
+                  </div>
+                  <span style={{color:'var(--text3)',fontSize:'.8rem'}}>→</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
 const NAV=[
   {id:'dashboard',   icon:'🏠', label:'Accueil',             section:"Vue d'ensemble"},
   {id:'suivi',       icon:'👥', label:'Suivi de classe',     section:'Gestion de classe'},
@@ -5501,6 +5703,7 @@ const NAV=[
   {id:'edt',         icon:'📅', label:'Emploi du temps',     section:'Outils pédagogiques'},
   {id:'whiteboard',  icon:'🖊️', label:'Tableau blanc',       section:'Outils pédagogiques'},
   {id:'doc',         icon:'📖', label:'Étude de document',   section:'Outils pédagogiques'},
+  {id:'reunions',    icon:'🤝', label:'Réunions',            section:'Ressources'},
   {id:'liens',       icon:'🔗', label:'Liens & Raccourcis',  section:'Ressources'},
   {id:'manuel',      icon:'📚', label:'Manuel',              section:'Ressources'},
 ];
@@ -5654,6 +5857,7 @@ function Shell(){
     'dash-travail-rapide',
     'cdc-cours',          // cours prepares (Desktop)
     'cdc-jours-annules',  // journees annulees (Desktop)
+    'cdc-reunions',       // reunions (Desktop + Web)
   ];
 
   const exportBackup=()=>{
@@ -6089,6 +6293,7 @@ function Shell(){
         {module==='whiteboard'  &&<TableauBlanc/>}
         {module==='doc'         &&<EtudeDocument/>}
         {module==='edt'         &&<EmploiDuTemps/>}
+        {module==='reunions'    &&<ReunionsModule/>}
         {module==='liens'       &&<LiensRaccourcis/>}
         {module==='manuel'      &&<ManuelPDF/>}
 
