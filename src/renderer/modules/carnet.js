@@ -13,11 +13,47 @@ function ModuleCarnet({ cpData, onDataChange }) {
   const [showDel, setShowDel] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
   const [search, setSearch] = useState('');
+  const [showDelPeriode, setShowDelPeriode] = useState(false);
+  const [delPeriode, setDelPeriode] = useState('tout'); // 'jour' | 'semaine' | 'mois' | 'tout'
+  const [delPreview, setDelPreview] = useState([]); // fiches à supprimer
 
   // Sync vers parent à chaque modif
   useEffect(() => { onDataChange('cdc-fiches', fiches); }, [fiches]);
 
   const cls = classes.find(c => c.id === selCls);
+
+  const getFichesParPeriode = (periode) => {
+    const clsFiches = fiches[selCls] || [];
+    if (periode === 'tout') return clsFiches;
+    const now = new Date();
+    const todayIso = isoDate(now);
+    if (periode === 'jour') return clsFiches.filter(f => f.date === todayIso);
+    if (periode === 'semaine') {
+      const lundi = new Date(now); lundi.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
+      const vendredi = new Date(lundi); vendredi.setDate(lundi.getDate() + 4);
+      const lunIso = isoDate(lundi), venIso = isoDate(vendredi);
+      return clsFiches.filter(f => f.date >= lunIso && f.date <= venIso);
+    }
+    if (periode === 'mois') {
+      const debutMois = isoDate(new Date(now.getFullYear(), now.getMonth(), 1));
+      const finMois   = isoDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+      return clsFiches.filter(f => f.date >= debutMois && f.date <= finMois);
+    }
+    return [];
+  };
+
+  const openDelPeriode = () => {
+    const preview = getFichesParPeriode(delPeriode);
+    setDelPreview(preview);
+    setShowDelPeriode(true);
+  };
+
+  const deleteParPeriode = () => {
+    const idsToDelete = new Set(delPreview.map(f => f.id));
+    setFiches(p => ({ ...p, [selCls]: (p[selCls] || []).filter(f => !idsToDelete.has(f.id)) }));
+    if (idsToDelete.has(selFiche)) { setSelFiche(null); setDraft(null); }
+    setShowDelPeriode(false);
+  };
   const clsFiches = (fiches[selCls] || [])
     .slice()
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -35,11 +71,9 @@ function ModuleCarnet({ cpData, onDataChange }) {
 
   const saveFiche = () => {
     if (!draft || !selCls || !selFiche) return;
-    const hasContent = draft.objectif?.trim() || draft.activite?.trim() || draft.devoirs?.trim();
     setFiches(p => ({ ...p, [selCls]: (p[selCls] || []).map(f => f.id === selFiche ? { ...draft } : f) }));
     setSavedOk(true);
     setTimeout(() => setSavedOk(false), 2200);
-    if (hasContent) cpdUnlockBadge('first_fiche');
   };
 
   const createFiche = () => {
@@ -73,6 +107,12 @@ function ModuleCarnet({ cpData, onDataChange }) {
           <div className="phd-sub">{cls ? `${cls.name} · ${(fiches[selCls] || []).length} fiche(s)` : 'Sélectionnez une classe'}</div>
         </div>
         <div className="phd-actions">
+          {selCls && (fiches[selCls]||[]).length > 0 && (
+            <button className="btn btn-ghost" style={{ color:'var(--danger)', borderColor:'var(--danger)' }}
+              onClick={() => { setDelPeriode('tout'); setDelPreview(getFichesParPeriode('tout')); setShowDelPeriode(true); }}>
+              🗑️ Supprimer...
+            </button>
+          )}
           {selCls && <button className="btn btn-ghost" onClick={() => setShowNew(true)}>+ Nouvelle fiche</button>}
         </div>
       </div>
@@ -264,6 +304,117 @@ function ModuleCarnet({ cpData, onDataChange }) {
       )}
 
       {/* ── Modal suppression ── */}
+      {/* Modale suppression par période */}
+      {showDelPeriode && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.6)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem', backdropFilter:'blur(2px)' }}
+          onClick={e => e.target===e.currentTarget && setShowDelPeriode(false)}>
+          <div style={{ background:'var(--surface)', borderRadius:12, width:460, maxHeight:'80vh', display:'flex', flexDirection:'column', boxShadow:'0 8px 32px rgba(0,0,0,.25)', overflow:'hidden', outline:'none' }}>
+            <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', background:'var(--surface2)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div style={{ fontWeight:700, fontSize:'.95rem' }}>🗑️ Supprimer des fiches</div>
+              <button onClick={() => setShowDelPeriode(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'1.3rem', color:'var(--text3)' }}>×</button>
+            </div>
+            <div style={{ padding:'1.25rem', display:'flex', flexDirection:'column', gap:'.875rem' }}>
+              {/* Sélecteur période */}
+              <div style={{ display:'flex', flexDirection:'column', gap:'.5rem' }}>
+                <label style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Période</label>
+                <div style={{ display:'flex', gap:'.4rem' }}>
+                  {[{id:'jour',label:"Aujourd'hui"},{id:'semaine',label:'Cette semaine'},{id:'mois',label:'Ce mois'},{id:'tout',label:'Tout'}].map(p => (
+                    <button key={p.id} onClick={() => { setDelPeriode(p.id); setDelPreview(getFichesParPeriode(p.id)); }}
+                      style={{ flex:1, padding:'.45rem .3rem', borderRadius:'var(--r-s)', border:`1.5px solid ${delPeriode===p.id ? 'var(--danger)' : 'var(--border)'}`, background: delPeriode===p.id ? 'rgba(220,38,38,.08)' : 'var(--surface)', color: delPeriode===p.id ? 'var(--danger)' : 'var(--text2)', fontFamily:'Roboto,sans-serif', fontSize:'.75rem', fontWeight: delPeriode===p.id ? 700 : 500, cursor:'pointer', transition:'all .13s' }}>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Aperçu */}
+              <div style={{ border:'1px solid var(--border)', borderRadius:'var(--r-s)', overflow:'hidden' }}>
+                <div style={{ padding:'.5rem .875rem', background:'var(--surface2)', fontSize:'.72rem', fontWeight:700, color:'var(--text2)', borderBottom:'1px solid var(--border)' }}>
+                  {delPreview.length} fiche{delPreview.length>1?'s':''} concernée{delPreview.length>1?'s':''}
+                </div>
+                <div style={{ maxHeight:200, overflowY:'auto' }}>
+                  {delPreview.length === 0 ? (
+                    <div style={{ padding:'1rem', textAlign:'center', color:'var(--text3)', fontSize:'.82rem', fontStyle:'italic' }}>Aucune fiche sur cette période</div>
+                  ) : delPreview.map(f => (
+                    <div key={f.id} style={{ display:'flex', alignItems:'center', gap:'.65rem', padding:'.42rem .875rem', borderBottom:'1px solid var(--border)', fontSize:'.8rem' }}>
+                      <span style={{ color:'var(--danger)', fontSize:'.7rem' }}>🗑️</span>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontWeight:600, color:'var(--text)' }}>{f.titre}</div>
+                        <div style={{ fontSize:'.7rem', color:'var(--text3)' }}>{f.date && new Date(f.date+'T12:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {delPreview.length > 0 && (
+                <div style={{ padding:'.6rem .875rem', background:'rgba(220,38,38,.06)', border:'1px solid rgba(220,38,38,.2)', borderRadius:'var(--r-s)', fontSize:'.78rem', color:'var(--danger)' }}>
+                  ⚠️ Cette action est irréversible. {delPreview.length} fiche{delPreview.length>1?'s':''} sera{delPreview.length>1?'nt':''} définitivement supprimée{delPreview.length>1?'s':''}.
+                </div>
+              )}
+              <div style={{ display:'flex', gap:'.5rem', justifyContent:'flex-end' }}>
+                <button className="btn" onClick={() => setShowDelPeriode(false)}>Annuler</button>
+                <button className="btn btn-danger" disabled={delPreview.length===0} onClick={deleteParPeriode}>
+                  Supprimer {delPreview.length > 0 ? `(${delPreview.length})` : ''}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modale suppression par période */}
+      {showDelPeriode && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.6)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem', backdropFilter:'blur(2px)' }}
+          onClick={e => e.target===e.currentTarget && setShowDelPeriode(false)}>
+          <div style={{ background:'var(--surface)', borderRadius:12, width:460, maxHeight:'80vh', display:'flex', flexDirection:'column', boxShadow:'0 8px 32px rgba(0,0,0,.25)', overflow:'hidden', outline:'none' }}>
+            <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', background:'var(--surface2)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div style={{ fontWeight:700, fontSize:'.95rem' }}>🗑️ Supprimer des fiches — {cls?.name}</div>
+              <button onClick={() => setShowDelPeriode(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'1.3rem', color:'var(--text3)' }}>×</button>
+            </div>
+            <div style={{ padding:'1.25rem', display:'flex', flexDirection:'column', gap:'.875rem' }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:'.5rem' }}>
+                <label style={{ fontSize:'.72rem', fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'.07em' }}>Période</label>
+                <div style={{ display:'flex', gap:'.4rem' }}>
+                  {[{id:'jour',label:"Aujourd'hui"},{id:'semaine',label:'Cette semaine'},{id:'mois',label:'Ce mois'},{id:'tout',label:'Tout'}].map(p => (
+                    <button key={p.id} onClick={() => { setDelPeriode(p.id); setDelPreview(getFichesParPeriode(p.id)); }}
+                      style={{ flex:1, padding:'.45rem .3rem', borderRadius:'var(--r-s)', border:`1.5px solid ${delPeriode===p.id ? 'var(--danger)' : 'var(--border)'}`, background: delPeriode===p.id ? 'rgba(220,38,38,.08)' : 'var(--surface)', color: delPeriode===p.id ? 'var(--danger)' : 'var(--text2)', fontFamily:'Roboto,sans-serif', fontSize:'.75rem', fontWeight: delPeriode===p.id ? 700 : 500, cursor:'pointer', transition:'all .13s' }}>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ border:'1px solid var(--border)', borderRadius:'var(--r-s)', overflow:'hidden' }}>
+                <div style={{ padding:'.5rem .875rem', background:'var(--surface2)', fontSize:'.72rem', fontWeight:700, color:'var(--text2)', borderBottom:'1px solid var(--border)' }}>
+                  {delPreview.length} fiche{delPreview.length>1?'s':''} concern{delPreview.length>1?'ées':'ée'}
+                </div>
+                <div style={{ maxHeight:200, overflowY:'auto' }}>
+                  {delPreview.length === 0 ? (
+                    <div style={{ padding:'1rem', textAlign:'center', color:'var(--text3)', fontSize:'.82rem', fontStyle:'italic' }}>Aucune fiche sur cette période</div>
+                  ) : delPreview.map(f => (
+                    <div key={f.id} style={{ display:'flex', alignItems:'center', gap:'.65rem', padding:'.42rem .875rem', borderBottom:'1px solid var(--border)', fontSize:'.8rem' }}>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontWeight:600, color:'var(--text)' }}>{f.titre}</div>
+                        <div style={{ fontSize:'.7rem', color:'var(--text3)' }}>{f.date && new Date(f.date+'T12:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {delPreview.length > 0 && (
+                <div style={{ padding:'.6rem .875rem', background:'rgba(220,38,38,.06)', border:'1px solid rgba(220,38,38,.2)', borderRadius:'var(--r-s)', fontSize:'.78rem', color:'var(--danger)' }}>
+                  ⚠️ Action irréversible. {delPreview.length} fiche{delPreview.length>1?'s':''} ser{delPreview.length>1?'ont':'a'} définitivement supprimée{delPreview.length>1?'s':''}.
+                </div>
+              )}
+              <div style={{ display:'flex', gap:'.5rem', justifyContent:'flex-end' }}>
+                <button className="btn" onClick={() => setShowDelPeriode(false)}>Annuler</button>
+                <button className="btn btn-danger" disabled={delPreview.length===0} onClick={deleteParPeriode}>
+                  Supprimer {delPreview.length > 0 ? `(${delPreview.length})` : ''}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showDel && (
         <Modal title="🗑️ Supprimer cette fiche ?" onClose={() => setShowDel(false)} width={380}>
           <div style={{ fontSize: '.88rem', color: 'var(--text2)', lineHeight: 1.6 }}>

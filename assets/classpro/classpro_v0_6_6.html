@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 110'><path d='M50 8 L84 22 L84 58 Q84 80 50 96 Q16 80 16 58 L16 22 Z' fill='%231e3a8a' stroke='%23d4b483' stroke-width='2.8'/><path d='M50 63 Q40 60 30 63 L30 44 Q40 41 50 44 Z' fill='white'/><path d='M50 63 Q60 60 70 63 L70 44 Q60 41 50 44 Z' fill='white'/></svg>" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#1e3a8a">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3798,7 +3799,7 @@ function TravNonRendus(){
               <div className="tnr-dv-hd">
                 <div>
                   <div className="tnr-dv-title">{dv.titre}</div>
-                  <div className="tnr-dv-meta">{dv.className}{dv.dateRendu&&' · À rendre le '+new Date(dv.dateRendu).toLocaleDateString('fr-FR')}</div>
+                  <div className="tnr-dv-meta">{dv.className}{dv.dateRendu&&' · À rendre le '+new Date(dv.dateRendu + 'T12:00').toLocaleDateString('fr-FR')}</div>
                   <div style={{display:'flex',gap:'.5rem',marginTop:'.3rem',fontSize:'.68rem',color:'var(--text2)'}}>
                     {['rendu','retard','nonrendu','dispense'].map(st=>{const cnt=dv.eleves.filter(e=>e.statut===st).length;return cnt>0?<span key={st}>{cnt} {STATUTS.find(s=>s.id===st)?.label.toLowerCase()}</span>:null})}
                   </div>
@@ -3842,7 +3843,7 @@ function TravNonRendus(){
                   return(
                     <div key={d.dvId} className="tnr-eleve-row">
                       <span style={{flex:1,fontWeight:500}}>{d.dvTitre}</span>
-                      {d.dvDate&&<span style={{fontSize:'.67rem',color:'var(--text3)'}}>{new Date(d.dvDate).toLocaleDateString('fr-FR')}</span>}
+                      {d.dvDate&&<span style={{fontSize:'.67rem',color:'var(--text3)'}}>{new Date(d.dvDate + 'T12:00').toLocaleDateString('fr-FR')}</span>}
                       <span className={`tnr-statut ${st?.cls}`}>{st?.label}</span>
                       <span className="tnr-relance-badge" onClick={()=>addRelance(d.dvId,el.id)}>🔔 {d.relances||0}</span>
                     </div>

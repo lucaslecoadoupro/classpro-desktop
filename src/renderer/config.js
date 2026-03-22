@@ -32,10 +32,6 @@ const NAV = [
     { id: 'pdf-carnet',      icon: '📄', label: 'PDF Carnet de bord' },
     { id: 'pdf-bulletins',   icon: '📄', label: 'PDF Bulletins' },
   ]},
-  { section: 'Réunions', items: [
-    { id: 'reunions',    icon: '🤝', label: 'Réunions' },
-    { id: 'pdf-reunions',icon: '📄', label: 'PDF Réunion' },
-  ]},
   { section: 'ClassPro Académie', items: [
     { id: 'academie',  icon: '📖', label: "Centre d'aide" },
     { id: 'classpro',  icon: '🛡️', label: 'ClassPro (logiciel)' },
@@ -65,7 +61,6 @@ function parseClassProJson(data) {
     edtRefA:     entries['cdc-edt-refA'] || null,
     liens:       parse('cdc-liens')    || [],
     bulletins:   parse('cdc-data')     || [],
-    reunions:    parse('cdc-reunions') || [],
     dashNotes:   parse('dash-notes')   || [],
     dashTaches:  parse('dash-taches')  || [],
     _raw: data, // on garde le brut pour le re-export
@@ -74,7 +69,8 @@ function parseClassProJson(data) {
 
 function fmtDate(isoStr) {
   if (!isoStr) return '—';
-  return new Date(isoStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const d = isoStr && isoStr.length === 10 ? new Date(isoStr + 'T12:00') : new Date(isoStr);
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function basename(path) {
@@ -105,17 +101,6 @@ function ToastStack({ toasts }) {
           <span>{t.msg}</span>
         </div>
       ))}
-    </div>
-  );
-}
-
-function ModulePlaceholder({ icon = '📦', title = 'Module', sub = '', soon = false }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '1rem', color: 'var(--text3)', padding: '2rem' }}>
-      <div style={{ fontSize: '3rem', opacity: .15 }}>{icon}</div>
-      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text2)' }}>{title}</div>
-      {sub && <div style={{ fontSize: '.83rem', color: 'var(--text3)', textAlign: 'center', lineHeight: 1.6, maxWidth: 340 }}>{sub}</div>}
-      {soon && <div style={{ fontSize: '.72rem', padding: '.28rem .75rem', borderRadius: 99, background: 'rgba(59,91,219,.08)', border: '1px solid rgba(59,91,219,.2)', color: 'var(--accent)', fontWeight: 600 }}>Bientôt disponible</div>}
     </div>
   );
 }
