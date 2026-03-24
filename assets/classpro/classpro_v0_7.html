@@ -447,7 +447,7 @@ input[type="file"]{display:none}
 .pdc-canvas-wrap::-webkit-scrollbar{width:8px;height:8px}
 .pdc-canvas-wrap::-webkit-scrollbar-track{background:var(--bg)}
 .pdc-canvas-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
-.pdc-canvas-inner{padding:24px;min-width:100%;min-height:100%}
+.pdc-canvas-inner{padding:12px 12px 50px 12px;min-width:100%;min-height:100%}
 .pdc-canvas{position:relative;background:var(--surface);border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,.07),0 0 0 1px var(--border);overflow:hidden}
 [data-theme="dark"] .pdc-canvas{box-shadow:0 2px 16px rgba(0,0,0,.3),0 0 0 1px var(--border)}
 
@@ -1445,12 +1445,16 @@ function WbTexte({w,update}){
   const[color,setColor]=useState(w.color||'#1a2236');
   const[bgColor,setBgColor]=useState(w.bgColor||'transparent');
   const[fontFamily,setFontFamily]=useState(w.fontFamily||'Roboto');
+  const[textAlign,setTextAlign]=useState(w.textAlign||'left');
   const editRef=useRef(null);
 
   // Initialiser le contenu une seule fois au montage
   useEffect(()=>{
     if(editRef.current && w.txt) editRef.current.innerHTML=w.txt;
   },[]); // eslint-disable-line
+
+  // Persister les options de style dès qu'elles changent
+  useEffect(()=>{ update({fontSize,bold,color,bgColor,fontFamily,textAlign}); },[fontSize,bold,color,bgColor,fontFamily,textAlign]); // eslint-disable-line
 
   const FONTS=[
     {v:'Roboto',        label:'Roboto'},
@@ -1471,6 +1475,13 @@ function WbTexte({w,update}){
       <div style={{display:'flex',gap:3,marginBottom:4,alignItems:'center',flexWrap:'wrap',flexShrink:0}}>
         <button onMouseDown={e=>e.preventDefault()} onClick={()=>setBold(b=>!b)}
           style={{width:24,height:24,borderRadius:4,border:`1.5px solid ${bold?'var(--accent)':'var(--border)'}`,background:bold?'var(--accent)':'var(--surface2)',color:bold?'#fff':'var(--text)',fontWeight:800,cursor:'pointer',fontSize:'.78rem',padding:0,display:'flex',alignItems:'center',justifyContent:'center'}}>B</button>
+        <div style={{height:20,width:1,background:'var(--border)',margin:'0 2px'}}/>
+        {[['left','⬅'],['center','↔'],['right','➡']].map(([a,icon])=>(
+          <button key={a} onMouseDown={e=>e.preventDefault()} onClick={()=>setTextAlign(a)}
+            title={a==='left'?'Aligner à gauche':a==='center'?'Centrer':'Aligner à droite'}
+            style={{width:24,height:24,borderRadius:4,border:`1.5px solid ${textAlign===a?'var(--accent)':'var(--border)'}`,background:textAlign===a?'var(--accent)':'var(--surface2)',color:textAlign===a?'#fff':'var(--text)',cursor:'pointer',fontSize:'.72rem',padding:0,display:'flex',alignItems:'center',justifyContent:'center'}}>{icon}</button>
+        ))}
+        <div style={{height:20,width:1,background:'var(--border)',margin:'0 2px'}}/>
         {[14,18,24,32,48].map(s=>(
           <button key={s} onMouseDown={e=>e.preventDefault()} onClick={()=>setFontSize(s)}
             style={{height:24,padding:'0 5px',borderRadius:4,border:`1.5px solid ${fontSize===s?'var(--accent)':'var(--border)'}`,background:fontSize===s?'var(--accent)':'var(--surface2)',color:fontSize===s?'#fff':'var(--text)',cursor:'pointer',fontSize:'.65rem',fontWeight:600}}>{s}</button>
@@ -1502,13 +1513,71 @@ function WbTexte({w,update}){
       <div ref={editRef}
         contentEditable suppressContentEditableWarning
         onMouseDown={e=>e.stopPropagation()}
-        onInput={e=>update({txt:e.currentTarget.innerHTML})}
+        onInput={e=>update({txt:e.currentTarget.innerHTML,textAlign})}
         data-ph="Tapez votre texte…"
         style={{width:'100%',minHeight:36,height:editH,border:'1.5px solid rgba(0,0,0,.08)',borderRadius:8,
           background:bgColor,fontFamily:fontFamily+',sans-serif',fontSize:fontSize,
           fontWeight:bold?700:400,color,lineHeight:1.5,overflow:'auto',
           outline:'none',boxSizing:'border-box',padding:'8px 10px',
+          textAlign,
           transition:'background .2s',whiteSpace:'pre-wrap',wordBreak:'break-word'}}/>
+    </div>
+  );
+}
+
+function WbNoise({w, update}){
+  const[level,setLevel]=useState(w.noiseLevel??50);
+  const getColor=(v)=>{
+    // 0=vert, 50=orange, 100=rouge
+    if(v<=50){
+      const t=v/50;
+      const r=Math.round(34+t*(251-34));
+      const g=Math.round(197+t*(146-197));
+      const b=Math.round(94+t*(14-94));
+      return `rgb(${r},${g},${b})`;
+    } else {
+      const t=(v-50)/50;
+      const r=Math.round(251+t*(220-251));
+      const g=Math.round(146+t*(38-146));
+      const b=Math.round(14+t*(38-14));
+      return `rgb(${r},${g},${b})`;
+    }
+  };
+  const color=getColor(level);
+  const emoji=level<=25?'🟢':level<=50?'🟡':level<=75?'🟠':'🔴';
+  const label=level<=25?'Silence':level<=50?'Murmures':level<=75?'Agité':'Très bruyant';
+  const handleChange=(v)=>{
+    setLevel(v);
+    update({noiseLevel:v});
+  };
+  return(
+    <div style={{textAlign:'center',padding:'4px 8px',minWidth:200}}>
+      {/* Indicateur visuel */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:10}}>
+        <span style={{fontSize:'1.8rem'}}>{emoji}</span>
+        <div>
+          <div style={{fontFamily:'Roboto Slab,serif',fontSize:'1.5rem',fontWeight:800,color,lineHeight:1}}>{level}</div>
+          <div style={{fontSize:'.65rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em'}}>{label}</div>
+        </div>
+      </div>
+      {/* Barre de niveau */}
+      <div style={{height:10,borderRadius:5,background:'linear-gradient(to right,#22c55e,#f59e0b,#ef4444)',marginBottom:10,position:'relative',boxShadow:'inset 0 1px 3px rgba(0,0,0,.15)'}}>
+        <div style={{position:'absolute',left:`${level}%`,top:'50%',transform:'translate(-50%,-50%)',width:18,height:18,borderRadius:'50%',background:'#fff',border:`3px solid ${color}`,boxShadow:'0 2px 6px rgba(0,0,0,.25)',transition:'left .1s,border-color .2s'}}/>
+      </div>
+      {/* Slider */}
+      <input type="range" min={0} max={100} value={level}
+        onChange={e=>handleChange(parseInt(e.target.value))}
+        onMouseDown={e=>e.stopPropagation()}
+        style={{width:'100%',accentColor:color,cursor:'pointer',margin:'2px 0 6px'}}/>
+      {/* Boutons rapides */}
+      <div style={{display:'flex',gap:4,justifyContent:'center'}}>
+        {[{v:0,l:'🟢',t:'Silence'},{v:33,l:'🟡',t:'Murmures'},{v:66,l:'🟠',t:'Agité'},{v:100,l:'🔴',t:'Bruyant'}].map(btn=>(
+          <button key={btn.v} onClick={()=>handleChange(btn.v)}
+            style={{flex:1,padding:'3px 2px',borderRadius:5,border:`1.5px solid ${Math.abs(level-btn.v)<20?color:'var(--border)'}`,background:Math.abs(level-btn.v)<20?`${color}22`:'var(--surface2)',cursor:'pointer',fontSize:'.62rem',fontWeight:600,color:'var(--text2)',fontFamily:'Roboto,sans-serif',transition:'all .15s'}}>
+            {btn.l}<br/><span style={{fontSize:'.55rem',opacity:.8}}>{btn.t}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1539,6 +1608,7 @@ function TableauBlanc(){
       tirage: {label:'Tirage',   icon:'🎲'},
       qr:     {label:'QR Code',  icon:'📱', url:''},
       feu:    {label:'Feu',      icon:'🚦', width:120, height:220},
+      bruit:  {label:'Bruit',   icon:'🔊', width:240, height:200, noiseLevel:0},
     };
     setWidgets(w=>[...w,{...base,...defs[type]}]);
     setSelId(base.id);
@@ -1582,6 +1652,7 @@ function TableauBlanc(){
     {type:'tirage', icon:'🎲', label:'Tirage'},
     {type:'qr',     icon:'📱', label:'QR Code'},
     {type:'feu',    icon:'🚦', label:'Feu'},
+    {type:'bruit',  icon:'🔊', label:'Bruit'},
   ];
 
   const renderBody=(w)=>{
@@ -1591,6 +1662,7 @@ function TableauBlanc(){
     if(w.type==='tirage') return <WbTirage classes={classes}/>;
     if(w.type==='qr')     return <WbQR     w={w} update={p=>updateWidget(w.id,p)}/>;
     if(w.type==='feu')    return <WbFeu/>;
+    if(w.type==='bruit')  return <WbNoise w={w} update={p=>updateWidget(w.id,p)}/>;
     return null;
   };
 
@@ -2032,6 +2104,166 @@ function isoDate(d){
   return `${y}-${m}-${day}`;
 }
 
+/* ── Composant modale cours préparé EDT (doit être un vrai composant pour utiliser useState) ── */
+function LierFicheModalComp({block, onClose, onLier, onDelier}){
+  const[ficheSearch,setFicheSearch]=useState('');
+  const allFiches=JSON.parse(localStorage.getItem('cdc-fiches')||'{}');
+  const ficheListAll=Object.entries(allFiches).flatMap(([clsId,arr])=>
+    (arr||[]).map(f=>({...f,_clsId:clsId}))
+  ).sort((a,b)=>b.date.localeCompare(a.date));
+  const currentLien=block.ficheId||null;
+  const ficheFiltered=ficheSearch.trim()===''?ficheListAll:ficheListAll.filter(f=>
+    f.titre.toLowerCase().includes(ficheSearch.toLowerCase())||
+    (f.objectif||'').replace(/<[^>]+>/g,'').toLowerCase().includes(ficheSearch.toLowerCase())||
+    (f.date||'').includes(ficheSearch)
+  );
+  const highlight=(text)=>{
+    if(!ficheSearch.trim())return text;
+    const re=new RegExp('('+ficheSearch.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+    return text.replace(re,'<mark style="background:rgba(59,91,219,.15);color:var(--accent);border-radius:2px">$1</mark>');
+  };
+  return(
+    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:500,maxHeight:'82vh',display:'flex',flexDirection:'column'}}>
+        <div className="modal-hd">
+          <div>
+            <h2>🔗 Lier une fiche — {block.title}</h2>
+            <div className="modal-hd-sub">{DAYS[block.day]} · Sem.{block.weeks||'AB'}</div>
+          </div>
+          <button className="close-btn" onClick={onClose}>×</button>
+        </div>
+        <div style={{padding:'.5rem .875rem',borderBottom:'1px solid var(--border)',flexShrink:0}}>
+          <div style={{position:'relative'}}>
+            <span style={{position:'absolute',left:'.55rem',top:'50%',transform:'translateY(-50%)',fontSize:'.78rem',color:'var(--text3)',pointerEvents:'none'}}>🔍</span>
+            <input type="text" autoFocus
+              placeholder="Rechercher par titre, objectif ou date…"
+              value={ficheSearch}
+              onChange={e=>setFicheSearch(e.target.value)}
+              style={{width:'100%',padding:'.38rem .75rem .38rem 1.85rem',border:'1.5px solid var(--border)',borderRadius:'var(--r-xs)',background:'var(--surface2)',color:'var(--text)',fontFamily:'Roboto,sans-serif',fontSize:'.82rem',boxSizing:'border-box',outline:'none'}}
+              onFocus={e=>{e.target.style.borderColor='var(--accent)';e.target.style.background='var(--surface)';}}
+              onBlur={e=>{e.target.style.borderColor='var(--border)';e.target.style.background='var(--surface2)';}}
+            />
+            {ficheSearch&&<button onClick={()=>setFicheSearch('')} style={{position:'absolute',right:'.45rem',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:'.8rem',padding:'.1rem .2rem',borderRadius:3}}>×</button>}
+          </div>
+          {ficheSearch&&<div style={{fontSize:'.68rem',color:'var(--text3)',marginTop:'.28rem'}}>{ficheFiltered.length} résultat{ficheFiltered.length!==1?'s':''} sur {ficheListAll.length}</div>}
+        </div>
+        <div className="modal-body" style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'.4rem'}}>
+          <div style={{fontSize:'.78rem',color:'var(--text2)',padding:'.5rem .7rem',background:'rgba(59,91,219,.06)',border:'1px solid rgba(59,91,219,.15)',borderRadius:'var(--r-xs)',lineHeight:1.55}}>
+            Associez une fiche du Carnet de bord à ce créneau. Elle sera consultable via le clic droit sur le créneau.
+          </div>
+          {currentLien&&(
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'.5rem .75rem',background:'rgba(15,155,110,.06)',border:'1px solid rgba(15,155,110,.2)',borderRadius:'var(--r-xs)'}}>
+              <span style={{fontSize:'.78rem',color:'var(--success)',fontWeight:600}}>✅ Fiche actuellement liée</span>
+              <button onClick={onDelier} style={{background:'none',border:'none',cursor:'pointer',color:'var(--danger)',fontSize:'.75rem',fontWeight:600}}>Délier</button>
+            </div>
+          )}
+          {ficheListAll.length===0?(
+            <div style={{padding:'1.5rem',textAlign:'center',color:'var(--text3)',fontSize:'.82rem',fontStyle:'italic'}}>Aucune fiche dans le Carnet de bord.</div>
+          ):ficheFiltered.length===0?(
+            <div style={{padding:'1.5rem',textAlign:'center',color:'var(--text3)',fontSize:'.82rem',fontStyle:'italic'}}>Aucune fiche ne correspond à « {ficheSearch} ».</div>
+          ):(
+            ficheFiltered.map(f=>{
+              const isLied=currentLien===f.id;
+              return(
+                <div key={f.id}
+                  onClick={()=>onLier(f)}
+                  style={{padding:'.65rem 1rem',background:isLied?'rgba(59,91,219,.08)':'var(--surface2)',border:`1.5px solid ${isLied?'var(--accent)':'var(--border)'}`,borderRadius:'var(--r-s)',cursor:'pointer',transition:'all .15s'}}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.background='rgba(59,91,219,.05)';}}
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor=isLied?'var(--accent)':'var(--border)';e.currentTarget.style.background=isLied?'rgba(59,91,219,.08)':'var(--surface2)';}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <span style={{fontWeight:700,fontSize:'.83rem'}} dangerouslySetInnerHTML={{__html:highlight(f.titre)}}/>
+                    <span style={{fontSize:'.7rem',color:'var(--text3)'}}>{f.date&&new Date(f.date+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</span>
+                  </div>
+                  {f.objectif&&<div style={{fontSize:'.73rem',color:'var(--text2)',marginTop:'.2rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} dangerouslySetInnerHTML={{__html:'🎯 '+highlight(f.objectif.replace(/<[^>]+>/g,''))}}/>}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CoursEdtModalComp({data,coursPrep,onSave,onModeChange,onClose}){
+  const block=data.block;
+  const isView=data.mode==='view';
+  const initCours=data.cours||{
+    id:'cours-'+Date.now(),
+    edtBlockId:block.id,
+    titre:block.title,
+    date:'',
+    sections:[
+      {id:'s1',icon:'🎯',label:'Objectifs',contenu:''},
+      {id:'s2',icon:'📚',label:'Déroulement / Activité',contenu:''},
+      {id:'s3',icon:'📝',label:'Devoirs',contenu:''},
+    ]
+  };
+  const[localCours,setLocalCours]=useState(initCours);
+  const isEdit=data.mode==='edit';
+  const showForm=!isView||isEdit;
+  return(
+    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:540,maxHeight:'88vh',display:'flex',flexDirection:'column'}}>
+        <div className="modal-hd">
+          <div>
+            <h2>{isView&&!isEdit?`📖 ${localCours.titre||'Cours préparé'}`:'📝 '+(isEdit?'Modifier le cours':'Nouveau cours préparé')}</h2>
+            <div className="modal-hd-sub">{DAYS[block.day]} · {block.title}{isView&&!isEdit?' · Lecture seule':''}</div>
+          </div>
+          <div style={{display:'flex',gap:'.4rem',alignItems:'center'}}>
+            {isView&&!isEdit&&(
+              <button className="btn btn-ghost" style={{fontSize:'.72rem'}} onClick={()=>onModeChange('edit')}>✏️ Modifier</button>
+            )}
+            <button className="close-btn" onClick={onClose}>×</button>
+          </div>
+        </div>
+        <div className="modal-body" style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'.75rem'}}>
+          {showForm&&<>
+            <div className="field">
+              <label>Titre du cours</label>
+              <input type="text" value={localCours.titre||''} onChange={e=>setLocalCours(p=>({...p,titre:e.target.value}))}
+                placeholder={block.title} style={{width:'100%',padding:'.42rem .65rem',border:'1.5px solid var(--border)',borderRadius:'var(--r-xs)',background:'var(--surface2)',color:'var(--text)',fontFamily:'Roboto,sans-serif',fontSize:'.85rem',boxSizing:'border-box'}}/>
+            </div>
+            <div className="field">
+              <label>Date de la séance</label>
+              <input type="date" value={localCours.date||''} onChange={e=>setLocalCours(p=>({...p,date:e.target.value}))}
+                style={{padding:'.42rem .65rem',border:'1.5px solid var(--border)',borderRadius:'var(--r-xs)',background:'var(--surface2)',color:'var(--text)',fontFamily:'Roboto,sans-serif',fontSize:'.85rem'}}/>
+            </div>
+          </>}
+          {(localCours.sections||[]).map((s,i)=>(
+            <div key={s.id}>
+              <div style={{fontSize:'.66rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:'.3rem'}}>{s.icon} {s.label}</div>
+              {!showForm?(
+                s.contenu&&s.contenu.trim()?(
+                  <div style={{fontSize:'.82rem',color:'var(--text)',lineHeight:1.7,padding:'.55rem .75rem',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--r-xs)',whiteSpace:'pre-wrap'}}
+                    dangerouslySetInnerHTML={{__html:s.contenu}}/>
+                ):(
+                  <div style={{fontSize:'.78rem',color:'var(--text3)',fontStyle:'italic',padding:'.4rem .65rem'}}>—</div>
+                )
+              ):(
+                <textarea value={s.contenu||''} onChange={e=>{
+                  const secs=localCours.sections.map((sec,j)=>j===i?{...sec,contenu:e.target.value}:sec);
+                  setLocalCours(p=>({...p,sections:secs}));
+                }} placeholder={`${s.label}…`} rows={3}
+                  style={{width:'100%',padding:'.42rem .65rem',border:'1.5px solid var(--border)',borderRadius:'var(--r-xs)',background:'var(--surface2)',color:'var(--text)',fontFamily:'Roboto,sans-serif',fontSize:'.82rem',resize:'vertical',boxSizing:'border-box',lineHeight:1.55,outline:'none'}}/>
+              )}
+            </div>
+          ))}
+          {!showForm&&!(localCours.sections||[]).some(s=>s.contenu&&s.contenu.trim())&&(
+            <div style={{textAlign:'center',color:'var(--text3)',fontSize:'.82rem',padding:'1rem',fontStyle:'italic'}}>Aucune section remplie.</div>
+          )}
+        </div>
+        {showForm&&(
+          <div style={{padding:'.75rem 1.25rem',borderTop:'1px solid var(--border)',display:'flex',gap:'.5rem',justifyContent:'flex-end'}}>
+            <button className="btn" onClick={onClose}>Annuler</button>
+            <button className="btn btn-primary" onClick={()=>onSave(localCours)}>💾 Enregistrer le cours</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function EmploiDuTemps(){
   const EMPTY_FORM={day:0,startH:8,startM:0,endH:9,endM:0,title:'',teacher:'',room:'',colorIdx:0,weeks:'AB',classId:''};
 
@@ -2079,6 +2311,9 @@ function EmploiDuTemps(){
   const[edtCtxMenu,setEdtCtxMenu]=useState(null);
   const[fiches]=useState(()=>{try{return JSON.parse(localStorage.getItem('cdc-fiches')||'{}')}catch{return{}}});
   const[fichesPopup,setFichesPopup]=useState(null);
+  const[fichesPopupSel,setFichesPopupSel]=useState(null);
+  const[lierFicheModal,setLierFicheModal]=useState(null); // {block} pour lier une fiche du carnet
+  const[coursEdtModal,setCoursEdtModal]=useState(null);   // {block} pour créer/voir un cours préparé
   const getFichesForBlockEdt=(block)=>{
     if(block.classId&&fiches[block.classId]) return{classId:block.classId,list:(fiches[block.classId]||[]).slice().sort((a,b)=>b.date.localeCompare(a.date))};
     const bt=(block.title||'').toUpperCase();
@@ -2400,7 +2635,10 @@ function EmploiDuTemps(){
                   <div style={{display:'flex',alignItems:'center',gap:'.2rem',overflow:'hidden'}}>
                     <div style={{fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{b.title}</div>
                     {Object.values(coursPrep).some(c=>c.edtBlockId===b.id)&&(
-                      <span title="Cours prepare dans ClassPro Desktop" style={{fontSize:'.6rem',flexShrink:0}}>📖</span>
+                      <span title="Cours préparé lié" style={{fontSize:'.6rem',flexShrink:0}}>📖</span>
+                    )}
+                    {b.ficheId&&(
+                      <span title={`Fiche liée : ${b.ficheTitre||''}`} style={{fontSize:'.6rem',flexShrink:0}}>🔗</span>
                     )}
                   </div>
                   {b.teacher&&<div style={{opacity:.8,fontSize:'.63rem'}}>{b.teacher}</div>}
@@ -2507,15 +2745,50 @@ function EmploiDuTemps(){
           </div>
           {(()=>{
             const coursLie=Object.values(coursPrep).find(c=>c.edtBlockId===edtCtxMenu.block.id);
-            return coursLie?(
-              <button style={{display:'flex',alignItems:'center',gap:'.55rem',width:'100%',padding:'.42rem .85rem',background:'none',border:'none',cursor:'pointer',fontSize:'.82rem',color:'var(--accent)',textAlign:'left'}}
-                onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
-                onMouseLeave={e=>e.currentTarget.style.background='none'}
-                onClick={()=>{setCoursModal(coursLie);setEdtCtxMenu(null);}}>
-                <span>📖</span> Voir le cours prepare
-              </button>
-            ):null;
+            return(
+              <>
+                {coursLie?(
+                  <button style={{display:'flex',alignItems:'center',gap:'.55rem',width:'100%',padding:'.42rem .85rem',background:'none',border:'none',cursor:'pointer',fontSize:'.82rem',color:'var(--accent)',textAlign:'left'}}
+                    onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
+                    onMouseLeave={e=>e.currentTarget.style.background='none'}
+                    onClick={()=>{setCoursEdtModal({block:edtCtxMenu.block,cours:coursLie,mode:'view'});setEdtCtxMenu(null);}}>
+                    <span>📖</span> Voir le cours préparé
+                  </button>
+                ):(
+                  <button style={{display:'flex',alignItems:'center',gap:'.55rem',width:'100%',padding:'.42rem .85rem',background:'none',border:'none',cursor:'pointer',fontSize:'.82rem',color:'var(--text)',textAlign:'left'}}
+                    onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
+                    onMouseLeave={e=>e.currentTarget.style.background='none'}
+                    onClick={()=>{setCoursEdtModal({block:edtCtxMenu.block,cours:null,mode:'create'});setEdtCtxMenu(null);}}>
+                    <span>📝</span> Créer un cours préparé
+                  </button>
+                )}
+                <button style={{display:'flex',alignItems:'center',gap:'.55rem',width:'100%',padding:'.42rem .85rem',background:'none',border:'none',cursor:'pointer',fontSize:'.82rem',color:'var(--text)',textAlign:'left'}}
+                  onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
+                  onMouseLeave={e=>e.currentTarget.style.background='none'}
+                  onClick={()=>{setLierFicheModal({block:edtCtxMenu.block});setEdtCtxMenu(null);}}>
+                  <span>🔗</span> {edtCtxMenu.block.ficheId?'Modifier la fiche liée':'Lier une fiche du carnet'}
+                </button>
+                {edtCtxMenu.block.ficheId&&(()=>{
+                  const allFiches=JSON.parse(localStorage.getItem('cdc-fiches')||'{}');
+                  const f=Object.values(allFiches).flat().find(x=>x.id===edtCtxMenu.block.ficheId);
+                  return f?(
+                    <button style={{display:'flex',alignItems:'center',gap:'.55rem',width:'100%',padding:'.42rem .85rem',background:'none',border:'none',cursor:'pointer',fontSize:'.82rem',color:'var(--accent)',textAlign:'left'}}
+                      onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
+                      onMouseLeave={e=>e.currentTarget.style.background='none'}
+                      onClick={()=>{setCoursModal(f);setEdtCtxMenu(null);}}>
+                      <span>📓</span> Voir la fiche liée : {f.titre}
+                    </button>
+                  ):null;
+                })()}
+              </>
+            );
           })()}
+          <button style={{display:'flex',alignItems:'center',gap:'.55rem',width:'100%',padding:'.42rem .85rem',background:'none',border:'none',cursor:'pointer',fontSize:'.82rem',color:'var(--text)',textAlign:'left'}}
+            onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
+            onMouseLeave={e=>e.currentTarget.style.background='none'}
+            onClick={()=>{const f=getFichesForBlockEdt(edtCtxMenu.block);setFichesPopup({block:edtCtxMenu.block,...f});setEdtCtxMenu(null);}}>
+            <span>📓</span> Consulter les fiches de cours
+          </button>
           <button style={{display:'flex',alignItems:'center',gap:'.55rem',width:'100%',padding:'.42rem .85rem',background:'none',border:'none',cursor:'pointer',fontSize:'.82rem',color:'var(--text)',textAlign:'left'}}
             onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
             onMouseLeave={e=>e.currentTarget.style.background='none'}
@@ -2525,12 +2798,6 @@ function EmploiDuTemps(){
               setAutoPopup({block:edtCtxMenu.block});
               setEdtCtxMenu(null);
             }}>
-            <span>📓</span> Consulter les fiches de cours
-          </button>
-          <button style={{display:'flex',alignItems:'center',gap:'.55rem',width:'100%',padding:'.42rem .85rem',background:'none',border:'none',cursor:'pointer',fontSize:'.82rem',color:'var(--text)',textAlign:'left'}}
-            onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
-            onMouseLeave={e=>e.currentTarget.style.background='none'}
-            onClick={()=>{const f=getFichesForBlockEdt(edtCtxMenu.block);setFichesPopup({block:edtCtxMenu.block,...f});setEdtCtxMenu(null);}}>
             <span>🔁</span> Créer les fiches et le suivi
           </button>
           <button style={{display:'flex',alignItems:'center',gap:'.55rem',width:'100%',padding:'.42rem .85rem',background:'none',border:'none',cursor:'pointer',fontSize:'.82rem',color:'var(--text)',textAlign:'left'}}
@@ -2565,10 +2832,18 @@ function EmploiDuTemps(){
             <button className="close-btn" onClick={()=>setCoursModal(null)}>×</button>
           </div>
           <div className="modal-body" style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'1rem'}}>
-            <div style={{padding:'.5rem .75rem',background:'rgba(59,91,219,.07)',border:'1px solid rgba(59,91,219,.2)',borderRadius:'var(--r-s)',fontSize:'.75rem',color:'var(--text2)',lineHeight:1.5}}>
-              Ce cours a ete prepare depuis ClassPro Desktop. Il est en lecture seule ici.
-            </div>
-            {(coursModal.sections||[]).filter(s=>s.contenu&&s.contenu.trim()).map(s=>(
+            {/* Badge selon le type */}
+            {coursModal.sections?(
+              <div style={{padding:'.5rem .75rem',background:'rgba(59,91,219,.07)',border:'1px solid rgba(59,91,219,.2)',borderRadius:'var(--r-s)',fontSize:'.75rem',color:'var(--text2)',lineHeight:1.5}}>
+                Cours préparé depuis ClassPro Desktop — lecture seule.
+              </div>
+            ):(
+              <div style={{padding:'.5rem .75rem',background:'rgba(15,155,110,.07)',border:'1px solid rgba(15,155,110,.2)',borderRadius:'var(--r-s)',fontSize:'.75rem',color:'var(--text2)',lineHeight:1.5}}>
+                Fiche du Carnet de bord — lecture seule.
+              </div>
+            )}
+            {/* Cours préparé Desktop : sections[] */}
+            {coursModal.sections&&(coursModal.sections||[]).filter(s=>s.contenu&&s.contenu.trim()).map(s=>(
               <div key={s.id} style={{display:'flex',flexDirection:'column',gap:'.35rem'}}>
                 <div style={{fontWeight:700,fontSize:'.82rem',display:'flex',alignItems:'center',gap:'.4rem'}}>
                   <span>{s.icon||'📝'}</span> {s.label}
@@ -2578,9 +2853,33 @@ function EmploiDuTemps(){
                 </div>
               </div>
             ))}
-            {!(coursModal.sections||[]).some(s=>s.contenu&&s.contenu.trim())&&(
+            {coursModal.sections&&!(coursModal.sections||[]).some(s=>s.contenu&&s.contenu.trim())&&(
               <div style={{textAlign:'center',color:'var(--text3)',fontSize:'.8rem',padding:'1rem',fontStyle:'italic'}}>
                 Aucune section remplie dans ce cours.
+              </div>
+            )}
+            {/* Fiche carnet : champs plats */}
+            {!coursModal.sections&&[
+              {key:'objectif', icon:'🎯', label:'Objectif du cours'},
+              {key:'activite', icon:'📚', label:'Activité réalisée'},
+              {key:'devoirs',  icon:'📝', label:'Devoirs donnés'},
+              {key:'documents',icon:'📎', label:'Documents utilisés'},
+              {key:'aRevoir',  icon:'🔁', label:'À revoir'},
+              {key:'incidents',icon:'⚡', label:'Incidents / Vigilance'},
+            ].filter(({key})=>coursModal[key]&&coursModal[key].trim()).map(({key,icon,label})=>(
+              <div key={key} style={{display:'flex',flexDirection:'column',gap:'.35rem'}}>
+                <div style={{fontWeight:700,fontSize:'.82rem',display:'flex',alignItems:'center',gap:'.4rem'}}>
+                  <span>{icon}</span> {label}
+                </div>
+                <div style={{fontSize:'.8rem',color:'var(--text2)',lineHeight:1.7,padding:'.6rem .875rem',background:'var(--surface2)',borderRadius:'var(--r-s)',border:'1px solid var(--border)'}}
+                  dangerouslySetInnerHTML={{__html:coursModal[key]}}/>
+              </div>
+            ))}
+            {!coursModal.sections&&[
+              'objectif','activite','devoirs','documents','aRevoir','incidents'
+            ].every(k=>!coursModal[k]||!coursModal[k].trim())&&(
+              <div style={{textAlign:'center',color:'var(--text3)',fontSize:'.8rem',padding:'1rem',fontStyle:'italic'}}>
+                Aucun contenu rempli dans cette fiche.
               </div>
             )}
           </div>
@@ -2952,37 +3251,131 @@ function EmploiDuTemps(){
     )}
     {/* ── Popup consultation fiches (EDT) ── */}
     {fichesPopup&&(
-      <div className="moverlay" onClick={e=>e.target===e.currentTarget&&setFichesPopup(null)}>
-        <div className="modal" style={{maxWidth:520,maxHeight:'80vh',display:'flex',flexDirection:'column'}}>
+      <div className="moverlay" onClick={e=>e.target===e.currentTarget&&(fichesPopupSel?setFichesPopupSel(null):setFichesPopup(null))}>
+        <div className="modal" style={{maxWidth:540,maxHeight:'82vh',display:'flex',flexDirection:'column'}}>
           <div className="modal-hd">
-            <div>
-              <h2>📓 Fiches — {fichesPopup.block.title}</h2>
-              <div className="modal-hd-sub">{fichesPopup.classId?fichesPopup.list.length+' fiche(s)':'Aucune classe liée'}</div>
+            <div style={{display:'flex',alignItems:'center',gap:'.5rem',minWidth:0}}>
+              {fichesPopupSel&&(
+                <button onClick={()=>setFichesPopupSel(null)}
+                  style={{background:'none',border:'none',cursor:'pointer',color:'var(--accent)',fontSize:'.82rem',fontWeight:700,padding:'0 .3rem 0 0',flexShrink:0}}>← Retour</button>
+              )}
+              <div style={{minWidth:0}}>
+                <h2 style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                  {fichesPopupSel?`📓 ${fichesPopupSel.titre}`:`📓 Fiches — ${fichesPopup.block.title}`}
+                </h2>
+                <div className="modal-hd-sub">
+                  {fichesPopupSel
+                    ?(fichesPopupSel.date&&new Date(fichesPopupSel.date+'T12:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))
+                    :(fichesPopup.classId?fichesPopup.list.length+' fiche(s)':'Aucune classe liée')}
+                </div>
+              </div>
             </div>
-            <button className="close-btn" onClick={()=>setFichesPopup(null)}>×</button>
+            <button className="close-btn" onClick={()=>{setFichesPopup(null);setFichesPopupSel(null);}}>×</button>
           </div>
           <div className="modal-body" style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'.5rem'}}>
-            {!fichesPopup.classId&&(
-              <div style={{padding:'1.5rem',textAlign:'center',color:'var(--text2)',fontSize:'.82rem',lineHeight:1.7}}>
-                Ce cours n'est lié à aucune classe.<br/>
-                <span style={{fontSize:'.76rem',color:'var(--text3)'}}>Modifiez le cours pour lui associer une classe.</span>
-              </div>
-            )}
-            {fichesPopup.classId&&fichesPopup.list.length===0&&(
-              <div style={{padding:'1.5rem',textAlign:'center',color:'var(--text3)',fontSize:'.82rem',fontStyle:'italic'}}>Aucune fiche pour cette classe.</div>
-            )}
-            {fichesPopup.list.map(f=>(
-              <div key={f.id} style={{padding:'.75rem 1rem',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--r-s)'}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                  <div style={{fontWeight:700,fontSize:'.85rem'}}>{f.titre}</div>
-                  <div style={{fontSize:'.72rem',color:'var(--text3)'}}>{f.date&&new Date(f.date+'T12:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</div>
+            {fichesPopupSel?(()=>{
+              const f=fichesPopupSel;
+              const CHAMPS=[
+                {key:'objectif',  icon:'🎯', label:'Objectif du cours'},
+                {key:'activite',  icon:'📚', label:'Activité réalisée'},
+                {key:'devoirs',   icon:'📝', label:'Devoirs donnés'},
+                {key:'documents', icon:'📎', label:'Documents utilisés'},
+                {key:'aRevoir',   icon:'🔁', label:'À revoir'},
+                {key:'incidents', icon:'⚡', label:'Incidents / Vigilance'},
+              ];
+              const allClasses=(()=>{try{return JSON.parse(localStorage.getItem('sc-classes')||'[]')}catch{return[];}})();
+              const fCls=allClasses.find(c=>c.id===fichesPopup.classId);
+              const absentsNoms=(f.absents||[]).map(id=>{const el=fCls?.eleves?.find(e=>e.id===id);return el?el.nom:null;}).filter(Boolean);
+              const hasContent=CHAMPS.some(({key})=>f[key]&&f[key].trim())||absentsNoms.length>0;
+              return(
+                <div style={{display:'flex',flexDirection:'column',gap:'.75rem'}}>
+                  {CHAMPS.map(({key,icon,label})=>f[key]&&f[key].trim()?(
+                    <div key={key}>
+                      <div style={{fontSize:'.65rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:'.3rem'}}>{icon} {label}</div>
+                      <div style={{fontSize:'.82rem',color:'var(--text)',lineHeight:1.7,padding:'.55rem .75rem',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--r-xs)'}}
+                        dangerouslySetInnerHTML={{__html:f[key]}}/>
+                    </div>
+                  ):null)}
+                  {absentsNoms.length>0&&(
+                    <div>
+                      <div style={{fontSize:'.65rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:'.3rem'}}>🙋 Absents ({absentsNoms.length})</div>
+                      <div style={{display:'flex',flexWrap:'wrap',gap:'.3rem'}}>
+                        {absentsNoms.map(n=>(
+                          <span key={n} style={{padding:'.18rem .52rem',background:'rgba(220,38,38,.07)',border:'1px solid rgba(220,38,38,.2)',borderRadius:99,fontSize:'.75rem',color:'var(--danger)',fontWeight:500}}>{n}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {!hasContent&&(
+                    <div style={{textAlign:'center',color:'var(--text3)',fontSize:'.82rem',padding:'1.5rem',fontStyle:'italic'}}>Cette fiche ne contient aucun contenu rempli.</div>
+                  )}
                 </div>
-                {f.objectif&&<div style={{fontSize:'.76rem',color:'var(--text2)',marginTop:'.28rem'}}>🎯 {f.objectif}</div>}
-              </div>
-            ))}
+              );
+            })():(
+              <>
+                {!fichesPopup.classId&&(
+                  <div style={{padding:'1.5rem',textAlign:'center',color:'var(--text2)',fontSize:'.82rem',lineHeight:1.7}}>
+                    Ce cours n'est lié à aucune classe.<br/>
+                    <span style={{fontSize:'.76rem',color:'var(--text3)'}}>Modifiez le cours pour lui associer une classe.</span>
+                  </div>
+                )}
+                {fichesPopup.classId&&fichesPopup.list.length===0&&(
+                  <div style={{padding:'1.5rem',textAlign:'center',color:'var(--text3)',fontSize:'.82rem',fontStyle:'italic'}}>Aucune fiche pour cette classe.</div>
+                )}
+                {fichesPopup.list.map(f=>(
+                  <div key={f.id}
+                    onClick={()=>setFichesPopupSel(f)}
+                    style={{padding:'.75rem 1rem',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--r-s)',cursor:'pointer',transition:'all .15s'}}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.background='rgba(59,91,219,.04)';}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.background='var(--surface2)';}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div style={{fontWeight:700,fontSize:'.85rem'}}>{f.titre}</div>
+                      <div style={{display:'flex',alignItems:'center',gap:'.5rem'}}>
+                        {(f.absents||[]).length>0&&<span style={{fontSize:'.68rem',color:'var(--danger)',fontWeight:600}}>🙋 {f.absents.length} absent{f.absents.length>1?'s':''}</span>}
+                        <div style={{fontSize:'.72rem',color:'var(--text3)'}}>{f.date&&new Date(f.date+'T12:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}</div>
+                        <span style={{fontSize:'.75rem',color:'var(--accent)'}}>→</span>
+                      </div>
+                    </div>
+                    {f.objectif&&<div style={{fontSize:'.76rem',color:'var(--text2)',marginTop:'.28rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🎯 {f.objectif.replace(/<[^>]+>/g,'')}</div>}
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         </div>
       </div>
+    )}
+
+    {/* ── Modale : Lier une fiche du carnet à un créneau EDT ── */}
+    {lierFicheModal&&(
+      <LierFicheModalComp
+        block={lierFicheModal.block}
+        onClose={()=>setLierFicheModal(null)}
+        onLier={(f)=>{
+          setBlocks(bs=>bs.map(b=>b.id===lierFicheModal.block.id?{...b,ficheId:f.id,ficheTitre:f.titre}:b));
+          setLierFicheModal(null);
+        }}
+        onDelier={()=>{
+          setBlocks(bs=>bs.map(b=>b.id===lierFicheModal.block.id?{...b,ficheId:null,ficheTitre:null}:b));
+          setLierFicheModal(null);
+        }}
+      />
+    )}
+
+    {/* ── Modale : Créer / voir un cours préparé depuis l'EDT ── */}
+    {coursEdtModal&&(
+      <CoursEdtModalComp
+        data={coursEdtModal}
+        coursPrep={coursPrep}
+        onSave={(updated)=>{
+          const next={...coursPrep,[updated.id]:updated};
+          setCoursPrep(next);
+          localStorage.setItem('cdc-cours',JSON.stringify(next));
+          setCoursEdtModal(null);
+        }}
+        onModeChange={(mode)=>setCoursEdtModal(p=>({...p,mode}))}
+        onClose={()=>setCoursEdtModal(null)}
+      />
     )}
   </>);
 }
@@ -3810,6 +4203,7 @@ function Dashboard({profile,onNav}){
   const[dashAlertPopup,setDashAlertPopup]=useState(null);
   const[showVeillePopup,setShowVeillePopup]=useState(false);
   const[fichesPopupDash,setFichesPopupDash]=useState(null);
+  const[fichesPopupDashSel,setFichesPopupDashSel]=useState(null);
   const getFichesForBlock=(block)=>{
     if(block.classId&&fiches[block.classId]) return{classId:block.classId,list:(fiches[block.classId]||[]).slice().sort((a,b)=>b.date.localeCompare(a.date))};
     const bt=(block.title||'').toUpperCase();
@@ -4197,34 +4591,100 @@ function Dashboard({profile,onNav}){
       </div>
     )}
     {fichesPopupDash&&(
-      <div className="moverlay" onClick={e=>e.target===e.currentTarget&&setFichesPopupDash(null)}>
-        <div className="modal" style={{maxWidth:520,maxHeight:'80vh',display:'flex',flexDirection:'column'}}>
+      <div className="moverlay" onClick={e=>e.target===e.currentTarget&&(fichesPopupDashSel?(setFichesPopupDashSel(null)):(setFichesPopupDash(null)))}>
+        <div className="modal" style={{maxWidth:540,maxHeight:'82vh',display:'flex',flexDirection:'column'}}>
           <div className="modal-hd">
-            <div>
-              <h2>📓 Fiches — {fichesPopupDash.block.title}</h2>
-              <div className="modal-hd-sub">{fichesPopupDash.classId?fichesPopupDash.list.length+' fiche(s)':'Aucune classe liée'}</div>
+            <div style={{display:'flex',alignItems:'center',gap:'.5rem',minWidth:0}}>
+              {fichesPopupDashSel&&(
+                <button onClick={()=>setFichesPopupDashSel(null)}
+                  style={{background:'none',border:'none',cursor:'pointer',color:'var(--accent)',fontSize:'.82rem',fontWeight:700,padding:'0 .3rem 0 0',flexShrink:0}}>← Retour</button>
+              )}
+              <div style={{minWidth:0}}>
+                <h2 style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                  {fichesPopupDashSel?`📓 ${fichesPopupDashSel.titre}`:`📓 Fiches — ${fichesPopupDash.block.title}`}
+                </h2>
+                <div className="modal-hd-sub">
+                  {fichesPopupDashSel
+                    ?(fichesPopupDashSel.date&&new Date(fichesPopupDashSel.date+'T12:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))
+                    :(fichesPopupDash.classId?fichesPopupDash.list.length+' fiche(s)':'Aucune classe liée')}
+                </div>
+              </div>
             </div>
-            <button className="close-btn" onClick={()=>setFichesPopupDash(null)}>×</button>
+            <button className="close-btn" onClick={()=>{setFichesPopupDash(null);setFichesPopupDashSel(null);}}>×</button>
           </div>
           <div className="modal-body" style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'.5rem'}}>
-            {!fichesPopupDash.classId&&(
-              <div style={{padding:'1.5rem',textAlign:'center',color:'var(--text2)',fontSize:'.82rem',lineHeight:1.7}}>
-                Ce cours n'est lié à aucune classe.<br/>
-                <span style={{fontSize:'.76rem',color:'var(--text3)'}}>Modifiez le cours dans l'EDT pour lui associer une classe.</span>
-              </div>
-            )}
-            {fichesPopupDash.classId&&fichesPopupDash.list.length===0&&(
-              <div style={{padding:'1.5rem',textAlign:'center',color:'var(--text3)',fontSize:'.82rem',fontStyle:'italic'}}>Aucune fiche pour cette classe.</div>
-            )}
-            {fichesPopupDash.list.map(f=>(
-              <div key={f.id} style={{padding:'.75rem 1rem',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--r-s)'}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                  <div style={{fontWeight:700,fontSize:'.85rem'}}>{f.titre}</div>
-                  <div style={{fontSize:'.72rem',color:'var(--text3)'}}>{f.date&&new Date(f.date+'T12:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</div>
+            {/* ── Vue détail fiche ── */}
+            {fichesPopupDashSel?(()=>{
+              const f=fichesPopupDashSel;
+              const CHAMPS=[
+                {key:'objectif',  icon:'🎯', label:'Objectif du cours'},
+                {key:'activite',  icon:'📚', label:'Activité réalisée'},
+                {key:'devoirs',   icon:'📝', label:'Devoirs donnés'},
+                {key:'documents', icon:'📎', label:'Documents utilisés'},
+                {key:'aRevoir',   icon:'🔁', label:'À revoir'},
+                {key:'incidents', icon:'⚡', label:'Incidents / Vigilance'},
+              ];
+              const allClasses=(()=>{try{return JSON.parse(localStorage.getItem('sc-classes')||'[]')}catch{return[];}})();
+              const cls=allClasses.find(c=>c.id===fichesPopupDash.classId);
+              const absentsNoms=(f.absents||[]).map(id=>{
+                const el=cls?.eleves?.find(e=>e.id===id);
+                return el?el.nom:id;
+              }).filter(Boolean);
+              return(
+                <div style={{display:'flex',flexDirection:'column',gap:'.75rem'}}>
+                  {CHAMPS.map(({key,icon,label})=>f[key]&&f[key].trim()?(
+                    <div key={key}>
+                      <div style={{fontSize:'.65rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:'.3rem'}}>{icon} {label}</div>
+                      <div style={{fontSize:'.82rem',color:'var(--text)',lineHeight:1.7,padding:'.55rem .75rem',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--r-xs)',whiteSpace:'pre-wrap'}}
+                        dangerouslySetInnerHTML={{__html:f[key]}}/>
+                    </div>
+                  ):null)}
+                  {absentsNoms.length>0&&(
+                    <div>
+                      <div style={{fontSize:'.65rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:'.3rem'}}>🙋 Absents ({absentsNoms.length})</div>
+                      <div style={{display:'flex',flexWrap:'wrap',gap:'.3rem'}}>
+                        {absentsNoms.map(n=>(
+                          <span key={n} style={{padding:'.18rem .52rem',background:'rgba(220,38,38,.07)',border:'1px solid rgba(220,38,38,.2)',borderRadius:99,fontSize:'.75rem',color:'var(--danger)',fontWeight:500}}>{n}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {CHAMPS.every(({key})=>!f[key]||!f[key].trim())&&absentsNoms.length===0&&(
+                    <div style={{textAlign:'center',color:'var(--text3)',fontSize:'.82rem',padding:'1.5rem',fontStyle:'italic'}}>Cette fiche ne contient aucun contenu rempli.</div>
+                  )}
                 </div>
-                {f.objectif&&<div style={{fontSize:'.76rem',color:'var(--text2)',marginTop:'.28rem'}}>🎯 {f.objectif}</div>}
-              </div>
-            ))}
+              );
+            })():(
+              /* ── Vue liste fiches ── */
+              <>
+                {!fichesPopupDash.classId&&(
+                  <div style={{padding:'1.5rem',textAlign:'center',color:'var(--text2)',fontSize:'.82rem',lineHeight:1.7}}>
+                    Ce cours n'est lié à aucune classe.<br/>
+                    <span style={{fontSize:'.76rem',color:'var(--text3)'}}>Modifiez le cours dans l'EDT pour lui associer une classe.</span>
+                  </div>
+                )}
+                {fichesPopupDash.classId&&fichesPopupDash.list.length===0&&(
+                  <div style={{padding:'1.5rem',textAlign:'center',color:'var(--text3)',fontSize:'.82rem',fontStyle:'italic'}}>Aucune fiche pour cette classe.</div>
+                )}
+                {fichesPopupDash.list.map(f=>(
+                  <div key={f.id}
+                    onClick={()=>setFichesPopupDashSel(f)}
+                    style={{padding:'.75rem 1rem',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--r-s)',cursor:'pointer',transition:'all .15s'}}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.background='rgba(59,91,219,.04)';}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.background='var(--surface2)';}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div style={{fontWeight:700,fontSize:'.85rem'}}>{f.titre}</div>
+                      <div style={{display:'flex',alignItems:'center',gap:'.5rem'}}>
+                        {(f.absents||[]).length>0&&<span style={{fontSize:'.68rem',color:'var(--danger)',fontWeight:600}}>🙋 {f.absents.length} absent{f.absents.length>1?'s':''}</span>}
+                        <div style={{fontSize:'.72rem',color:'var(--text3)'}}>{f.date&&new Date(f.date+'T12:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}</div>
+                        <span style={{fontSize:'.75rem',color:'var(--accent)'}}>→</span>
+                      </div>
+                    </div>
+                    {f.objectif&&<div style={{fontSize:'.76rem',color:'var(--text2)',marginTop:'.28rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🎯 {f.objectif.replace(/<[^>]+>/g,'')}</div>}
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -4542,10 +5002,12 @@ function CahierSeance(){
 
   // Init draft quand on change de fiche
   React.useEffect(()=>{
-    if(fiche) setDraft({...fiche});
+    const arr=fiches[selCls]||[];
+    const found=selFiche?arr.find(f=>f.id===selFiche):null;
+    if(found) setDraft({...found});
     else setDraft(null);
     setSavedOk(false);
-  },[selFiche,selCls]);
+  },[selFiche,selCls]); // eslint-disable-line
 
   const createFiche=()=>{
     if(!selCls||!newForm.titre.trim())return;
@@ -4679,13 +5141,15 @@ function CahierSeance(){
           {clsFiches.length===0&&<div style={{padding:'.875rem',fontSize:'.76rem',color:'var(--text3)',fontStyle:'italic'}}>Aucune fiche</div>}
           {clsFiches.map(f=>(
             <div key={f.id} className={`cs-seance-item ${selFiche===f.id?'on':''}`} style={{display:'flex',alignItems:'center',gap:'.35rem',cursor:'pointer'}}
-              onClick={()=>{setSidebarPopup({...f});setPopupEditMode(false);}}>
-              <div style={{flex:1}}>
+              onClick={()=>{setSelFiche(f.id);setDraft({...f});}}><div style={{flex:1}}>
                 <div className="cs-seance-title" style={{fontSize:'.78rem',fontWeight:600}}>{f.titre}</div>
                 <div className="cs-seance-date">
                   {f.date&&new Date(f.date+'T12:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}
                 </div>
               </div>
+              <button onClick={e=>{e.stopPropagation();setSidebarPopup({...f});setPopupEditMode(false);}} title="Aperçu rapide"
+                style={{background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:'.72rem',padding:'.1rem .28rem',borderRadius:4,flexShrink:0,opacity:.7}}
+                onMouseEnter={e=>e.currentTarget.style.opacity='1'} onMouseLeave={e=>e.currentTarget.style.opacity='.7'}>👁</button>
               <button onClick={e=>{e.stopPropagation();delFiche(f.id);}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:'.72rem',padding:'.1rem .28rem',borderRadius:4,flexShrink:0}}>×</button>
             </div>
           ))}
@@ -4845,6 +5309,20 @@ function CahierSeance(){
                 </div>
               );
             })}
+            {/* Absents en mode lecture */}
+            {!popupEditMode&&(sidebarPopup.absents||[]).length>0&&(()=>{
+              const allClasses=(()=>{try{return JSON.parse(localStorage.getItem('sc-classes')||'[]')}catch{return[];}})();
+              const fCls=allClasses.find(c=>(c.eleves||[]).some(e=>(sidebarPopup.absents||[]).includes(e.id)));
+              const noms=(sidebarPopup.absents||[]).map(id=>{const el=fCls?.eleves?.find(e=>e.id===id);return el?el.nom:null;}).filter(Boolean);
+              return noms.length>0?(
+                <div>
+                  <div style={{fontSize:'.66rem',fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:'.18rem'}}>🙋 Absents ({noms.length})</div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:'.3rem',padding:'.38rem .65rem',background:'rgba(220,38,38,.04)',border:'1px solid rgba(220,38,38,.15)',borderRadius:'var(--r-xs)'}}>
+                    {noms.map(n=><span key={n} style={{padding:'.15rem .45rem',background:'rgba(220,38,38,.08)',border:'1px solid rgba(220,38,38,.2)',borderRadius:99,fontSize:'.75rem',color:'var(--danger)',fontWeight:500}}>{n}</span>)}
+                  </div>
+                </div>
+              ):null;
+            })()}
           </div>
           {popupEditMode&&(
             <div style={{padding:'.75rem 1.25rem',borderTop:'1px solid var(--border)',display:'flex',justifyContent:'flex-end'}}>
@@ -5007,6 +5485,8 @@ function PlanClasse({onNav}){
   const[seanceObs,setSeanceObs]=useState({});
   const[seanceSaved,setSeanceSaved]=useState(false);
   const[seanceEleve,setSeanceEleve]=useState(null); // élève cliqué sur le canvas en mode séance
+  const[showDupModal,setShowDupModal]=useState(false);
+  const[dupTargets,setDupTargets]=useState([]); // ids des classes cibles
   const dragRef=React.useRef(null);
   const canvasRef=React.useRef(null);
 
@@ -5106,8 +5586,8 @@ function PlanClasse({onNav}){
       const dpy=ev.clientY-startY;
       if(!dragging && Math.abs(dpx)<4 && Math.abs(dpy)<4) return;
       if(!dragging){ dragging=true; }
-      const nx=Math.max(0, startElemX + Math.round(dpx/CELL));
-      const ny=Math.max(0, startElemY + Math.round(dpy/CELL));
+      const nx=Math.max(0, Math.min(effectiveCols - elem.w, startElemX + Math.round(dpx/CELL)));
+      const ny=Math.max(0, Math.min(effectiveRows - elem.h, startElemY + Math.round(dpy/CELL)));
       setPlans(p=>{
         const cp=p[selCls]||{elements:[],flags:{}};
         return{...p,[selCls]:{...cp,elements:cp.elements.map(el=>
@@ -5129,8 +5609,8 @@ function PlanClasse({onNav}){
     if(!dragRef.current?.fromPalette||!selCls) return;
     const pi=dragRef.current.palItem;
     const {gx,gy}=clientToGrid(e.clientX,e.clientY);
-    const nx=Math.max(0, Math.round(gx - pi.defaultW/2));
-    const ny=Math.max(0, Math.round(gy - pi.defaultH/2));
+    const nx=Math.max(0, Math.min(effectiveCols - pi.defaultW, Math.round(gx - pi.defaultW/2)));
+    const ny=Math.max(0, Math.min(effectiveRows - pi.defaultH, Math.round(gy - pi.defaultH/2)));
     const ne={id:'el'+Date.now()+Math.random().toString(36).slice(2,5),type:pi.type,x:nx,y:ny,w:pi.defaultW,h:pi.defaultH,seatEleves:{}};
     updateElements([...elements,ne]);
     setSelectedId(ne.id);
@@ -5288,6 +5768,7 @@ function PlanClasse({onNav}){
         </>}
         {selCls&&mode!=='seance'&&<>
           <button className="btn btn-ghost" onClick={tirage}>🎲 Placement aléatoire</button>
+          <button className="btn btn-ghost" onClick={()=>setShowDupModal(true)}>⧉ Dupliquer la salle</button>
           <button className="btn btn-ghost" onClick={()=>{if(confirm('Vider tous les placements ?'))updateElements(elements.map(el=>({...el,seatEleves:{}})));setSelEleve(null);}}>🗑 Vider placements</button>
           <button className="btn btn-ghost" onClick={()=>{if(confirm('Réinitialiser toute la salle ?'))updatePlan({elements:[],flags:{},nomSalle});setSelectedId(null);setSelEleve(null);}}>↺ Réinitialiser</button>
         </>}
@@ -5591,6 +6072,57 @@ function PlanClasse({onNav}){
         </div>
       );
     })()}
+    {showDupModal&&(
+      <div className="moverlay" onClick={e=>e.target===e.currentTarget&&setShowDupModal(false)}>
+        <div className="modal" style={{maxWidth:420}}>
+          <div className="modal-hd">
+            <div>
+              <h2>⧉ Dupliquer la salle</h2>
+              <div className="modal-hd-sub">Copie la disposition des tables sans les élèves</div>
+            </div>
+            <button className="close-btn" onClick={()=>setShowDupModal(false)}>×</button>
+          </div>
+          <div className="modal-body" style={{display:'flex',flexDirection:'column',gap:'.75rem'}}>
+            <div style={{fontSize:'.8rem',color:'var(--text2)',padding:'.55rem .75rem',background:'rgba(59,91,219,.06)',border:'1px solid rgba(59,91,219,.15)',borderRadius:'var(--r-xs)',lineHeight:1.6}}>
+              Sélectionnez les classes qui recevront la même disposition de tables que <strong>{cls?.name}</strong>. Les placements d'élèves existants ne seront pas écrasés.
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:'.35rem',maxHeight:240,overflowY:'auto'}}>
+              {classes.filter(c=>c.id!==selCls).map(c=>{
+                const checked=dupTargets.includes(c.id);
+                return(
+                  <label key={c.id} style={{display:'flex',alignItems:'center',gap:'.65rem',padding:'.5rem .75rem',borderRadius:'var(--r-xs)',border:`1.5px solid ${checked?'var(--accent)':'var(--border)'}`,background:checked?'rgba(59,91,219,.06)':'var(--surface2)',cursor:'pointer',transition:'all .15s'}}>
+                    <input type="checkbox" checked={checked} onChange={()=>setDupTargets(t=>checked?t.filter(x=>x!==c.id):[...t,c.id])} style={{accentColor:'var(--accent)',width:15,height:15,cursor:'pointer'}}/>
+                    <span style={{fontWeight:600,fontSize:'.83rem'}}>{c.name}</span>
+                    {(plans[c.id]?.elements||[]).length>0&&<span style={{marginLeft:'auto',fontSize:'.65rem',color:'var(--text3)',fontStyle:'italic'}}>plan existant</span>}
+                  </label>
+                );
+              })}
+              {classes.filter(c=>c.id!==selCls).length===0&&(
+                <div style={{textAlign:'center',color:'var(--text3)',fontSize:'.8rem',padding:'1rem',fontStyle:'italic'}}>Aucune autre classe disponible.</div>
+              )}
+            </div>
+          </div>
+          <div style={{padding:'.75rem 1.25rem',borderTop:'1px solid var(--border)',display:'flex',gap:'.5rem',justifyContent:'flex-end'}}>
+            <button className="btn" onClick={()=>setShowDupModal(false)}>Annuler</button>
+            <button className="btn btn-primary" disabled={dupTargets.length===0} onClick={()=>{
+              const srcPlan=plans[selCls]||{elements:[],flags:{}};
+              const elemsCopy=srcPlan.elements.map(el=>({...el,seatEleves:{}}));
+              setPlans(p=>{
+                const next={...p};
+                dupTargets.forEach(tid=>{
+                  const existing=p[tid]||{elements:[],flags:{}};
+                  next[tid]={...existing,elements:elemsCopy,nomSalle:srcPlan.nomSalle||existing.nomSalle||''};
+                });
+                return next;
+              });
+              setShowDupModal(false);
+              setDupTargets([]);
+              alert(`✅ Disposition copiée vers ${dupTargets.length} classe${dupTargets.length>1?'s':''}.`);
+            }}>⧉ Dupliquer ({dupTargets.length} classe{dupTargets.length>1?'s':''})</button>
+          </div>
+        </div>
+      </div>
+    )}
   </>);
 }
 

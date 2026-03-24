@@ -22,15 +22,17 @@ const NAV = [
     { id: 'plan-classe',  icon: '🏫', label: 'Plan de classe' },
   ]},
   { section: 'Suivi pédagogique', items: [
-    { id: 'suivi',        icon: '👁️', label: 'Suivi de classe' },
-    { id: 'carnet',       icon: '📓', label: 'Carnet de bord' },
-    { id: 'devoirs',      icon: '📋', label: 'Travaux non rendus' },
-    { id: 'conseil',      icon: '🎓', label: 'Conseil de classe' },
+    { id: 'suivi',      icon: '👁️', label: 'Suivi de classe' },
+    { id: 'carnet',     icon: '📓', label: 'Carnet de bord' },
+    { id: 'devoirs',    icon: '📋', label: 'Travaux non rendus' },
+    { id: 'conseil',    icon: '🎓', label: 'Conseil de classe' },
+    { id: 'reunions',   icon: '🤝', label: 'Réunions & Rencontres' },
   ]},
   { section: 'Génération PDF', items: [
     { id: 'pdf-progression', icon: '📄', label: 'PDF Progression' },
     { id: 'pdf-carnet',      icon: '📄', label: 'PDF Carnet de bord' },
     { id: 'pdf-bulletins',   icon: '📄', label: 'PDF Bulletins' },
+    { id: 'pdf-reunions',    icon: '📄', label: 'PDF Réunions' },
   ]},
   { section: 'ClassPro Académie', items: [
     { id: 'academie',  icon: '📖', label: "Centre d'aide" },
