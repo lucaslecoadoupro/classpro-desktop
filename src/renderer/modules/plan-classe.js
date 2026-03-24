@@ -169,10 +169,12 @@ function ModulePlanClasse({ cpData, onDataChange }) {
 
   const onElemMouseDown = (e, elem) => {
     if (mode === 'placement') return;
-    if (e.target.closest('.pdc-inspector')) return;
+    if (e.target.closest('.pdc-inspector')) return; // FIX: bloquer si clic dans l'inspector
     e.stopPropagation();
     setSelectedId(elem.id);
 
+    // FIX: si l'élément est déjà sélectionné et qu'on reclique sans bouger, ne pas démarrer de drag
+    const alreadySelected = selectedId === elem.id;
     const startX = e.clientX, startY = e.clientY;
     const startElemX = elem.x, startElemY = elem.y;
     let dragging = false;
@@ -312,10 +314,14 @@ function ModulePlanClasse({ cpData, onDataChange }) {
         onMouseDown={e => mode === 'layout' && onElemMouseDown(e, elem)}>
         {inner()}
         {isSel && <>
-          <div className="pdc-inspector" onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
-            <button className="pdc-inspector-btn" onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); duplicateElem(elem.id); }}>⧉ Dupliquer</button>
+          <div className="pdc-inspector" onMouseDown={e => { e.stopPropagation(); e.preventDefault(); }} onClick={e => e.stopPropagation()}>
+            <button className="pdc-inspector-btn"
+              onPointerDown={e => { e.stopPropagation(); e.preventDefault(); }}
+              onClick={e => { e.stopPropagation(); duplicateElem(elem.id); }}>⧉ Dupliquer</button>
             <div className="pdc-inspector-sep" />
-            <button className="pdc-inspector-btn danger" onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); deleteElem(elem.id); }}>✕ Supprimer</button>
+            <button className="pdc-inspector-btn danger"
+              onPointerDown={e => { e.stopPropagation(); e.preventDefault(); }}
+              onClick={e => { e.stopPropagation(); deleteElem(elem.id); }}>✕ Supprimer</button>
           </div>
           <div className="pdc-rh pdc-rh-e"  onMouseDown={e => onResizeMouseDown(e, elem, 'e')} />
           <div className="pdc-rh pdc-rh-s"  onMouseDown={e => onResizeMouseDown(e, elem, 's')} />

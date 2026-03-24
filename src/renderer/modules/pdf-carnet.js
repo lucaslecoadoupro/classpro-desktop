@@ -1,7 +1,27 @@
+// FIX: convertit le HTML riche (stocké depuis v0.7) en texte brut pour jsPDF
+function htmlToText(html) {
+  if (!html) return '';
+  // Si pas de balise HTML détectée, retourner tel quel
+  if (!html.includes('<')) return html;
+  try {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    // Remplacer les <br> et blocs de type block par des sauts de ligne
+    div.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+    div.querySelectorAll('p, div, li').forEach(el => {
+      el.insertAdjacentText('afterend', '\n');
+    });
+    return (div.textContent || div.innerText || '').replace(/\n{3,}/g, '\n\n').trim();
+  } catch (e) {
+    return html.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  }
+}
+
 function ModulePdfCarnet({ cpData }) {
   const classes = cpData?.classes || [];
   const fiches = cpData?.fiches || {};
   const profile = cpData?.profile || {};
+
 
   const [selCls, setSelCls] = useState(() => classes[0]?.id || null);
   const [mode, setMode] = useState('une'); // 'une' | 'plusieurs'
@@ -77,7 +97,7 @@ function ModulePdfCarnet({ cpData }) {
           let y = 28;
 
           CHAMPS.forEach(({ key, label }) => {
-            const val = (fiche[key] || '').trim();
+            const val = htmlToText(fiche[key]).trim();
             if (!val) return;
 
             // Label
@@ -170,7 +190,7 @@ function ModulePdfCarnet({ cpData }) {
           const maxY = y0 + colH - 3;
 
           CHAMPS.forEach(({ key, label }) => {
-            const val = (fiche[key] || '').trim();
+            const val = htmlToText(fiche[key]).trim();
             if (!val || fy >= maxY - 8) return;
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(6);

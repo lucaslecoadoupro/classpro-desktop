@@ -1,4 +1,30 @@
 // ── MODULE CARNET DE BORD ─────────────────────────────────────────────────────
+
+// FIX v0.7.2 : convertit le HTML rich text (importé depuis la version HTML)
+// en texte brut pour l'affichage dans les textareas Desktop
+function htmlToText(html) {
+  if (!html) return '';
+  if (!html.includes('<')) return html;
+  try {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    div.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+    div.querySelectorAll('p, div, li').forEach(el => el.insertAdjacentText('afterend', '\n'));
+    return (div.textContent || div.innerText || '').replace(/\n{3,}/g, '\n\n').trim();
+  } catch (e) {
+    return html.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  }
+}
+
+// FIX v0.7.2 : nettoie tous les champs rich text d'une fiche pour Desktop
+const RICH_KEYS = ['objectif', 'activite', 'devoirs', 'documents', 'aRevoir', 'incidents'];
+function sanitizeFiche(fiche) {
+  if (!fiche) return fiche;
+  const out = { ...fiche };
+  RICH_KEYS.forEach(k => { if (out[k]) out[k] = htmlToText(out[k]); });
+  return out;
+}
+
 function ModuleCarnet({ cpData, onDataChange }) {
   const classes = cpData?.classes || [];
   const [fiches, setFiches] = useState(() => {
@@ -62,7 +88,7 @@ function ModuleCarnet({ cpData, onDataChange }) {
   const ficheActive = selFiche ? (fiches[selCls] || []).find(f => f.id === selFiche) : null;
 
   useEffect(() => {
-    if (ficheActive) setDraft({ ...ficheActive });
+    if (ficheActive) setDraft({ ...sanitizeFiche(ficheActive) }); // FIX: nettoie le HTML riche à l'affichage
     else setDraft(null);
     setSavedOk(false);
   }, [selFiche, selCls]);
@@ -78,6 +104,18 @@ function ModuleCarnet({ cpData, onDataChange }) {
 
   const createFiche = () => {
     if (!selCls || !newForm.titre.trim()) return;
+    // FIX: vérification doublon — même date + même titre (insensible à la casse)
+    const existing = (fiches[selCls] || []).find(
+      f => f.date === newForm.date && f.titre.trim().toLowerCase() === newForm.titre.trim().toLowerCase()
+    );
+    if (existing) {
+      // Sélectionne la fiche existante au lieu d'en créer une identique
+      setSelFiche(existing.id);
+      setDraft({ ...existing });
+      setShowNew(false);
+      setNewForm({ date: isoDate(new Date()), titre: '' });
+      return;
+    }
     const f = { id: 'f' + Date.now(), date: newForm.date, titre: newForm.titre, objectif: '', activite: '', devoirs: '', documents: '', aRevoir: '', incidents: '', absents: [], aRelancer: [] };
     setFiches(p => ({ ...p, [selCls]: [...(p[selCls] || []), f] }));
     setSelFiche(f.id);
@@ -167,7 +205,7 @@ function ModuleCarnet({ cpData, onDataChange }) {
                     {f.titre || 'Séance sans titre'}
                   </div>
                   <div style={{ fontSize: '.68rem', color: 'var(--text3)', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-                    <span>{fmtDateCourt(f.date)}</span>
+                    <span>{f.date ? new Date(f.date + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) : ''}</span>
                     {nbAbsents > 0 && <span style={{ color: 'var(--danger)' }}>😴 {nbAbsents}</span>}
                     {f.incidents && <span style={{ color: 'var(--warning)' }}>⚠️</span>}
                   </div>
