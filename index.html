@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClassPro — Logiciel de gestion de classe pour enseignants</title>
+<meta name="description" content="ClassPro est un logiciel gratuit de gestion de classe conçu par un enseignant pour les enseignants. Bulletins, suivi élèves, carnet de bord, plan de classe et plus.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 110'><path d='M50 8 L84 22 L84 58 Q84 80 50 96 Q16 80 16 58 L16 22 Z' fill='%231e3a8a' stroke='%23d4b483' stroke-width='2.8'/><path d='M50 63 Q40 60 30 63 L30 44 Q40 41 50 44 Z' fill='white'/><path d='M50 63 Q60 60 70 63 L70 44 Q60 41 50 44 Z' fill='white'/></svg>" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#0f1b4d;
+  --blue:#1e3a8a;
+  --accent:#3b5bdb;
+  --violet:#7c3aed;
+  --gold:#d4b483;
+  --gold-light:#f0deb0;
+  --text:#1a2236;
+  --text2:#56637a;
+  --text3:#9aa3b5;
+  --surface:#fff;
+  --bg:#f4f6fb;
+  --border:#e2e5ec;
+  --r:16px;
+}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);background:#fff;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:.875rem 2rem;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.88);backdrop-filter:blur(18px);border-bottom:1px solid rgba(0,0,0,.06)}
+.nav-logo{display:flex;align-items:center;gap:.65rem}
+.nav-logo-icon{width:34px;height:34px}
+.nav-logo-text{font-family:'DM Serif Display',serif;font-size:1.15rem;color:var(--navy);letter-spacing:-.01em}
+.nav-links{display:flex;align-items:center;gap:.25rem}
+.nav-links a{font-size:.85rem;font-weight:500;color:var(--text2);text-decoration:none;padding:.42rem .85rem;border-radius:8px;transition:all .15s}
+.nav-links a:hover{color:var(--text);background:var(--bg)}
+.nav-dl{background:var(--accent);color:#fff!important;font-weight:700!important;border-radius:9px!important;padding:.42rem 1.1rem!important;transition:all .2s!important}
+.nav-dl:hover{background:#2f4ac5!important;transform:translateY(-1px);box-shadow:0 4px 16px rgba(59,91,219,.35)!important}
+
+/* ── HERO ── */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:7rem 2rem 5rem;background:linear-gradient(155deg,#0a1230 0%,#1e3a8a 40%,#2d4ec8 65%,#5b21b6 100%);position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+.hero-inner{max-width:860px;width:100%;text-align:center;position:relative;z-index:1}
+.hero-badge{display:inline-flex;align-items:center;gap:.45rem;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.9);font-size:.72rem;font-weight:700;padding:.3rem .9rem;border-radius:99px;letter-spacing:.09em;text-transform:uppercase;margin-bottom:1.75rem;animation:fadeUp .6s ease}
+.hero-badge-dot{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.hero-title{font-family:'DM Serif Display',serif;font-size:clamp(2.8rem,7vw,5rem);color:#fff;line-height:1.05;letter-spacing:-.03em;margin-bottom:1.25rem;animation:fadeUp .7s .1s both}
+.hero-title em{font-style:italic;color:var(--gold-light)}
+.hero-sub{font-size:clamp(1rem,2.5vw,1.2rem);color:rgba(255,255,255,.7);max-width:580px;margin:0 auto 2.5rem;line-height:1.65;animation:fadeUp .7s .2s both}
+.hero-actions{display:flex;gap:.875rem;justify-content:center;flex-wrap:wrap;animation:fadeUp .7s .3s both}
+.btn-hero-primary{display:inline-flex;align-items:center;gap:.55rem;background:#fff;color:var(--navy);font-weight:700;font-size:1rem;padding:.875rem 2rem;border-radius:12px;text-decoration:none;transition:all .2s;box-shadow:0 4px 24px rgba(0,0,0,.25)}
+.btn-hero-primary:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.35)}
+.btn-hero-secondary{display:inline-flex;align-items:center;gap:.55rem;background:rgba(255,255,255,.1);color:#fff;font-weight:600;font-size:1rem;padding:.875rem 2rem;border-radius:12px;text-decoration:none;border:1px solid rgba(255,255,255,.2);transition:all .2s}
+.btn-hero-secondary:hover{background:rgba(255,255,255,.18);transform:translateY(-2px)}
+.hero-note{margin-top:1.5rem;font-size:.78rem;color:rgba(255,255,255,.45);animation:fadeUp .7s .4s both}
+.hero-note strong{color:rgba(255,255,255,.65)}
+.hero-scroll{position:absolute;bottom:2.5rem;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:.4rem;color:rgba(255,255,255,.35);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;animation:bounce 2.5s infinite}
+@keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(6px)}}
+.hero-mockup{margin-top:3.5rem;border-radius:20px;overflow:hidden;box-shadow:0 40px 100px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.12);background:linear-gradient(135deg,#1a2440,#0d1117);padding:1rem;max-width:680px;margin-left:auto;margin-right:auto;animation:fadeUp .8s .4s both}
+.mockup-bar{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem}
+.mockup-dot{width:10px;height:10px;border-radius:50%}
+.mockup-screen{border-radius:10px;background:#0d1117;overflow:hidden}
+.mockup-header{background:linear-gradient(135deg,#0f1b4d,#1e3a8a,#3b5bdb);padding:.75rem 1rem;display:flex;align-items:center;gap:.65rem}
+.mockup-sidebar{display:flex;height:120px}
+.mockup-sb{width:52px;background:#1a2440;padding:.4rem;display:flex;flex-direction:column;gap:.3rem}
+.mockup-sb-item{height:14px;border-radius:4px;background:rgba(255,255,255,.1)}
+.mockup-sb-item.on{background:#3b5bdb}
+.mockup-content{flex:1;background:#f0f2f6;padding:.6rem;display:flex;flex-direction:column;gap:.4rem}
+.mockup-row{height:10px;border-radius:4px;background:#e2e5ec}
+.mockup-row.short{width:60%}
+.mockup-row.accent{background:#3b5bdb;width:35%}
+
+/* ── SECTIONS COMMUNES ── */
+section{padding:5rem 2rem}
+.container{max-width:1080px;margin:0 auto}
+.section-badge{display:inline-block;background:rgba(59,91,219,.1);color:var(--accent);font-size:.68rem;font-weight:700;padding:.3rem .85rem;border-radius:99px;letter-spacing:.09em;text-transform:uppercase;margin-bottom:1rem}
+.section-title{font-family:'DM Serif Display',serif;font-size:clamp(1.8rem,4vw,2.8rem);color:var(--navy);letter-spacing:-.02em;line-height:1.15;margin-bottom:.75rem}
+.section-sub{font-size:1.05rem;color:var(--text2);max-width:560px;line-height:1.65}
+.centered{text-align:center}.centered .section-sub{margin:0 auto}
+
+/* ── FEATURES ── */
+.features-section{background:var(--bg)}
+.features-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:3rem}
+.feat-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.75rem;transition:all .2s;position:relative;overflow:hidden}
+.feat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--violet));opacity:0;transition:opacity .2s}
+.feat-card:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.1);border-color:transparent}
+.feat-card:hover::before{opacity:1}
+.feat-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:1.1rem}
+.feat-title{font-weight:700;font-size:1rem;color:var(--navy);margin-bottom:.45rem}
+.feat-desc{font-size:.875rem;color:var(--text2);line-height:1.65}
+
+/* ── GRATUIT ── */
+.free-section{background:linear-gradient(155deg,#0a1230,#1e3a8a,#4c1d95);padding:5rem 2rem}
+.free-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:3.5rem;text-align:center;max-width:700px;margin:0 auto;backdrop-filter:blur(12px)}
+.free-card .section-title{color:#fff}
+.free-card .section-sub{color:rgba(255,255,255,.65);margin:0 auto 2rem}
+.free-pills{display:flex;flex-wrap:wrap;gap:.65rem;justify-content:center;margin-bottom:2rem}
+.free-pill{display:flex;align-items:center;gap:.4rem;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.85);font-size:.82rem;font-weight:500;padding:.42rem 1rem;border-radius:99px}
+.free-pill-check{color:#4ade80;font-size:.85rem}
+.btn-free{display:inline-flex;align-items:center;gap:.6rem;background:#fff;color:var(--navy);font-weight:700;font-size:1rem;padding:1rem 2.25rem;border-radius:12px;text-decoration:none;transition:all .2s;box-shadow:0 4px 24px rgba(0,0,0,.3)}
+.btn-free:hover{transform:translateY(-3px);box-shadow:0 16px 40px rgba(0,0,0,.4)}
+
+/* ── DOWNLOAD ── */
+.dl-section{background:#fff;padding:5rem 2rem}
+/* 2 grandes cartes côte à côte, pleine largeur du container */
+.dl-versions{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:2.5rem}
+.dl-vcard{border-radius:20px;padding:2rem;display:flex;flex-direction:column;gap:1rem;text-decoration:none;color:inherit;transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden}
+.dl-vcard-desktop{background:linear-gradient(145deg,#0f1b4d,#1e3a8a);border:1px solid rgba(255,255,255,.08)}
+.dl-vcard-html{background:var(--bg);border:2px solid var(--border)}
+.dl-vcard:hover{transform:translateY(-4px);box-shadow:0 20px 60px rgba(0,0,0,.15)}
+.dl-vcard-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;margin-bottom:.1rem}
+.dl-vcard-desktop .dl-vcard-label{color:rgba(255,255,255,.5)}
+.dl-vcard-html .dl-vcard-label{color:var(--text3)}
+.dl-vcard-title{font-family:'DM Serif Display',serif;font-size:1.5rem;letter-spacing:-.02em;line-height:1.15}
+.dl-vcard-desktop .dl-vcard-title{color:#fff}
+.dl-vcard-html .dl-vcard-title{color:var(--navy)}
+.dl-vcard-desc{font-size:.875rem;line-height:1.65}
+.dl-vcard-desktop .dl-vcard-desc{color:rgba(255,255,255,.65)}
+.dl-vcard-html .dl-vcard-desc{color:var(--text2)}
+.dl-vcard-features{list-style:none;display:flex;flex-direction:column;gap:.4rem;margin-top:.25rem;flex:1}
+.dl-vcard-features li{font-size:.82rem;display:flex;align-items:flex-start;gap:.5rem}
+.dl-vcard-desktop .dl-vcard-features li{color:rgba(255,255,255,.75)}
+.dl-vcard-html .dl-vcard-features li{color:var(--text2)}
+.dl-vcard-features li::before{content:'✓';font-weight:700;flex-shrink:0;margin-top:.05rem}
+.dl-vcard-desktop .dl-vcard-features li::before{color:#4ade80}
+.dl-vcard-html .dl-vcard-features li::before{color:var(--accent)}
+.dl-vcard-actions{display:flex;flex-direction:column;gap:.55rem;margin-top:.5rem}
+.dl-btn{display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.75rem 1.25rem;border-radius:10px;font-size:.85rem;font-weight:700;text-decoration:none;transition:all .2s;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+.dl-btn-primary-light{background:#fff;color:var(--navy)}
+.dl-btn-primary-light:hover{background:#f0f4ff}
+.dl-btn-secondary-light{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2)}
+.dl-btn-secondary-light:hover{background:rgba(255,255,255,.18)}
+.dl-btn-primary-dark{background:var(--accent);color:#fff}
+.dl-btn-primary-dark:hover{background:#2f4ac5}
+.dl-vcard-warning{font-size:.72rem;margin-top:.25rem;padding:.6rem .875rem;border-radius:8px}
+.dl-vcard-desktop .dl-vcard-warning{background:rgba(255,255,255,.07);color:rgba(255,255,255,.45)}
+.dl-vcard-html .dl-vcard-warning{background:rgba(59,91,219,.06);color:var(--text3)}
+.dl-note{margin-top:1.5rem;font-size:.78rem;color:var(--text3);display:flex;align-items:center;gap:.4rem}
+
+/* ── A PROPOS ── */
+.about-section{background:var(--bg);padding:5rem 2rem}
+.about-inner{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center}
+.about-quote{font-family:'DM Serif Display',serif;font-size:1.5rem;color:var(--navy);line-height:1.45;margin-bottom:1.25rem;letter-spacing:-.01em}
+.about-quote em{color:var(--accent);font-style:italic}
+.about-sig{display:flex;align-items:center;gap:.875rem;margin-top:1.5rem}
+.about-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--violet));display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:#fff;flex-shrink:0}
+.about-name{font-weight:700;font-size:.95rem;color:var(--navy)}
+.about-role{font-size:.8rem;color:var(--text2)}
+.about-features{display:flex;flex-direction:column;gap:.875rem}
+.about-feat{display:flex;gap:.875rem;align-items:flex-start}
+.about-feat-icon{width:38px;height:38px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1rem}
+.about-feat-title{font-weight:600;font-size:.92rem;color:var(--navy);margin-bottom:.18rem}
+.about-feat-desc{font-size:.82rem;color:var(--text2);line-height:1.55}
+
+/* ── FOOTER ── */
+footer{background:var(--navy);padding:3rem 2rem;text-align:center}
+footer .logo-row{display:flex;align-items:center;justify-content:center;gap:.65rem;margin-bottom:.875rem}
+footer .logo-text{font-family:'DM Serif Display',serif;font-size:1.2rem;color:#fff}
+footer p{font-size:.82rem;color:rgba(255,255,255,.45);line-height:1.65}
+footer a{color:rgba(255,255,255,.6);text-decoration:none;transition:color .15s}
+footer a:hover{color:#fff}
+.footer-links{display:flex;gap:1.25rem;justify-content:center;margin-top:.875rem;flex-wrap:wrap}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── MOBILE ── */
+@media(max-width:768px){
+  nav{padding:.75rem 1rem}
+  .nav-links{display:none}
+  .hero{padding:5.5rem 1.25rem 4rem}
+  section{padding:3.5rem 1.25rem}
+  .about-inner{grid-template-columns:1fr}
+  .dl-grid{grid-template-columns:1fr}
+  .dl-versions{grid-template-columns:1fr}
+  .hero-mockup{display:none}
+  .free-card{padding:2rem 1.25rem}
+  .features-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:480px){
+  .features-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <svg class="nav-logo-icon" viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="sf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a1a1a"/><stop offset="100%" stop-color="#0d0d0d"/></linearGradient>
+        <linearGradient id="gs" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#d4b483"/><stop offset="100%" stop-color="#a8864e"/></linearGradient>
+      </defs>
+      <path d="M50 8 L84 22 L84 58 Q84 80 50 96 Q16 80 16 58 L16 22 Z" fill="url(#sf)" stroke="url(#gs)" stroke-width="2.8" stroke-linejoin="round"/>
+      <path d="M50 63 Q40 60 30 63 L30 44 Q40 41 50 44 Z" fill="white" stroke="#b8b8b8" stroke-width="0.4"/>
+      <path d="M50 63 Q60 60 70 63 L70 44 Q60 41 50 44 Z" fill="white" stroke="#b8b8b8" stroke-width="0.4"/>
+      <line x1="50" y1="44" x2="50" y2="63" stroke="#a0a0a0" stroke-width="1.2"/>
+    </svg>
+    <span class="nav-logo-text">ClassPro</span>
+  </div>
+  <div class="nav-links">
+    <a href="#fonctionnalites">Fonctionnalités</a>
+    <a href="#telecharger">Télécharger</a>
+    <a href="#a-propos">À propos</a>
+    <a href="#telecharger" class="nav-dl">⬇ Télécharger</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">
+      <span class="hero-badge-dot"></span>
+      Version Beta — Gratuit pour tous les enseignants
+    </div>
+    <h1 class="hero-title">La gestion de classe<br><em>enfin pensée</em> pour vous.</h1>
+    <p class="hero-sub">ClassPro réunit en un seul outil tout ce dont un enseignant a besoin — suivi des élèves, bulletins, carnet de bord, plan de classe, progressions annuelles et bien plus.</p>
+    <div class="hero-actions">
+      <a href="#telecharger" class="btn-hero-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Télécharger gratuitement
+      </a>
+      <a href="#fonctionnalites" class="btn-hero-secondary">
+        Voir les fonctionnalités →
+      </a>
+    </div>
+    <p class="hero-note">100% gratuit · Aucune inscription · <strong>Vos données restent sur votre machine</strong></p>
+
+    <div class="hero-mockup">
+      <div class="mockup-bar">
+        <div class="mockup-dot" style="background:#ff5f57"></div>
+        <div class="mockup-dot" style="background:#febc2e"></div>
+        <div class="mockup-dot" style="background:#28c840"></div>
+      </div>
+      <div class="mockup-screen">
+        <div class="mockup-header">
+          <svg width="22" height="24" viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg"><path d="M50 8 L84 22 L84 58 Q84 80 50 96 Q16 80 16 58 L16 22 Z" fill="#1a1a1a" stroke="#d4b483" stroke-width="2.8"/><path d="M50 63 Q40 60 30 63 L30 44 Q40 41 50 44 Z" fill="white"/><path d="M50 63 Q60 60 70 63 L70 44 Q60 41 50 44 Z" fill="white"/></svg>
+          <span style="color:#fff;font-size:.75rem;font-weight:700;letter-spacing:-.01em">ClassPro</span>
+          <div style="margin-left:auto;display:flex;gap:.4rem">
+            <div style="height:14px;width:60px;background:rgba(255,255,255,.2);border-radius:4px"></div>
+            <div style="height:14px;width:40px;background:rgba(255,255,255,.1);border-radius:4px"></div>
+          </div>
+        </div>
+        <div class="mockup-sidebar">
+          <div class="mockup-sb">
+            <div class="mockup-sb-item on"></div>
+            <div class="mockup-sb-item"></div>
+            <div class="mockup-sb-item"></div>
+            <div class="mockup-sb-item"></div>
+            <div class="mockup-sb-item"></div>
+          </div>
+          <div class="mockup-content">
+            <div class="mockup-row accent"></div>
+            <div class="mockup-row short"></div>
+            <div style="height:8px"></div>
+            <div class="mockup-row"></div>
+            <div class="mockup-row short"></div>
+            <div class="mockup-row"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="hero-scroll">↓ découvrir</div>
+</section>
+
+<!-- FONCTIONNALITÉS -->
+<section class="features-section" id="fonctionnalites">
+  <div class="container">
+    <div class="centered">
+      <div class="section-badge">Fonctionnalités</div>
+      <h2 class="section-title">Tout ce dont vous avez besoin,<br>dans un seul outil.</h2>
+      <p class="section-sub">Conçu par un enseignant pour les enseignants. Chaque module répond à un vrai besoin du quotidien.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feat-card">
+        <div class="feat-icon" style="background:#eff6ff">🎓</div>
+        <div class="feat-title">Conseil de classe & Bulletins</div>
+        <div class="feat-desc">Importez vos PDF de bulletins, visualisez les moyennes T1/T2/T3, suivez l'évolution de chaque élève et rédigez vos appréciations.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:#f0fdf4">👁️</div>
+        <div class="feat-title">Suivi de classe</div>
+        <div class="feat-desc">Notez les observations de comportement en temps réel, gérez les absences, les travaux non rendus et les alertes par élève.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:#fef3c7">📓</div>
+        <div class="feat-title">Carnet de bord</div>
+        <div class="feat-desc">Rédigez vos fiches de séance avec objectifs, activités et devoirs. Éditeur rich text complet avec polices et formatage.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:#f5f3ff">🗺️</div>
+        <div class="feat-title">Plan de classe</div>
+        <div class="feat-desc">Organisez visuellement votre salle, placez vos élèves par drag & drop et utilisez le mode Séance pour annoter en direct.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:#fff1f2">📅</div>
+        <div class="feat-title">Progression annuelle</div>
+        <div class="feat-desc">Planifiez vos séquences par trimestre, associez des évaluations et visualisez votre avancement sur l'année.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:#ecfdf5">🖊️</div>
+        <div class="feat-title">Tableau blanc & Étude de doc</div>
+        <div class="feat-desc">Un tableau blanc avec widgets (minuteur, tirage au sort, QR code, feu tricolore) et un annotateur de documents PDF.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:#fff7ed">👨‍👩‍👧</div>
+        <div class="feat-title">Rencontres parents-profs</div>
+        <div class="feat-desc">Planifiez et archivez vos rencontres avec les familles, avec résumé, décisions prises et alertes dashboard.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:#f0f9ff">🔒</div>
+        <div class="feat-title">100% local, sans serveur</div>
+        <div class="feat-desc">Vos données restent sur votre machine. Aucune inscription, aucun compte, aucune connexion obligatoire. Sauvegarde en JSON.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GRATUIT -->
+<section class="free-section">
+  <div class="free-card">
+    <div class="section-badge" style="background:rgba(255,255,255,.12);color:rgba(255,255,255,.9);margin-bottom:1.25rem">100% Gratuit</div>
+    <h2 class="section-title" style="color:#fff;font-size:2.2rem;margin-bottom:.875rem">Aucune condition.<br>Aucune limite.</h2>
+    <p class="section-sub" style="color:rgba(255,255,255,.6)">ClassPro est un projet personnel développé avec passion pour la communauté enseignante. Il est gratuit, le restera, et ne vous demande rien en échange.</p>
+    <div class="free-pills">
+      <div class="free-pill"><span class="free-pill-check">✓</span> Gratuit pour toujours</div>
+      <div class="free-pill"><span class="free-pill-check">✓</span> Pas d'inscription</div>
+      <div class="free-pill"><span class="free-pill-check">✓</span> Pas de pub</div>
+      <div class="free-pill"><span class="free-pill-check">✓</span> Données locales uniquement</div>
+      <div class="free-pill"><span class="free-pill-check">✓</span> Open source</div>
+      <div class="free-pill"><span class="free-pill-check">✓</span> Mac & Windows</div>
+    </div>
+    <a href="#telecharger" class="btn-free">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Télécharger ClassPro
+    </a>
+  </div>
+</section>
+
+<!-- TÉLÉCHARGER -->
+<section class="dl-section" id="telecharger">
+  <div class="container">
+    <div class="section-badge">Téléchargement</div>
+    <h2 class="section-title">Deux versions,<br>deux usages.</h2>
+    <p class="section-sub">ClassPro existe en version Desktop pour votre machine personnelle, et en version HTML à ouvrir directement dans la classe.</p>
+
+    <div class="dl-versions">
+
+      <!-- VERSION DESKTOP -->
+      <div class="dl-vcard dl-vcard-desktop">
+        <div>
+          <div class="dl-vcard-label">💻 Version Desktop</div>
+          <div class="dl-vcard-title">Chez vous,<br>sur votre machine</div>
+        </div>
+        <p class="dl-vcard-desc">L'application native à installer sur votre ordinateur personnel. Elle vous permet de gérer l'année complète et de générer tous vos documents officiels.</p>
+        <ul class="dl-vcard-features">
+          <li>Génération de PDF bulletins, carnet, progressions</li>
+          <li>Import de vos bulletins Pronote (PDF)</li>
+          <li>Gestion complète des élèves et classes</li>
+          <li>Conseil de classe avec comparatif T1/T2/T3</li>
+          <li>Export JSON pour synchroniser avec la version HTML</li>
+          <li>Mac (Intel & Apple Silicon) et Windows 10/11</li>
+        </ul>
+        <div class="dl-vcard-actions">
+          <a href="https://github.com/lucaslecoadoupro/classpro-desktop/releases/latest/download/ClassPro-mac-arm64.dmg" class="dl-btn dl-btn-primary-light">
+            <span>🍎</span> macOS (Apple Silicon)
+          </a>
+          <a href="https://github.com/lucaslecoadoupro/classpro-desktop/releases/latest/download/ClassPro-mac-x64.dmg" class="dl-btn dl-btn-secondary-light">
+            <span>🍎</span> macOS (Intel x64)
+          </a>
+          <a href="https://github.com/lucaslecoadoupro/classpro-desktop/releases/latest/download/ClassPro-Setup.exe" class="dl-btn dl-btn-secondary-light">
+            <span>🪟</span> Windows 10/11
+          </a>
+        </div>
+        <div class="dl-vcard-warning">⚠️ macOS : si alerte développeur non identifié → Réglages Système → Confidentialité → Ouvrir quand même.<br>⚠️ Windows : cliquer "Informations complémentaires" puis "Exécuter quand même".</div>
+      </div>
+
+      <!-- VERSION HTML -->
+      <div class="dl-vcard dl-vcard-html">
+        <div>
+          <div class="dl-vcard-label">🌐 Version HTML</div>
+          <div class="dl-vcard-title">En classe,<br>sans installation</div>
+        </div>
+        <p class="dl-vcard-desc">Un fichier HTML à ouvrir dans n'importe quel navigateur. Idéal pour l'usage quotidien en classe — même sans connexion internet.</p>
+        <ul class="dl-vcard-features">
+          <li>Tableau blanc avec minuteur, tirage au sort, QR code</li>
+          <li>Étude et annotation de documents PDF</li>
+          <li>Plan de classe interactif (mode Séance en direct)</li>
+          <li>Suivi de classe et observations en temps réel</li>
+          <li>Carnet de bord et fiches de séance</li>
+          <li>Fonctionne hors connexion, aucune installation</li>
+        </ul>
+        <div class="dl-vcard-actions">
+          <a href="https://github.com/lucaslecoadoupro/classpro-desktop/releases/latest/download/classpro.html" class="dl-btn dl-btn-primary-dark">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Télécharger le fichier HTML
+          </a>
+          <a href="https://github.com/lucaslecoadoupro/classpro-desktop/releases/latest" class="dl-btn" style="background:var(--bg);color:var(--text2);border:1.5px solid var(--border)">
+            Voir toutes les releases →
+          </a>
+        </div>
+        <div class="dl-vcard-warning">💡 Importez votre JSON exporté depuis la version Desktop pour retrouver toutes vos données en classe.</div>
+      </div>
+
+    </div>
+
+    <div class="dl-note">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      Version Beta en développement actif · Bug ou suggestion : <a href="mailto:lucas.le-coadou@ac-montpellier.fr" style="color:var(--accent);margin-left:.3rem">lucas.le-coadou@ac-montpellier.fr</a>
+    </div>
+  </div>
+</section>
+
+<!-- À PROPOS -->
+<section class="about-section" id="a-propos">
+  <div class="container">
+    <div class="about-inner">
+      <div>
+        <div class="section-badge">À propos</div>
+        <p class="about-quote">"J'ai développé ClassPro parce que <em>aucun outil existant</em> ne correspondait vraiment à mes besoins en classe."</p>
+        <p style="font-size:.92rem;color:var(--text2);line-height:1.7">ClassPro est un projet personnel né de la frustration quotidienne d'un enseignant. Chaque fonctionnalité répond à un vrai problème vécu en classe, pas à une liste de features marketing.</p>
+        <div class="about-sig">
+          <div class="about-avatar">LL</div>
+          <div>
+            <div class="about-name">Lucas Le Coadou</div>
+            <div class="about-role">Enseignant · Académie de Montpellier</div>
+          </div>
+        </div>
+      </div>
+      <div class="about-features">
+        <div class="about-feat">
+          <div class="about-feat-icon" style="background:#eff6ff">📡</div>
+          <div>
+            <div class="about-feat-title">Données locales & privées</div>
+            <div class="about-feat-desc">Tout est stocké sur votre machine. Aucune donnée élève ne transite par un serveur externe.</div>
+          </div>
+        </div>
+        <div class="about-feat">
+          <div class="about-feat-icon" style="background:#f0fdf4">🔄</div>
+          <div>
+            <div class="about-feat-title">Mises à jour continues</div>
+            <div class="about-feat-desc">ClassPro évolue régulièrement. Vos retours sont précieux pour orienter le développement.</div>
+          </div>
+        </div>
+        <div class="about-feat">
+          <div class="about-feat-icon" style="background:#fef3c7">💾</div>
+          <div>
+            <div class="about-feat-title">Sauvegarde JSON universelle</div>
+            <div class="about-feat-desc">Exportez et importez vos données entre la version Desktop et la version HTML facilement.</div>
+          </div>
+        </div>
+        <div class="about-feat">
+          <div class="about-feat-icon" style="background:#fdf4ff">🧪</div>
+          <div>
+            <div class="about-feat-title">Beta ouverte</div>
+            <div class="about-feat-desc">Participez au développement en signalant les bugs et en proposant de nouvelles fonctionnalités.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="logo-row">
+    <svg width="28" height="32" viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
+      <path d="M50 8 L84 22 L84 58 Q84 80 50 96 Q16 80 16 58 L16 22 Z" fill="#1a1a1a" stroke="#d4b483" stroke-width="2.8" stroke-linejoin="round"/>
+      <path d="M50 63 Q40 60 30 63 L30 44 Q40 41 50 44 Z" fill="white" stroke="#b8b8b8" stroke-width="0.4"/>
+      <path d="M50 63 Q60 60 70 63 L70 44 Q60 41 50 44 Z" fill="white" stroke="#b8b8b8" stroke-width="0.4"/>
+      <line x1="50" y1="44" x2="50" y2="63" stroke="#a0a0a0" stroke-width="1.2"/>
+    </svg>
+    <span class="logo-text">ClassPro</span>
+  </div>
+  <p>Logiciel de gestion de classe — Gratuit, sans inscription, sans publicité.</p>
+  <p style="margin-top:.4rem">Développé avec ❤️ par <a href="mailto:lucas.le-coadou@ac-montpellier.fr">Lucas Le Coadou</a></p>
+  <div class="footer-links">
+    <a href="https://github.com/lucaslecoadoupro/classpro-desktop">GitHub</a>
+    <a href="https://github.com/lucaslecoadoupro/classpro-desktop/releases">Releases</a>
+    <a href="mailto:lucas.le-coadou@ac-montpellier.fr">Contact / Bug</a>
+    <a href="https://github.com/lucaslecoadoupro/classpro-desktop/issues">Signaler un problème</a>
+  </div>
+  <p style="margin-top:1.5rem;font-size:.72rem;opacity:.3">© 2026 Lucas Le Coadou · ClassPro est un projet indépendant non affilié à l'Éducation Nationale</p>
+</footer>
+
+<script>
+// Smooth appear on scroll
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if(e.isIntersecting) { e.target.style.opacity='1'; e.target.style.transform='none'; }});
+}, {threshold:.1});
+document.querySelectorAll('.feat-card,.about-feat,.dl-card').forEach(el => {
+  el.style.opacity='0'; el.style.transform='translateY(16px)'; el.style.transition='opacity .5s ease, transform .5s ease';
+  observer.observe(el);
+});
+</script>
+</body>
+</html>
