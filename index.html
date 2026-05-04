@@ -153,6 +153,45 @@ section{padding:5rem 2rem}
 .about-feat-title{font-weight:600;font-size:.92rem;color:var(--navy);margin-bottom:.18rem}
 .about-feat-desc{font-size:.82rem;color:var(--text2);line-height:1.55}
 
+/* ── INSTALLATION ── */
+.install-section{background:#fff;padding:5rem 2rem}
+.install-tabs{display:flex;gap:.5rem;margin-top:2.5rem;margin-bottom:2rem;border-bottom:2px solid var(--border);padding-bottom:0}
+.install-tab{padding:.65rem 1.5rem;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;display:flex;align-items:center;gap:.5rem}
+.install-tab:hover{color:var(--text)}
+.install-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.install-panel{display:none}
+.install-panel.on{display:block}
+.install-steps{display:flex;flex-direction:column;gap:1.25rem;max-width:680px}
+.install-step{display:flex;gap:1.25rem;align-items:flex-start}
+.install-step-num{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;font-size:.82rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:.1rem}
+.install-step-content{}
+.install-step-title{font-weight:700;font-size:.95rem;color:var(--navy);margin-bottom:.3rem}
+.install-step-desc{font-size:.875rem;color:var(--text2);line-height:1.65}
+.install-step-desc strong{color:var(--text);font-weight:600}
+.install-mockup{margin-top:.75rem;background:#1e1e1e;border-radius:12px;overflow:hidden;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.install-mockup-bar{background:#323232;padding:.5rem .75rem;display:flex;align-items:center;gap:.4rem}
+.install-mockup-dot{width:8px;height:8px;border-radius:50%}
+.install-mockup-body{padding:1.25rem 1.5rem}
+.install-mockup-title{font-size:.8rem;font-weight:700;color:#fff;margin-bottom:.5rem}
+.install-mockup-text{font-size:.72rem;color:#aaa;line-height:1.6;margin-bottom:.875rem}
+.install-mockup-btns{display:flex;gap:.5rem;flex-wrap:wrap}
+.install-mockup-btn{padding:.4rem .875rem;border-radius:6px;font-size:.72rem;font-weight:600;cursor:default}
+.install-mockup-btn-primary{background:#0078d4;color:#fff}
+.install-mockup-btn-secondary{background:#404040;color:#ccc}
+.install-mockup-btn-danger{background:#c42b1c;color:#fff}
+/* Mac dialog */
+.mac-dialog{background:#ececec;border-radius:12px;padding:1.5rem;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.25);margin-top:.75rem}
+.mac-dialog-icon{font-size:2.5rem;margin-bottom:.5rem}
+.mac-dialog-title{font-size:.85rem;font-weight:700;color:#1d1d1f;margin-bottom:.35rem}
+.mac-dialog-text{font-size:.72rem;color:#555;line-height:1.55;margin-bottom:1rem}
+.mac-dialog-btns{display:flex;justify-content:flex-end;gap:.5rem}
+.mac-dialog-btn{padding:.4rem 1rem;border-radius:6px;font-size:.75rem;font-weight:600;cursor:default}
+.mac-dialog-btn-cancel{background:#e0e0e0;color:#333}
+.mac-dialog-btn-ok{background:#0071e3;color:#fff}
+.install-tip{display:flex;gap:.75rem;align-items:flex-start;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:.875rem 1rem;margin-top:1.25rem;max-width:680px}
+.install-tip-icon{font-size:1.1rem;flex-shrink:0;margin-top:.05rem}
+.install-tip-text{font-size:.82rem;color:#0c4a6e;line-height:1.6}
+
 /* ── FOOTER ── */
 footer{background:var(--navy);padding:3rem 2rem;text-align:center}
 footer .logo-row{display:flex;align-items:center;justify-content:center;gap:.65rem;margin-bottom:.875rem}
@@ -202,6 +241,7 @@ footer a:hover{color:#fff}
   <div class="nav-links">
     <a href="#fonctionnalites">Fonctionnalités</a>
     <a href="#telecharger">Télécharger</a>
+    <a href="#installation">Installation</a>
     <a href="#a-propos">À propos</a>
     <a href="#telecharger" class="nav-dl">⬇ Télécharger</a>
   </div>
@@ -393,7 +433,7 @@ footer a:hover{color:#fff}
           <li>Fonctionne hors connexion, aucune installation</li>
         </ul>
         <div class="dl-vcard-actions">
-          <a href="https://github.com/lucaslecoadoupro/classpro-desktop/releases/latest/download/classpro.html" class="dl-btn dl-btn-primary-dark">
+          <a href="https://github.com/lucaslecoadoupro/classpro-desktop/releases/latest/download/classpro_v0_7_3.html" class="dl-btn dl-btn-primary-dark">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Télécharger le fichier HTML
           </a>
@@ -410,6 +450,168 @@ footer a:hover{color:#fff}
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
       Version Beta en développement actif · Bug ou suggestion : <a href="mailto:lucas.le-coadou@ac-montpellier.fr" style="color:var(--accent);margin-left:.3rem">lucas.le-coadou@ac-montpellier.fr</a>
     </div>
+  </div>
+</section>
+
+
+<!-- INSTALLATION -->
+<section class="install-section" id="installation">
+  <div class="container">
+    <div class="section-badge">Installation</div>
+    <h2 class="section-title">Installer ClassPro<br>en 2 minutes</h2>
+    <p class="section-sub">Votre système d'exploitation va afficher une alerte de sécurité — c'est normal. Voici exactement quoi faire.</p>
+
+    <div class="install-tabs">
+      <button class="install-tab on" onclick="showInstall('mac')">🍎 macOS</button>
+      <button class="install-tab" onclick="showInstall('win')">🪟 Windows</button>
+    </div>
+
+    <!-- MAC -->
+    <div class="install-panel on" id="install-mac">
+      <div class="install-steps">
+
+        <div class="install-step">
+          <div class="install-step-num">1</div>
+          <div class="install-step-content">
+            <div class="install-step-title">Téléchargez le fichier .dmg</div>
+            <div class="install-step-desc">Cliquez sur le bouton <strong>macOS</strong> dans la section téléchargement ci-dessus. Le fichier <strong>ClassPro-Desktop-x.x.x-arm64.dmg</strong> (Apple Silicon) ou <strong>x64.dmg</strong> (Intel) se télécharge dans votre dossier Téléchargements.</div>
+          </div>
+        </div>
+
+        <div class="install-step">
+          <div class="install-step-num">2</div>
+          <div class="install-step-content">
+            <div class="install-step-title">Ouvrez le fichier .dmg</div>
+            <div class="install-step-desc">Double-cliquez sur le fichier téléchargé. Une fenêtre s'ouvre, glissez l'icône ClassPro dans le dossier Applications.</div>
+          </div>
+        </div>
+
+        <div class="install-step">
+          <div class="install-step-num">3</div>
+          <div class="install-step-content">
+            <div class="install-step-title">macOS bloque l'ouverture — c'est normal</div>
+            <div class="install-step-desc">Quand vous double-cliquez sur ClassPro pour la première fois, macOS affiche cette alerte :</div>
+            <div class="mac-dialog">
+              <div class="mac-dialog-icon">🚫</div>
+              <div class="mac-dialog-title">"ClassPro" ne peut pas être ouvert car Apple ne peut pas vérifier qu'il ne contient pas de logiciel malveillant.</div>
+              <div class="mac-dialog-text">Ce logiciel doit être mis à jour. Contactez le développeur pour obtenir une version compatible avec cette version de macOS. Si vous êtes sûr de sa provenance, vous pouvez tout de même l'ouvrir.</div>
+              <div class="mac-dialog-btns">
+                <div class="mac-dialog-btn mac-dialog-btn-cancel">Annuler</div>
+                <div class="mac-dialog-btn mac-dialog-btn-ok">OK</div>
+              </div>
+            </div>
+            <div class="install-step-desc" style="margin-top:.75rem">Cliquez <strong>OK</strong> pour fermer cette alerte — ne cliquez pas "Déplacer vers la Corbeille".</div>
+          </div>
+        </div>
+
+        <div class="install-step">
+          <div class="install-step-num">4</div>
+          <div class="install-step-content">
+            <div class="install-step-title">Autorisez ClassPro dans les Réglages</div>
+            <div class="install-step-desc">Ouvrez <strong>Réglages Système</strong> (l'icône engrenage) → <strong>Confidentialité et sécurité</strong> → faites défiler jusqu'à la section <strong>Sécurité</strong>. Vous verrez le message <em>"ClassPro a été bloqué"</em> avec un bouton <strong>"Ouvrir quand même"</strong> → cliquez dessus → confirmez avec votre mot de passe.</div>
+          </div>
+        </div>
+
+        <div class="install-step">
+          <div class="install-step-num">5</div>
+          <div class="install-step-content">
+            <div class="install-step-title">ClassPro s'ouvre normalement</div>
+            <div class="install-step-desc">Relancez ClassPro depuis Applications. Cette manipulation n'est à faire <strong>qu'une seule fois</strong> — les prochaines ouvertures seront directes.</div>
+          </div>
+        </div>
+
+      </div>
+      <div class="install-tip">
+        <div class="install-tip-icon">💡</div>
+        <div class="install-tip-text">Cette alerte apparaît parce que ClassPro n'est pas signé avec un certificat Apple payant. Le logiciel est sûr — il est développé par un enseignant et son code source est disponible sur GitHub.</div>
+      </div>
+    </div>
+
+    <!-- WINDOWS -->
+    <div class="install-panel" id="install-win">
+      <div class="install-steps">
+
+        <div class="install-step">
+          <div class="install-step-num">1</div>
+          <div class="install-step-content">
+            <div class="install-step-title">Téléchargez le fichier .exe</div>
+            <div class="install-step-desc">Cliquez sur le bouton <strong>Windows 10/11</strong> dans la section téléchargement. Le fichier <strong>ClassPro-Desktop-Setup-x.x.x.exe</strong> se télécharge dans votre dossier Téléchargements.</div>
+          </div>
+        </div>
+
+        <div class="install-step">
+          <div class="install-step-num">2</div>
+          <div class="install-step-content">
+            <div class="install-step-title">Windows Defender bloque le fichier — c'est normal</div>
+            <div class="install-step-desc">Quand vous double-cliquez sur le fichier, Windows affiche cet écran bleu :</div>
+            <div class="install-mockup" style="margin-top:.75rem">
+              <div class="install-mockup-bar">
+                <div class="install-mockup-dot" style="background:#ff5f57"></div>
+                <div class="install-mockup-dot" style="background:#febc2e"></div>
+                <div class="install-mockup-dot" style="background:#28c840"></div>
+                <span style="font-size:.65rem;color:#aaa;margin-left:.5rem">Windows Defender SmartScreen</span>
+              </div>
+              <div class="install-mockup-body">
+                <div style="font-size:1.5rem;margin-bottom:.5rem">🛡️</div>
+                <div class="install-mockup-title">Windows a protégé votre ordinateur</div>
+                <div class="install-mockup-text">Windows SmartScreen a empêché le démarrage d'une application non reconnue. L'exécution de cette application peut mettre en danger votre PC.<br><br>Application : ClassPro-Desktop-Setup.exe<br>Éditeur : Éditeur inconnu</div>
+                <div class="install-mockup-btns">
+                  <div class="install-mockup-btn install-mockup-btn-secondary">Ne pas exécuter</div>
+                  <div class="install-mockup-btn" style="background:#404040;color:#6bb5ff;font-size:.72rem;font-weight:600;padding:.4rem .875rem;border-radius:6px">Informations complémentaires</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="install-step">
+          <div class="install-step-num">3</div>
+          <div class="install-step-content">
+            <div class="install-step-title">Cliquez "Informations complémentaires"</div>
+            <div class="install-step-desc">Un lien bleu <strong>"Informations complémentaires"</strong> apparaît en bas de l'écran bleu. Cliquez dessus — la fenêtre se met à jour et affiche un nouveau bouton.</div>
+          </div>
+        </div>
+
+        <div class="install-step">
+          <div class="install-step-num">4</div>
+          <div class="install-step-content">
+            <div class="install-step-title">Cliquez "Exécuter quand même"</div>
+            <div class="install-step-desc">Un bouton <strong>"Exécuter quand même"</strong> apparaît en bas à droite. Cliquez dessus pour lancer l'installation.</div>
+            <div class="install-mockup" style="margin-top:.75rem">
+              <div class="install-mockup-bar">
+                <div class="install-mockup-dot" style="background:#ff5f57"></div>
+                <div class="install-mockup-dot" style="background:#febc2e"></div>
+                <div class="install-mockup-dot" style="background:#28c840"></div>
+                <span style="font-size:.65rem;color:#aaa;margin-left:.5rem">Windows Defender SmartScreen</span>
+              </div>
+              <div class="install-mockup-body">
+                <div style="font-size:1.5rem;margin-bottom:.5rem">🛡️</div>
+                <div class="install-mockup-title">Windows a protégé votre ordinateur</div>
+                <div class="install-mockup-text">Application : ClassPro-Desktop-Setup.exe<br>Éditeur : Éditeur inconnu</div>
+                <div class="install-mockup-btns">
+                  <div class="install-mockup-btn install-mockup-btn-secondary">Ne pas exécuter</div>
+                  <div class="install-mockup-btn install-mockup-btn-primary">Exécuter quand même</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="install-step">
+          <div class="install-step-num">5</div>
+          <div class="install-step-content">
+            <div class="install-step-title">Suivez l'assistant d'installation</div>
+            <div class="install-step-desc">L'installeur se lance normalement. Cliquez <strong>Suivant</strong> puis <strong>Installer</strong>. ClassPro apparaît dans votre menu Démarrer et sur le bureau.</div>
+          </div>
+        </div>
+
+      </div>
+      <div class="install-tip">
+        <div class="install-tip-icon">💡</div>
+        <div class="install-tip-text">Windows Defender affiche cette alerte pour tout logiciel qui n'a pas de certificat de signature numérique payant. ClassPro est sûr — son code source est disponible publiquement sur GitHub.</div>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -486,6 +688,14 @@ footer a:hover{color:#fff}
 </footer>
 
 <script>
+// Onglets installation
+function showInstall(os) {
+  document.querySelectorAll('.install-tab').forEach(t => t.classList.remove('on'));
+  document.querySelectorAll('.install-panel').forEach(p => p.classList.remove('on'));
+  document.querySelector(`[onclick="showInstall('${os}')"]`).classList.add('on');
+  document.getElementById(`install-${os}`).classList.add('on');
+}
+
 // Smooth appear on scroll
 const observer = new IntersectionObserver((entries) => {
   entries.forEach(e => { if(e.isIntersecting) { e.target.style.opacity='1'; e.target.style.transform='none'; }});
