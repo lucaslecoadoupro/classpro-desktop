@@ -2,8 +2,9 @@ name: Build ClassPro Desktop
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch: # permet de déclencher manuellement depuis GitHub
+    tags:
+      - 'v*'          # Se déclenche uniquement sur un tag ex: v1.0.2
+  workflow_dispatch:  # Permet aussi de lancer manuellement depuis GitHub
 
 jobs:
   build-windows:
@@ -25,12 +26,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload .exe to Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: ClassPro-Desktop-Windows
-          path: dist/*.exe
-          retention-days: 30
+          files: dist/*.exe
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-mac:
     runs-on: macos-latest
@@ -51,9 +53,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Mac artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload .dmg files to Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: ClassPro-Desktop-Mac
-          path: dist/*.dmg
-          retention-days: 30
+          files: dist/*.dmg
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  attach-html:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload classpro.html to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: classpro*.html
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
