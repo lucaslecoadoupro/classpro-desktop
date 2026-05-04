@@ -3,8 +3,8 @@ name: Build ClassPro Desktop
 on:
   push:
     tags:
-      - 'v*'          # Se déclenche uniquement sur un tag ex: v1.0.2
-  workflow_dispatch:  # Permet aussi de lancer manuellement depuis GitHub
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   build-windows:
